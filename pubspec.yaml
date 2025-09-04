@@ -1,0 +1,138 @@
+name: bhagvadgeeta
+description: "A comprehensive guide to the Bhagavad Gita with recitation and meaning."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+  # Navigation
+  go_router: ^16.2.0
+  
+  # State Management
+  riverpod: ^2.5.1
+  flutter_riverpod: ^2.5.1
+  provider: ^6.1.2 
+  
+  # Database
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  
+  # Location & Permissions
+  geolocator: ^14.0.2
+  permission_handler: ^12.0.1
+  
+  # 3D Graphics & Animations
+  model_viewer_plus: ^1.7.0
+  vector_math: ^2.1.4
+  animations: ^2.0.11
+  simple_animations: ^5.0.2
+  
+  # Astronomy & Math
+  timezone: ^0.10.1
+  
+  # Utilities
+  intl: ^0.20.2
+  shared_preferences: ^2.2.3
+  url_launcher: ^6.3.0
+  share_plus: ^11.1.0
+  flutter_svg: ^2.0.10+1
+  
+  # Fonts & Text
+  google_fonts: ^6.2.1
+  
+  # Performance & Caching
+  cached_network_image: ^3.4.0
+  flutter_cache_manager: ^3.4.0
+  
+  # Development
+  logging: ^1.2.0
+  uuid: ^4.4.2
+  
+  # UI
+  flutter_speed_dial: ^7.0.0 
+  scrollable_positioned_list: ^0.3.5
+  just_audio: ^0.10.4
+  audio_session: ^0.1.19 
+  just_audio_background: ^0.0.1-beta.11
+  asset_delivery: ^1.1.0
+  sqlite3_flutter_libs: ^0.5.39
+  sqflite_common_ffi: ^2.3.2+1
+  sqflite_common_ffi_web: ^1.0.1+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  change_app_package_name: ^1.2.0
+  sqflite_common_ffi: ^2.3.3
+  mockito: ^5.4.4
+  build_runner: ^2.4.11 
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  
+  shaders:
+    - assets/shaders/ripple.frag
+
+  assets:
+    - assets/images/
+    - assets/emblems/
+    - assets/emblems/chapter/
+    - assets/models/
+    - assets/database/
+    - assets/fonts/
+    - assets/audio/Chapter1_audio/
+    - assets/audio/Chapter2_audio/
+    - assets/audio/Chapter3_audio/
+    - assets/audio/Chapter4_audio/
+    - assets/audio/Chapter5_audio/
+    - assets/audio/Chapter6_audio/
+    - assets/audio/Chapter7_audio/
+    - assets/audio/Chapter8_audio/
+    - assets/audio/Chapter9_audio/
+    - assets/audio/Chapter10_audio/
+    - assets/audio/Chapter11_audio/
+    - assets/audio/Chapter12_audio/
+    - assets/audio/Chapter13_audio/
+    - assets/audio/Chapter14_audio/
+    - assets/audio/Chapter15_audio/
+    - assets/audio/Chapter16_audio/
+    - assets/audio/Chapter17_audio/
+    - assets/audio/Chapter18_audio/
+    
+
+  fonts:
+    # Sanskrit/Devanagari Fonts
+    - family: NotoSerifDevanagari
+      fonts:
+        - asset: assets/fonts/notoserifdevanagari_regular.ttf
+          weight: 400
+        - asset: assets/fonts/notoserifdevanagari_bold.ttf
+          weight: 700
+        - asset: assets/fonts/notoserifdevanagari_condensed_regular.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/notoserifdevanagari_condensed_bold.ttf
+          weight: 700
+          style: italic
+    
+    # Modern/UI Fonts
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/orbitron_regular.ttf
+          weight: 400
+        - asset: assets/fonts/orbitron_bold.ttf
+          weight: 700

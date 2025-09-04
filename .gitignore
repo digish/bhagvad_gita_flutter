@@ -1,0 +1,96 @@
+# Miscellaneous
+*.class
+*.iml
+*.pyc
+*.pyo
+*.rbc
+*.swp
+*~
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# Flutter generated files
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+/ios/Pods/
+/ios/Flutter/App.framework
+/ios/Flutter/engine.xcconfig
+/ios/Flutter/flutter_export_environment.sh
+/ios/Flutter/Generated.xcconfig
+/ios/.symlinks/
+/ios/Runner/GeneratedPluginRegistrant.*
+/ios/Runner/Runner.xcscheme
+/ios/Runner/Assets.xcassets
+/ios/Runner.xcodeproj/project.xcworkspace
+/ios/Runner.xcworkspace
+/ios/Flutter/Debug.xcconfig
+/ios/Flutter/Release.xcconfig
+/ios/ServiceDefinitions.json
+# Allow Podfile.lock for version pinning.
+!/ios/Podfile.lock
+
+# Android generated files
+/android/app/src/main/assets/flutter_assets/
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/gradle/
+/android/gradlew
+/android/gradlew.bat
+/android/local.properties
+/android/.idea/
+/android/app/src/main/java/io/flutter/plugins/
+# Allow .apk files for testing and sharing.
+# *.apk
+# Allow keystore files for signing.
+# *.jks
+
+# Web generated files
+/web/build/
+/web/.dart_tool/
+
+# Dart & Pub generated files
+/doc/api/
+.dart_tool/
+.idea/
+pubspec.lock
+synthetic_main.dart
+lib/generated_plugin_registrant.dart
+
+# IDE files
+*.vscode/
+.idea/
+
+# Local configuration files
+lib/secrets.dart
+
+# Audio and large assets (Optional, but recommended if they are very large)
+# assets/audio/
+
+# Windows generated files
+/windows/flutter/ephemeral
+/windows/flutter/generated_plugins.cmake
+/windows/runner/Debug/
+/windows/runner/Release/
+/windows/runner/Profile/
+/windows/runner/GeneratedPlugins.props
+/windows/runner/flutter_window.pdb
+/windows/runner/runner.exe.manifest
+/windows/runner/win32_window.obj
+/windows/runner/win32_window.pdb
+
+# Linux generated files
+/linux/flutter/ephemeral
+/linux/flutter/generated_plugins.cmake
+
+# macOS generated files
+/macos/Flutter/ephemeral
+/macos/Flutter/GeneratedPlu*
