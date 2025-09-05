@@ -14,12 +14,12 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
 
   static Future<DatabaseHelperImpl> create() async {
     // For the web, we load the database from the asset bundle as bytes.
-    ByteData data = await rootBundle.load('database/geeta.db');
+    ByteData data = await rootBundle.load('database/geeta');
     List<int> bytes =
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 
     // Define the path for our database in the browser's virtual file system.
-    final dbPath = 'geeta.db';
+    final dbPath = 'geeta';
 
     // 1. Write the database bytes to the virtual path.
     await databaseFactoryFfiWeb.writeDatabaseBytes(dbPath, Uint8List.fromList(bytes));

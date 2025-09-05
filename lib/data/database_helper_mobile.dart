@@ -13,7 +13,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   DatabaseHelperImpl._(this._db);
 
   static Future<DatabaseHelperImpl> create() async {
-    String path = join(await getDatabasesPath(), 'geeta.db');
+    String path = join(await getDatabasesPath(), 'geeta');
     var exists = await databaseExists(path);
 
     if (!exists) {
@@ -22,7 +22,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         await Directory(dirname(path)).create(recursive: true);
       } catch (_) {}
 
-      ByteData data = await rootBundle.load('assets/database/geeta.db');
+      ByteData data = await rootBundle.load('assets/database/geeta');
       List<int> bytes =
           data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 

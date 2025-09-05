@@ -18,7 +18,7 @@ void main() {
   // This block runs once before all tests
   setUpAll(() async {
     // Define the path for our temporary test database
-    final testDbPath = path.join(Directory.current.path, 'test', 'test_geeta.db');
+    final testDbPath = path.join(Directory.current.path, 'test', 'test_geeta');
 
     // Make sure the directory exists
     await Directory(path.dirname(testDbPath)).create(recursive: true);
