@@ -26,44 +26,49 @@ class ChaptersScreen extends StatelessWidget {
             children: [
               // 1. --- This is the starting Hero widget ---
               const SizedBox(height: 24),
-              Hero(
-                tag: 'whiteLotusHero', // The unique tag for the animation
-                flightShuttleBuilder:
-                    (
-                      flightContext,
-                      animation,
-                      flightDirection,
-                      fromHeroContext,
-                      toHeroContext,
-                    ) {
-                      final rotationAnimation = animation.drive(
-                        Tween<double>(begin: 0.0, end: 1.0),
-                      );
-                      final scaleAnimation = animation.drive(
-                        TweenSequence([
-                          TweenSequenceItem(
-                            tween: Tween(begin: 1.0, end: 2.5),
-                            weight: 50,
-                          ),
-                          TweenSequenceItem(
-                            tween: Tween(begin: 2.5, end: 1.0),
-                            weight: 50,
-                          ),
-                        ]),
-                      );
+              GestureDetector(
+                onTap: () {
+                  context.pop();
+                },
+                child: Hero(
+                  tag: 'whiteLotusHero', // The unique tag for the animation
+                  flightShuttleBuilder:
+                      (
+                        flightContext,
+                        animation,
+                        flightDirection,
+                        fromHeroContext,
+                        toHeroContext,
+                      ) {
+                        final rotationAnimation = animation.drive(
+                          Tween<double>(begin: 0.0, end: 1.0),
+                        );
+                        final scaleAnimation = animation.drive(
+                          TweenSequence([
+                            TweenSequenceItem(
+                              tween: Tween(begin: 1.0, end: 2.5),
+                              weight: 50,
+                            ),
+                            TweenSequenceItem(
+                              tween: Tween(begin: 2.5, end: 1.0),
+                              weight: 50,
+                            ),
+                          ]),
+                        );
 
-                      return RotationTransition(
-                        turns: rotationAnimation,
-                        child: ScaleTransition(
-                          scale: scaleAnimation,
-                          child: (toHeroContext.widget as Hero).child,
-                        ),
-                      );
-                    },
-                child: Image.asset(
-                  'assets/images/lotus_white22.png',
-                  height: 120, // A good size for this screen
-                  fit: BoxFit.contain,
+                        return RotationTransition(
+                          turns: rotationAnimation,
+                          child: ScaleTransition(
+                            scale: scaleAnimation,
+                            child: (toHeroContext.widget as Hero).child,
+                          ),
+                        );
+                      },
+                  child: Image.asset(
+                    'assets/images/lotus_white22.png',
+                    height: 120, // A good size for this screen
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -130,13 +135,6 @@ class _ChapterCard extends StatelessWidget {
                       color: Colors.amber.shade200,
                       width: 1.5,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: ClipOval(
                     child: Image.asset(

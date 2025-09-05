@@ -50,29 +50,25 @@ void main() {
     // --- DYNAMIC RIPPLE GENERATION ---
     const int NUM_RIPPLES = 1; // The number of ripples to render
     float total_ripple_effect = 0.0;
-
-    for (int i = 0; i < NUM_RIPPLES; i++) {
-        float i_float = float(i);
-        // Create a unique seed for this ripple based on its index
-        vec2 seed = vec2(i_float * 0.123, i_float * 0.456);
-
-        // Create a random, slow-drifting velocity for each ripple
-        vec2 velocity = vec2(random(seed) - 0.5, random(seed.yx) - 0.5) * 0.05;
-        
-        // Calculate a base position and let it drift with time, wrapping around the screen using fract()
-        vec2 base_pos = vec2(random(seed * 2.0), random(seed.yx * 2.0));
-        vec2 origin = fract(base_pos + u_time * velocity);
-        
-        // Correct the animated origin for the aspect ratio
-        origin.x *= aspect_ratio;
-
-        // Stagger the start time of each ripple's animation loop to prevent them from syncing up
-        float staggered_time = u_time + random(seed * 3.0) * 10.0;
-        
-        // Add this ripple's effect to the total
-        total_ripple_effect += periodic_ripple(st, origin, staggered_time);
-    }
+    float loop_duration = 8.0;
     
+
+for (int i = 0; i < NUM_RIPPLES; i++) {
+    float i_float = float(i);
+    vec2 seed = vec2(i_float * 0.123, i_float * 0.456);
+
+    float staggered_time = u_time + random(seed * 3.0) * 10.0;
+    float loop_phase = floor(staggered_time / loop_duration);
+
+    // Scale x by aspect_ratio to cover full screen
+    vec2 origin = vec2(
+        random(seed * 2.0 + loop_phase) * aspect_ratio,
+        random(seed.yx * 2.0 + loop_phase)
+    );
+
+    total_ripple_effect += periodic_ripple(st, origin, staggered_time);
+}
+
     // --- FINAL COLOR COMPOSITION ---
     color += displacement;
     color += total_ripple_effect * 0.25; // Control the overall intensity of the ripples

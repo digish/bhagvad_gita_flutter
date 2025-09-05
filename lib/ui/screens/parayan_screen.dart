@@ -125,10 +125,15 @@ class _ParayanScreenState extends State<ParayanScreen> {
                               ),
                             );
                           },
-                      child: Image.asset(
-                        'assets/images/lotus_blue12.png',
-                        height: 60,
-                        fit: BoxFit.contain,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Image.asset(
+                          'assets/images/lotus_blue12.png',
+                          height: 60,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

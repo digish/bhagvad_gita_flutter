@@ -79,6 +79,15 @@ class _CustomScrollIndicatorState extends State<CustomScrollIndicator> {
     final double height = MediaQuery.of(context).size.height;
     final Size indicatorSize = Size(60, height);
 
+    // Wait for images to load before painting
+    if (lotusImage == null || beeImage == null) {
+      return SizedBox(
+        width: indicatorSize.width,
+        height: indicatorSize.height,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 500),
       opacity: _isInteracting ? 0.7 : 0.7,
@@ -256,6 +265,13 @@ class StemPainter extends CustomPainter {
       );
       lotusRects[i] = lotusRect; // Store rect for tap detection
 
+      // Draw shadow (dummy image: blurred black circle)
+      final double shadowSize = lotusSize + 10;
+      final Paint shadowPaint = Paint()
+        ..color = Colors.black.withOpacity(0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawCircle(pos, shadowSize / 2, shadowPaint);
+      
       if (lotusImage != null) {
         paintImage(
           canvas: canvas,
