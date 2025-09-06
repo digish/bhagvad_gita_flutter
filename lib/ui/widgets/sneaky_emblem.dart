@@ -30,7 +30,7 @@ class SneakyEmblem extends StatelessWidget {
       left: 0,
       right: 10, // Center horizontally
       child: Align(
-        alignment: Alignment.topRight,
+        alignment: Alignment.topCenter,
         child: Container(
           width: 100,
           height: 100,
