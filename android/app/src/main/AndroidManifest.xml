@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:label="bhagvad_gita_flutter"
@@ -27,7 +28,10 @@
             </intent-filter>
         </activity>
 
-        <service android:name="com.ryanheise.audioservice.AudioService" android:exported="true">
+        <service
+            android:name="com.ryanheise.audioservice.AudioService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
           <intent-filter>
             <action android:name="android.media.browse.MediaBrowserService"/>
           </intent-filter>

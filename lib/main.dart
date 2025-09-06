@@ -8,7 +8,8 @@ import 'navigation/app_router.dart';
 import 'providers/audio_provider.dart';
 import 'data/database_helper.dart';
 import 'data/database_helper_interface.dart';
-import 'package:just_audio_background/just_audio_background.dart'; // <-- ADD THIS IMPORT
+import 'package:just_audio_background/just_audio_background.dart';
+
 
 Future<void> main() async { // <-- Make main async
   // --- ADD THIS INITIALIZATION BLOCK ---
