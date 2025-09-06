@@ -1,0 +1,11 @@
+- Correct emblem images 
+- add credit screen.
+- add assets in seperate git repository
+- add copy rights
+
+- remove additional images 
+
+
+- continuous playback aaptOption
+- sun moon location
+- other search options like man , motivation, famous quotes 

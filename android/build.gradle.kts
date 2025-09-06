@@ -1,4 +1,15 @@
+// In android/build.gradle.kts
+
 allprojects {
+    // This block forces a single, stable version of the Google Play libraries
+    // for the entire project, resolving the dependency conflict.
+    configurations.all {
+        resolutionStrategy {
+            force("com.google.android.play:core:1.10.3")
+            force("com.google.android.gms:play-services-tasks:18.1.0")
+        }
+    }
+
     repositories {
         google()
         mavenCentral()

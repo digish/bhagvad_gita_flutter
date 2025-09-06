@@ -24,3 +24,22 @@ plugins {
 }
 
 include(":app")
+
+include(":Chapter1_audio")
+include(":Chapter2_audio")
+include(":Chapter3_audio")
+include(":Chapter4_audio")
+include(":Chapter5_audio")
+include(":Chapter6_audio")
+include(":Chapter7_audio")
+include(":Chapter8_audio")
+include(":Chapter9_audio")
+include(":Chapter10_audio")
+include(":Chapter11_audio")
+include(":Chapter12_audio")
+include(":Chapter13_audio")
+include(":Chapter14_audio")
+include(":Chapter15_audio")
+include(":Chapter16_audio")
+include(":Chapter17_audio")
+include(":Chapter18_audio")
