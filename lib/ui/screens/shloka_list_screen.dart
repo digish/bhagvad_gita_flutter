@@ -1,7 +1,7 @@
+import 'dart:ui';
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
@@ -18,8 +18,8 @@ class ShlokaListScreen extends StatefulWidget {
 }
 
 class _ShlokaListScreenState extends State<ShlokaListScreen> {
-  final ItemScrollController itemScrollController = ItemScrollController();
-  int? _lastScrolledIndex;
+  final ScrollController _scrollController = ScrollController();
+  List<GlobalKey> _itemKeys = [];
   bool _isContinuousPlayEnabled = false;
 
   // To detect when a shloka finishes playing
@@ -27,16 +27,15 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   PlaybackState? _previousPlaybackState;
 
   void _scrollToIndex(int index) {
-    if (_lastScrolledIndex == index) return; // Avoid redundant scrolls
-    // A post-frame callback ensures that the list has been built and is ready to be scrolled.
+    if (index < 0 || index >= _itemKeys.length) return;
+    final key = _itemKeys[index];
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (itemScrollController.isAttached) {
-        _lastScrolledIndex = index;
-        itemScrollController.scrollTo(
-          index: index,
+      if (key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
           duration: const Duration(milliseconds: 700),
           curve: Curves.easeInOutCubic,
-          alignment: 0.1, // Aligns the item near the top of the viewport
+          alignment: 0.1,
         );
       }
     });
@@ -53,41 +52,45 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     return ChangeNotifierProvider(
       create: (_) => ShlokaListProvider(widget.searchQuery, dbHelper),
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            StaticData.getQueryTitle(widget.searchQuery),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+        // The AppBar is now conditional. It only shows for search results (non-chapter views).
+        // For chapter views, the SliverPersistentHeader acts as the AppBar.
+        appBar: chapterNumber == null
+            ? AppBar(
+                title: Text(
+                  StaticData.getQueryTitle(widget.searchQuery),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // The switch is placed first.
-                  Switch(
-                    value: _isContinuousPlayEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _isContinuousPlayEnabled = value;
-                      });
-                    },
-                    // This makes the switch more compact vertically.
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // The switch is placed first.
+                        Switch(
+                          value: _isContinuousPlayEnabled,
+                          onChanged: (value) {
+                            setState(() {
+                              _isContinuousPlayEnabled = value;
+                            });
+                          },
+                          // This makes the switch more compact vertically.
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        // The label is placed below the switch.
+                        Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
+                      ],
+                    ),
                   ),
-                  // The label is placed below the switch.
-                  Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
                 ],
-              ),
-            ),
-          ],
-          backgroundColor: Colors.black.withOpacity(0.4),
-          elevation: 0,
-          centerTitle: true,
-        ),
+                backgroundColor: Colors.black.withOpacity(0.4),
+                elevation: 0,
+                centerTitle: true,
+              )
+            : null,
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
@@ -95,6 +98,26 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             Consumer2<ShlokaListProvider, AudioProvider>(
               builder: (context, provider, audioProvider, child) {
                 if (provider.isLoading) {
+                  // For chapter views, show the emblem header and a loading indicator.
+                  // This ensures the Hero widget is present during the page transition.
+                  if (chapterNumber != null) {
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _ChapterEmblemHeader(chapterNumber: chapterNumber),
+                            const SizedBox(height: 32),
+                            const CircularProgressIndicator(),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -116,6 +139,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   provider.clearScrollIndex();
                 }
 
+                if (provider.shlokas.isNotEmpty &&
+                    _itemKeys.length != provider.shlokas.length) {
+                  _itemKeys =
+                      List.generate(provider.shlokas.length, (_) => GlobalKey());
+                }
+
                 final shlokas = provider.shlokas;
                 final currentPlayingId = audioProvider.currentPlayingShlokaId;
                 final currentPlaybackState = audioProvider.playbackState;
@@ -127,8 +156,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   if (playingIndex != -1) {
                     _scrollToIndex(playingIndex);
                   }
-                } else {
-                  _lastScrolledIndex = null;
                 }
 
                 // --- CONTINUOUS PLAY LOGIC ---
@@ -153,35 +180,44 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   _previousPlaybackState = currentPlaybackState;
                 });
 
-                return ScrollablePositionedList.builder(
-                  itemScrollController: itemScrollController,
-                  itemCount: provider.shlokas.length,
-                  // Add padding to account for the transparent AppBar and system status bar.
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
-                    bottom: 20,
-                  ),
-                  itemBuilder: (context, index) {
-                    final shloka = shlokas[index];
-
-                    // If this is a chapter view, display a static emblem header above the first shloka.
-                    if (index == 0 && chapterNumber != null) {
-                      return Column(
-                        children: [
-                          _ChapterEmblemHeader(chapterNumber: chapterNumber),
-                          FullShlokaCard(
-                            shloka: shloka,
-                            config: _cardConfig,
-                          ),
-                        ],
-                      );
-                    }
-
-                    return FullShlokaCard(
-                      shloka: shloka,
-                      config: _cardConfig,
-                    );
-                  },
+                return CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    // If this is a search view (no chapter number), add top padding
+                    // to account for the AppBar since extendBodyBehindAppBar is true.
+                    if (chapterNumber == null)
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                        ),
+                      ),
+                    if (chapterNumber != null)
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _AnimatingHeaderDelegate(
+                          chapterNumber: chapterNumber,
+                          title: StaticData.getQueryTitle(widget.searchQuery),
+                          isContinuousPlayEnabled: _isContinuousPlayEnabled,
+                          onSwitchChanged: (value) {
+                            setState(() {
+                              _isContinuousPlayEnabled = value;
+                            });
+                          },
+                          minExtent: MediaQuery.of(context).padding.top + kToolbarHeight,
+                          // Increased maxExtent to make room for the title below the emblem
+                          maxExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 250,
+                        ),
+                      ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => Container(
+                            key: _itemKeys[index],
+                            child: FullShlokaCard(shloka: shlokas[index], config: _cardConfig)),
+                        childCount: shlokas.length,
+                      ),
+                    ),
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
+                  ],
                 );
               },
             ),
@@ -205,8 +241,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   );
 }
 
-/// A simplified, static header to replace the animated SliverPersistentHeader.
-/// This allows for the use of ScrollablePositionedList.
 class _ChapterEmblemHeader extends StatelessWidget {
   final int chapterNumber;
   const _ChapterEmblemHeader({required this.chapterNumber});
@@ -232,5 +266,156 @@ class _ChapterEmblemHeader extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final int chapterNumber;
+  final String title;
+  final bool isContinuousPlayEnabled;
+  final ValueChanged<bool> onSwitchChanged;
+  @override
+  final double minExtent;
+  @override
+  final double maxExtent;
+
+  _AnimatingHeaderDelegate({
+    required this.chapterNumber,
+    required this.title,
+    required this.isContinuousPlayEnabled,
+    required this.onSwitchChanged,
+    required this.minExtent,
+    required this.maxExtent,
+  });
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final paddingTop = MediaQuery.of(context).padding.top;
+    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    // Emblem properties
+    const double maxSize = 160.0;
+    const double minSize = 40.0;
+    final double currentSize = lerpDouble(maxSize, minSize, t)!;
+    final double currentRadius = lerpDouble(16.0, minSize / 2, t)!;
+
+    // Emblem position
+    final double maxLeft = (MediaQuery.of(context).size.width - maxSize) / 2;
+    final double minLeft = 56.0; // Position next to back button
+    final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
+
+    final double maxTop = minExtent; // Start below the final appbar area
+    final double minTop = paddingTop + (kToolbarHeight - minSize) / 2;
+    final double currentTop = lerpDouble(maxTop, minTop, t)!;
+
+    // --- NEW: Title animation ---
+    // Position
+    final double titleMaxTop = maxTop + maxSize + 16; // Below the large emblem
+    final double titleMinTop = paddingTop;
+    final double titleCurrentTop = lerpDouble(titleMaxTop, titleMinTop, t)!;
+
+    final double titleMaxHorizontalPadding = 16.0;
+    final double titleMinHorizontalPadding = 100.0; // To fit between back button and actions
+    final double titleCurrentHorizontalPadding = lerpDouble(titleMaxHorizontalPadding, titleMinHorizontalPadding, t)!;
+
+    // Font size
+    final double titleMaxFontSize = Theme.of(context).textTheme.headlineSmall?.fontSize ?? 24.0;
+    final double titleMinFontSize = Theme.of(context).textTheme.titleLarge?.fontSize ?? 20.0;
+    final double titleCurrentFontSize = lerpDouble(titleMaxFontSize, titleMinFontSize, t)!;
+
+    // Opacity for elements that appear when collapsed
+    final double contentOpacity = t;
+
+    return Container(
+      color: Colors.black.withOpacity(0.4),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Back button (always visible)
+          Positioned(
+            top: paddingTop,
+            left: 4,
+            child: const BackButton(color: Colors.white),
+          ),
+
+          // Title (fades in)
+          Positioned(
+            top: titleCurrentTop,
+            left: titleCurrentHorizontalPadding,
+            right: titleCurrentHorizontalPadding,
+            height: kToolbarHeight,
+            child: Center(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleCurrentFontSize,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+
+          // Actions (fades in)
+          Positioned(
+            top: paddingTop,
+            right: 0,
+            height: kToolbarHeight,
+            child: Opacity(
+              opacity: contentOpacity,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Switch(
+                      value: isContinuousPlayEnabled,
+                      onChanged: onSwitchChanged,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // The animating emblem
+          Positioned(
+            top: currentTop,
+            left: currentLeft,
+            child: Hero(
+              tag: 'chapterEmblem_$chapterNumber',
+              child: Container(
+                width: currentSize,
+                height: currentSize,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(currentRadius),
+                  border: Border.all(color: Colors.amber.shade200, width: 2),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_AnimatingHeaderDelegate oldDelegate) {
+    return minExtent != oldDelegate.minExtent ||
+        maxExtent != oldDelegate.maxExtent ||
+        chapterNumber != oldDelegate.chapterNumber ||
+        title != oldDelegate.title ||
+        isContinuousPlayEnabled != oldDelegate.isContinuousPlayEnabled ||
+        onSwitchChanged != oldDelegate.onSwitchChanged;
   }
 }

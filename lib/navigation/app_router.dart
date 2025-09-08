@@ -33,8 +33,8 @@ final GoRouter router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const ChaptersScreen(),
-          transitionDuration: const Duration(milliseconds: 2000),
-          reverseTransitionDuration: const Duration(milliseconds: 2000),
+          transitionDuration: const Duration(milliseconds: 700),
+          reverseTransitionDuration: const Duration(milliseconds: 700),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -50,12 +50,11 @@ final GoRouter router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: ChangeNotifierProvider(
-            // 3. Pass the dbHelper to the ParayanProvider.
             create: (_) => ParayanProvider(dbHelper),
             child: const ParayanScreen(),
           ),
-          transitionDuration: const Duration(milliseconds: 2000),
-          reverseTransitionDuration: const Duration(milliseconds: 2000),
+          transitionDuration: const Duration(milliseconds: 700),
+          reverseTransitionDuration: const Duration(milliseconds: 700),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -64,9 +63,16 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.shlokaList,
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final query = state.pathParameters['query']!;
-        return ShlokaListScreen(searchQuery: query);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ShlokaListScreen(searchQuery: query),
+          transitionDuration: const Duration(milliseconds: 700),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
       },
     ),
     GoRoute(
@@ -82,4 +88,3 @@ final GoRouter router = GoRouter(
     ),
   ],
 );
-

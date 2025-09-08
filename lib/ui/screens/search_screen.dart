@@ -58,7 +58,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
       body: Stack(
         children: [
           DarkenedAnimatedBackground(
-            opacity: MediaQuery.of(context).viewInsets.bottom > 0 ? 0.7 : 0.2,
+            opacity: MediaQuery.of(context).viewInsets.bottom > 0 ? 1.0: 0.2,
           ),
           AnimatedOpacity(
             opacity: isSearching ? 0.0 : 1.0,
@@ -67,7 +67,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
               ignoring: isSearching,
               child: MediaQuery.of(context).viewInsets.bottom > 0
                   ? const DecorativeForeground(opacity: 0.2)
-                  : const DecorativeForeground(opacity: 0.7),
+                  : const DecorativeForeground(opacity: 1.0),
             ),
           ),
 
