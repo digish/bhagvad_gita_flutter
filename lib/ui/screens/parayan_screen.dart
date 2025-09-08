@@ -107,11 +107,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             final scaleAnimation = animation.drive(
                               TweenSequence([
                                 TweenSequenceItem(
-                                  tween: Tween(begin: 1.0, end: 2.5),
+                                  tween: Tween(begin: 1.0, end: 1.0),
                                   weight: 50,
                                 ),
                                 TweenSequenceItem(
-                                  tween: Tween(begin: 2.5, end: 1.0),
+                                  tween: Tween(begin: 1.0, end: 1.0),
                                   weight: 50,
                                 ),
                               ]),
