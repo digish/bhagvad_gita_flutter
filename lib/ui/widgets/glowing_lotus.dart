@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
 
-
 class GlowingLotus extends StatefulWidget {
-  const GlowingLotus({super.key});
+  final double width;
+  final double height;
+  final double sigma;
+
+  const GlowingLotus({
+    super.key,
+    this.width = 256,
+    this.height = 256,
+    this.sigma = 3.0,
+  });
 
   @override
   State<GlowingLotus> createState() => _GlowingLotusState();
@@ -42,8 +50,8 @@ class _GlowingLotusState extends State<GlowingLotus>
       builder: (context, child) {
         return Center(
           child: SizedBox(
-            width: 256,
-            height: 256,
+            width: widget.width,
+            height: widget.height,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -51,20 +59,20 @@ class _GlowingLotusState extends State<GlowingLotus>
                 Opacity(
                   opacity: _glowAnimation.value,
                   child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(
-                      sigmaX: 3.0,
-                      sigmaY: 3.0,
-                    ),
+                    imageFilter:
+                        ImageFilter.blur(sigmaX: widget.sigma, sigmaY: widget.sigma),
                     child: SvgPicture.asset(
                       'assets/images/lotus_art.svg',
-                      color: Colors.amberAccent,
+                      colorFilter: const ColorFilter.mode(
+                          Color.fromARGB(255, 255, 64, 210), BlendMode.srcIn),
                     ),
                   ),
                 ),
                 // Crisp line layer
                 SvgPicture.asset(
                   'assets/images/lotus_art.svg',
-                  color: Colors.amberAccent.withOpacity(0.5),
+                  colorFilter: ColorFilter.mode(
+                      const Color.fromARGB(255, 164, 6, 138).withOpacity(0.9), BlendMode.srcIn),
                 ),
               ],
             ),

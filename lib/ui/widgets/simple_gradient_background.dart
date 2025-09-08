@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import './glowing_lotus.dart';
 
 
 class SimpleGradientBackground extends StatefulWidget {
@@ -13,8 +14,6 @@ class SimpleGradientBackground extends StatefulWidget {
 class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _radiusAnimation;
-  late Animation<Alignment> _alignmentAnimation;
 
   @override
   void initState() {
@@ -23,26 +22,6 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
       duration: const Duration(seconds: 5),
       vsync: this,
     )..repeat(reverse: true);
-
-    _radiusAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.5, end: 1.5)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 50.0,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.5, end: 1.5)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 50.0,
-      ),
-    ]).animate(_controller);
-
-    _alignmentAnimation = Tween<Alignment>(
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
   }
 
   @override
@@ -61,6 +40,12 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
           children: [
             Container(
               color: Colors.white,
+            ),
+            // Use the reusable GlowingLotus widget
+            const GlowingLotus(
+              width: 300,
+              height: 300,
+              sigma: 5.0,
             ),
             // The bottom leaves image
             Align(

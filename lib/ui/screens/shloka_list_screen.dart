@@ -208,6 +208,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           maxExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 250,
                         ),
                       ),
+                    // Add some spacing between the header and the first card for chapter views
+                    if (chapterNumber != null)
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 100),
+                      ),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => Container(
@@ -256,7 +261,15 @@ class _ChapterEmblemHeader extends StatelessWidget {
           height: 160,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.amber.shade200, width: 2),
+            border: Border.all(color: Colors.white.withOpacity(0.9), width: 2),
+            boxShadow: [
+              BoxShadow( // Changed to a bright, golden glow
+                color: Colors.amber.withOpacity(0.8),
+                spreadRadius: 4,
+                blurRadius: 15.0,
+                offset: Offset.zero,
+              ),
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Image.asset(
@@ -394,7 +407,15 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 height: currentSize,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(currentRadius),
-                  border: Border.all(color: Colors.amber.shade200, width: 2),
+                  border: Border.all(color: Colors.white.withOpacity(0.9), width: 2),
+                  boxShadow: [
+                    BoxShadow( // Animate the glow properties
+                      color: Colors.amber.withOpacity(lerpDouble(0.8, 0.7, t)!),
+                      spreadRadius: lerpDouble(4, 2, t)!,
+                      blurRadius: lerpDouble(15, 12, t)!,
+                      offset: Offset.zero,
+                    ),
+                  ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Image.asset(

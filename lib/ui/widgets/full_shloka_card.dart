@@ -234,13 +234,20 @@ class FullShlokaCard extends StatelessWidget {
                       : const SizedBox(height: 10),
                 if (config.showSeparator)
                   Center(
-                    child: Image.asset(
-                      'assets/images/line_seperator.png',
-                      height: 30,
-                      fit: BoxFit.contain,
-                      color: isLightTheme ? Colors.grey[700] : null,
+                    child: SizedBox(
+                      width: 150, // Constrain the width to make it smaller
+                      child: isLightTheme
+                          ? ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                  Colors.grey[700]!, BlendMode.srcIn),
+                              child: Image.asset(
+                                'assets/images/line_seperator.png',
+                              ),
+                            )
+                          : Image.asset('assets/images/line_seperator.png'),
+                            ),
                     ),
-                  ),
+
                 if (config.showSeparator)
                   config.spacingCompact
                       ? const SizedBox(height: 5)
@@ -459,4 +466,3 @@ class FullShlokaCardConfig {
     isLightTheme: true,
   );
 }
-

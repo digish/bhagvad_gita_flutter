@@ -1,5 +1,6 @@
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import '../../data/static_data.dart';
 
@@ -78,16 +79,13 @@ class ChaptersScreen extends StatelessWidget {
               // This makes it take up the remaining screen space.
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                  padding: const EdgeInsets.only(top: 16, bottom: 8.0),
                   itemCount: chapters.length,
                   itemBuilder: (context, index) {
                     final chapterName = chapters[index];
                     final chapterNumber = index + 1;
-
                     return _ChapterCard(
-                      chapterNumber: chapterNumber,
-                      chapterName: chapterName,
-                    );
+                        chapterNumber: chapterNumber, chapterName: chapterName);
                   },
                 ),
               ),
@@ -109,59 +107,92 @@ class _ChapterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: InkWell(
+  // By applying the filter to each card, the background between cards remains clear.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Material(
+        elevation: 2,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12.0),
-        onTap: () {
-          context.push('/shloka-list/$chapterNumber');
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 🪷 Chapter emblem
-              Hero(
-                tag: 'chapterEmblem_$chapterNumber',
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.amber.shade200,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12.0),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: Colors.white.withOpacity(0.7), width: 1),
               ),
-
-              const SizedBox(width: 12),
-
-              // 🕉️ Adhyay label
-              Text(
-                'अध्याय $chapterNumber',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // 📖 Chapter name
-              Expanded(
-                child: Text(chapterName, style: theme.textTheme.bodyLarge),
-              ),
-            ],
+              child: InkWell(
+                onTap: () {
+                  context.push('/shloka-list/$chapterNumber');
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 🪷 Chapter emblem
+                      Hero(
+                        tag: 'chapterEmblem_$chapterNumber',
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.9),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow( // Changed to a bright, golden glow
+                                color: Colors.amber.withOpacity(0.7),
+                                spreadRadius: 2,
+                                blurRadius: 12.0,
+                                offset: Offset
+                                    .zero, // Centered glow instead of a drop shadow
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'अध्याय $chapterNumber',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.primary.withOpacity(0.9),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              chapterName,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: Colors.black.withOpacity(0.85),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 20, // Explicitly setting size for prominence
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ), // Row
+                ), // Padding
+              ), // InkWell
+            ), // Container
           ),
         ),
       ),
