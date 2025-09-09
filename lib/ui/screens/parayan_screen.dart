@@ -319,7 +319,11 @@ class _ChapterStartHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // This could be styled more elaborately later
-    String chapterName = StaticData.getChapterTitle(chapterNumber);
+    // FIX: The `getChapterTitle` method had a range error for chapter 18.
+    // Using `geetaAdhyay` list directly with correct 0-based indexing is safer
+    // and consistent with other parts of the app (e.g., _ChapterEndFooter).
+    // We clamp the chapter number to be at least 1 to prevent negative indices.
+    String chapterName = StaticData.geetaAdhyay[(chapterNumber > 0 ? chapterNumber : 1) - 1];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32.0),
       child: Text(

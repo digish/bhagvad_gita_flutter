@@ -13,6 +13,7 @@
 
 import 'dart:ui';
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/shloka_result.dart';
@@ -41,16 +42,38 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   void _scrollToIndex(int index) {
     if (index < 0 || index >= _itemKeys.length) return;
-    final key = _itemKeys[index];
+
+    // We must wait until after the build phase is complete before using the
+    // ScrollController.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (key.currentContext != null) {
-        Scrollable.ensureVisible(
-          key.currentContext!,
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeInOutCubic,
-          alignment: 0.1,
-        );
+      if (!_scrollController.hasClients) {
+        debugPrint("Scroll aborted: Controller not attached.");
+        return;
       }
+
+      // --- STAGE 1: PRE-JUMP ---
+      // Perform an immediate, non-animated jump to an estimated position *before*
+      // the target shloka. This forces the lazy list to build widgets in the
+      // vicinity of our target. By jumping *before* it, we ensure that
+      // `Scrollable.ensureVisible` will have a predictable "scroll down" behavior,
+      // avoiding the "off-by-one" error from previous attempts.
+      final preIndex = (index - 2).clamp(0, index);
+      // Use a generous average height estimate to increase reliability.
+      final estimatedOffset = preIndex * 500.0;
+      _scrollController.jumpTo(estimatedOffset);
+
+      // --- STAGE 2: SMOOTH SCROLL ---
+      // Schedule the final, precise scroll for the next event loop tick. This
+      // gives the framework time to complete the layout pass after the jump.
+      Future.delayed(const Duration(milliseconds: 50), () {
+        final key = _itemKeys[index];
+        if (key.currentContext != null) {
+          debugPrint("Context found for index $index. Performing smooth scroll...");
+          Scrollable.ensureVisible(key.currentContext!, duration: const Duration(milliseconds: 800), curve: Curves.easeInOutCubic, alignment: 0.15);
+        } else {
+          debugPrint("Smooth scroll failed: context is null for index $index after pre-jump. Item heights may vary significantly.");
+        }
+      });
     });
   }
 
@@ -145,17 +168,20 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   );
                 }
 
+                // Ensure the keys list is synchronized with the shlokas list
+                // before attempting to scroll.
+                if (provider.shlokas.isNotEmpty && _itemKeys.length != provider.shlokas.length) {
+                  _itemKeys = List.generate(provider.shlokas.length, (_) => GlobalKey());
+                }
+
                 // If an initial scroll index is set by the provider, trigger the scroll.
                 if (provider.initialScrollIndex != null) {
+                  debugPrint(
+                    "Scrolling to initial index: ${provider.initialScrollIndex!}",
+                  );
                   _scrollToIndex(provider.initialScrollIndex!);
                   // Clear the index in the provider to prevent re-scrolling on rebuilds.
                   provider.clearScrollIndex();
-                }
-
-                if (provider.shlokas.isNotEmpty &&
-                    _itemKeys.length != provider.shlokas.length) {
-                  _itemKeys =
-                      List.generate(provider.shlokas.length, (_) => GlobalKey());
                 }
 
                 final shlokas = provider.shlokas;

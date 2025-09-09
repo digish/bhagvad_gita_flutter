@@ -21,6 +21,7 @@ import '../ui/screens/search_screen.dart';
 import '../ui/screens/shloka_detail_screen.dart';
 import '../ui/screens/shloka_list_screen.dart';
 import '../ui/screens/audio_management_screen.dart';
+import '../ui/screens/credits_screen.dart';
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 
@@ -31,6 +32,7 @@ class AppRoutes {
   static const String shlokaList = '/shloka-list/:query';
   static const String shlokaDetail = '/shloka-detail/:id';
   static const String audioManagement = '/audio-management';
+  static const String credits = '/credits';
 }
 
 final GoRouter router = GoRouter(
@@ -98,6 +100,20 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppRoutes.audioManagement,
       builder: (context, state) => const AudioManagementScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.credits,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const CreditsScreen(),
+          transitionDuration: const Duration(milliseconds: 700),
+          reverseTransitionDuration: const Duration(milliseconds: 700),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
     ),
   ],
 );

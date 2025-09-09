@@ -95,6 +95,22 @@ class DecorativeForeground extends StatelessWidget {
               ),
             ),
           ),
+
+          // "Credits" Spinner
+          Positioned(
+            top: 65,
+            right: MediaQuery.of(context).size.width * 0.15,
+            child: CenteredSpinner(
+              isSpinning: false,
+              spinDirection: SpinDirection.clockwise,
+              anchor: _buildLotus(
+                imageAsset: 'assets/images/lotus_gold.png', // New asset
+                heroTag: 'creditsLotusHero', // New hero tag
+                onTap: () => context.push(AppRoutes.credits),
+              ),
+              child: const SizedBox.shrink(),
+            ),
+          ),
         ],
       ),
     );
@@ -120,7 +136,9 @@ class DecorativeForeground extends StatelessWidget {
               child: ColorFiltered(
                 colorFilter: ColorFilter.mode(
                   heroTag == 'whiteLotusHero'
-                      ? Colors.white
+                      ? Colors.white 
+                      : heroTag == 'creditsLotusHero'
+                      ? Colors.amber
                       : const Color.fromARGB(255, 0, 150, 255),
                   BlendMode.srcATop,
                 ),

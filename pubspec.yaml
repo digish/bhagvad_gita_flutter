@@ -91,6 +91,7 @@ flutter:
     - assets/images/
     - assets/emblems/
     - assets/emblems/chapter/
+    - assets/emblems/authors/
     - assets/database/
     - assets/fonts/
     - assets/audio/Chapter1_audio/

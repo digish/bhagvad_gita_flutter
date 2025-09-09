@@ -51,8 +51,21 @@ class ShlokaListProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    // NEW: Case #0: Query is a "chapter,shloka" or "chapter.shloka" reference.
+    final shlokaRefMatch = RegExp(r'^(\d+)[,.](\d+)$').firstMatch(_searchQuery);
+
+    if (shlokaRefMatch != null) {
+      final chapter = shlokaRefMatch.group(1)!;
+      final shlokNum = int.tryParse(shlokaRefMatch.group(2)!);
+      _shlokas = await _dbHelper.getShlokasByChapter(chapter);
+      if (shlokNum != null) {
+        // Per the new requirement, filter the list to show only the specific shloka.
+        _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
+        _initialScrollIndex = null; // No scrolling needed for a single item.
+      }
+    }
     // Case #1: Query is a single number (chapter search).
-    if (int.tryParse(_searchQuery) != null) {
+    else if (int.tryParse(_searchQuery) != null) {
       _shlokas = await _dbHelper.getShlokasByChapter(_searchQuery);
     }
     // Case #2 & #3: It's a text query.
@@ -70,9 +83,9 @@ class ShlokaListProvider extends ChangeNotifier {
           final shlokNum = parsedData['shlok'];
           _shlokas = await _dbHelper.getShlokasByChapter(chapter);
           if (shlokNum != null) {
-            _initialScrollIndex = _shlokas
-                .indexWhere((s) => int.tryParse(s.shlokNo) == shlokNum);
-            if (_initialScrollIndex == -1) _initialScrollIndex = null;
+            // Apply the same logic here: show only the specific shloka.
+            _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
+            _initialScrollIndex = null;
           }
         } else {
           // Case #2 (continued): No special format, search for both terms.
@@ -98,4 +111,3 @@ class ShlokaListProvider extends ChangeNotifier {
     _initialScrollIndex = null;
   }
 }
-
