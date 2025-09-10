@@ -28,7 +28,7 @@ const Map<int, int> _shlokaCounts = {
 };
 
 // --- DEVELOPMENT SWITCH ---
-const bool _useLocalAssets = true;
+const bool _useLocalAssets = false;
 
 
 // Enum to represent the state of the audio player for a specific shloka
@@ -172,7 +172,7 @@ class AudioProvider extends ChangeNotifier {
           assetPackName: packName,
           count: _shlokaCounts[i] ?? 0,
           namingPattern: 'ch${i.toString().padLeft(2, '0')}_sh',
-          fileExtension: 'mp3',
+          fileExtension: 'opus',
         );
         _packStatus[packName] = AssetPackStatus.downloaded;
       } catch (e) {
@@ -251,7 +251,7 @@ class AudioProvider extends ChangeNotifier {
       final shlokPadded = shlokNum.toString().padLeft(2, '0');
 
       if (_useLocalAssets) {
-        return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.mp3';
+        return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.opus';
       } else {
         if (getChapterPackStatus(chapter) != AssetPackStatus.downloaded) {
           return null;
@@ -260,9 +260,9 @@ class AudioProvider extends ChangeNotifier {
           assetPackName: packName,
           count: _shlokaCounts[chapter] ?? 0,
           namingPattern: 'ch${chapterPadded}_sh',
-          fileExtension: 'mp3',
+          fileExtension: 'opus',
         );
-        return '$assetPackPath/ch${chapterPadded}_sh$shlokPadded.mp3';
+        return '$assetPackPath/ch${chapterPadded}_sh$shlokPadded.opus';
       }
     } catch (e) {
       debugPrint("Could not get asset path: $e");
