@@ -92,10 +92,52 @@ class _ParayanScreenState extends State<ParayanScreen> {
           SimpleGradientBackground(),
           Column(
             children: [
-              // top size box
-              const SizedBox(height: 16),
+              // 1. --- Centered Hero Widget ---
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Hero(
+                  tag: 'blueLotusHero',
+                  flightShuttleBuilder: (
+                    flightContext,
+                    animation,
+                    flightDirection,
+                    fromHeroContext,
+                    toHeroContext,
+                  ) {
+                    final rotationAnimation = animation.drive(
+                      Tween<double>(begin: 0.0, end: 1.0),
+                    );
+                    final scaleAnimation = animation.drive(
+                      TweenSequence([
+                        TweenSequenceItem(
+                          tween: Tween(begin: 1.0, end: 1.0),
+                          weight: 50,
+                        ),
+                        TweenSequenceItem(
+                          tween: Tween(begin: 1.0, end: 1.0),
+                          weight: 50,
+                        ),
+                      ]),
+                    );
 
-              // top header
+                    return RotationTransition(
+                      turns: rotationAnimation,
+                      child: ScaleTransition(
+                        scale: scaleAnimation,
+                        child: (toHeroContext.widget as Hero).child,
+                      ),
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/lotus_blue12.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 2. --- Header with position and switch ---
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16.0,
@@ -104,74 +146,30 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Hero(
-                      tag: 'blueLotusHero',
-                      flightShuttleBuilder:
-                          (
-                            flightContext,
-                            animation,
-                            flightDirection,
-                            fromHeroContext,
-                            toHeroContext,
-                          ) {
-                            final rotationAnimation = animation.drive(
-                              Tween<double>(begin: 0.0, end: 1.0),
-                            );
-                            final scaleAnimation = animation.drive(
-                              TweenSequence([
-                                TweenSequenceItem(
-                                  tween: Tween(begin: 1.0, end: 1.0),
-                                  weight: 50,
-                                ),
-                                TweenSequenceItem(
-                                  tween: Tween(begin: 1.0, end: 1.0),
-                                  weight: 50,
-                                ),
-                              ]),
-                            );
-
-                            return RotationTransition(
-                              turns: rotationAnimation,
-                              child: ScaleTransition(
-                                scale: scaleAnimation,
-                                child: (toHeroContext.widget as Hero).child,
-                              ),
-                            );
-                          },
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: Image.asset(
-                          'assets/images/lotus_blue12.png',
-                          height: 60,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
+                      flex: 2,
                       child: ValueListenableBuilder<String>(
                         valueListenable: _currentPositionLabelNotifier,
                         builder: (context, value, child) {
-                          // The builder provides the latest value from the notifier
                           return Text(
-                            value, // Use the value from the builder
+                            value,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           );
                         },
                       ),
                     ),
-                    Expanded(
+                    const SizedBox(width: 16),
+                    Flexible(
                       child: SwitchListTile(
-                        title: const Text('Show Anvay'),
+                        title: const Text('Anvay'),
                         value: _showAnvay,
                         onChanged: (val) {
                           setState(() => _showAnvay = val);
                         },
                         // It's good practice to remove padding when inside another component.
                         contentPadding: EdgeInsets.zero,
+                        dense: true,
                       ),
                     ),
                   ],
@@ -179,6 +177,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
               ),
 
               /// 🌿 Wrap ScrollablePositionedList + ScrollIndicator in a Stack
+              const SizedBox(height: 8),
               Expanded(
                 child: Consumer<ParayanProvider>(
                   builder: (context, provider, child) {
