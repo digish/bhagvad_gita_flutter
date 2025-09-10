@@ -1,9 +1,12 @@
-    plugins {
-        id("com.android.application")
-        id("kotlin-android")
-        // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
-        id("dev.flutter.flutter-gradle-plugin")
-    }
+plugins {
+    id("com.android.application")
+    id("kotlin-android")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("dev.flutter.flutter-gradle-plugin")
+}
+
+import java.util.Properties
+import java.io.FileInputStream
 
     android {
         namespace = "org.komal.bhagvadgeeta"
@@ -11,18 +14,8 @@
         ndkVersion = flutter.ndkVersion
 
 
-
-        compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_17
-            targetCompatibility = JavaVersion.VERSION_17
-        }
-
-        kotlinOptions {
-            jvmTarget = JavaVersion.VERSION_17.toString()
-        }
-
         aaptOptions {
-            noCompress.add("mp3")
+            noCompress.add("opus")
         }
         
             kotlin {
@@ -40,29 +33,50 @@
             versionName = flutter.versionName
         }
 
-    bundle {
-        // CHANGE THIS LINE
-        assetPacks.addAll(mutableSetOf(
-            ":Chapter1_audio", ":Chapter2_audio", ":Chapter3_audio",
-            ":Chapter4_audio", ":Chapter5_audio", ":Chapter6_audio",
-            ":Chapter7_audio", ":Chapter8_audio", ":Chapter9_audio",
-            ":Chapter10_audio", ":Chapter11_audio", ":Chapter12_audio",
-            ":Chapter13_audio", ":Chapter14_audio", ":Chapter15_audio",
-            ":Chapter16_audio", ":Chapter17_audio", ":Chapter18_audio"
-        ))
-    }
+        bundle {
+            // CHANGE THIS LINE
+            assetPacks.addAll(mutableSetOf(
+                ":Chapter1_audio", ":Chapter2_audio", ":Chapter3_audio",
+                ":Chapter4_audio", ":Chapter5_audio", ":Chapter6_audio",
+                ":Chapter7_audio", ":Chapter8_audio", ":Chapter9_audio",
+                ":Chapter10_audio", ":Chapter11_audio", ":Chapter12_audio",
+                ":Chapter13_audio", ":Chapter14_audio", ":Chapter15_audio",
+                ":Chapter16_audio", ":Chapter17_audio", ":Chapter18_audio"
+            ))
+        }
+    
+
+        // The following code reads the properties from key.properties using Kotlin syntax
+
+        signingConfigs {
+            create("release") { // <-- This creates the 'release' config
+                val keystorePropertiesFile = rootProject.file("key.properties")
+                if (keystorePropertiesFile.exists()) {
+                    val keystoreProperties = Properties()
+                    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                    storeFile = file(keystoreProperties.getProperty("storeFile"))
+                    storePassword = keystoreProperties.getProperty("storePassword")
+                    keyPassword = keystoreProperties.getProperty("keyPassword")
+                    keyAlias = keystoreProperties.getProperty("keyAlias")
+                }
+            }
+        }
 
         buildTypes {
             release {
                 // TODO: Add your own signing config for the release build.
                 // Signing with the debug keys for now, so `flutter run --release` works.
-                signingConfig = signingConfigs.getByName("debug")
+                // This will now only succeed if the signingConfigs.release block was populated.
+                // If key.properties is missing, the build will fail with a clear message
+                // that the signing configuration is incomplete.
+                signingConfig = signingConfigs.getByName("release")
+                
 
                 // BEGIN FIX FOR R8 ERROR
                 // Enables code shrinking, obfuscation, and optimization for this build type.
                 isMinifyEnabled = true
-                // Disables the removal of unused resources.
-                isShrinkResources = false
+                // Enables the removal of unused resources. This works only when isMinifyEnabled is true.
+                isShrinkResources = true
                 // Specifies the ProGuard rules file.
                 proguardFiles(
                     getDefaultProguardFile("proguard-android.txt"),

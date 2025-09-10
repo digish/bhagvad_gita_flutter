@@ -37,21 +37,69 @@ class DecorativeForeground extends StatelessWidget {
           Positioned(
             top: 20,
             left: MediaQuery.of(context).size.width * 0.08,
-            child: Image.asset(
-              'assets/images/leaves_clustor12.png',
-              width: 150,
-              height: 150,
-              fit: BoxFit.contain,
+            child: Stack(
+              children: [
+                // Shadow
+                Transform.translate(
+                  offset: const Offset(4, 4),
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                    child: ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        Colors.black.withOpacity(0.5),
+                        BlendMode.srcATop,
+                      ),
+                      child: Image.asset(
+                        'assets/images/leaves_clustor12.png',
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+                // Original Image
+                Image.asset(
+                  'assets/images/leaves_clustor12.png',
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.contain,
+                ),
+              ],
             ),
           ),
           Positioned(
             top: 20,
             left: MediaQuery.of(context).size.width * 0.7,
-            child: Image.asset(
-              'assets/images/leaves_clustor11.png',
-              width: 100,
-              height: 100,
-              fit: BoxFit.contain,
+            child: Stack(
+              children: [
+                // Shadow
+                Transform.translate(
+                  offset: const Offset(4, 4),
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                    child: ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        Colors.black.withOpacity(0.5),
+                        BlendMode.srcATop,
+                      ),
+                      child: Image.asset(
+                        'assets/images/leaves_clustor11.png',
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+                // Original Image
+                Image.asset(
+                  'assets/images/leaves_clustor11.png',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.contain,
+                ),
+              ],
             ),
           ),
 

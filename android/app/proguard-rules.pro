@@ -1,7 +1,5 @@
-# This is a debugging rule. It tells R8 not to remove or rename ANY classes.
-# This will result in a larger app, but it will confirm our build setup is correct.
--keep class ** { *; }
--keep interface ** { *; }
+# Add project specific ProGuard rules here. For more information, see:
+# https://developer.android.com/studio/build/shrink-code
 -keepattributes Signature
 -dontwarn com.google.android.gms.common.annotation.NoNullnessRewrite
 -dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication

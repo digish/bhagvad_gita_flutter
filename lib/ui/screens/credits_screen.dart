@@ -15,6 +15,8 @@ import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Data models for clarity
 class CreditItem {
@@ -193,6 +195,27 @@ final List<AuthorProfile> authorProfilesData = [
 class CreditsScreen extends StatelessWidget {
   const CreditsScreen({super.key});
 
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      // Could show a snackbar or dialog
+      debugPrint('Could not launch $url');
+    }
+  }
+
+  void _shareApp(BuildContext context) {
+    // You can customize the share text and link
+    final box = context.findRenderObject() as RenderBox?;
+    const String appLink =
+        'https://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta';
+    Share.share(
+      'Check out this beautiful Bhagavad Gita app!\n\n$appLink',
+      subject: 'Bhagavad Gita App',
+      sharePositionOrigin:
+          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -224,6 +247,38 @@ class CreditsScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: Colors.brown.shade800,
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              _launchUrl(
+                                  'https://play.google.com/store/apps/developer?id=Komal+Pandya');
+                            },
+                            icon: const Icon(Icons.shop_2_outlined),
+                            label: const Text('More Apps'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.brown.shade700,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _shareApp(context),
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Share App'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.brown.shade700,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),

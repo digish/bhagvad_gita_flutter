@@ -46,6 +46,7 @@ migrate_working_dir/
 /android/gradlew
 /android/gradlew.bat
 /android/local.properties
+/android/key.properties
 /android/.idea/
 /android/app/src/main/java/io/flutter/plugins/
 # Allow .apk files for testing and sharing.
