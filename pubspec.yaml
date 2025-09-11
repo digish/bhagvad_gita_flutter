@@ -2,7 +2,7 @@ name: bhagvadgeeta
 description: "A comprehensive guide to the Bhagavad Gita with recitation and meaning."
 publish_to: 'none' 
 
-version: 18.0.0+18
+version: 20.0.1+20
 
 environment:
   sdk: ^3.9.0
@@ -79,6 +79,24 @@ dev_dependencies:
   mockito: ^5.4.4
   build_runner: ^2.4.11 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  # Path to the standard icon for older Android versions and iOS
+  image_path: "assets/icon/icon_square.png" # A standard 1024x1024 square icon
+
+  # --- Adaptive Icon Settings ---
+  # Path to your new foreground image (with transparency)
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png" 
+
+  # A hex color for the background layer
+  # adaptive_icon_background: "#FFFDFCFB" # Using the light, warm background from your app
+
+  # Or, you can use an image for the background instead of a color:
+  adaptive_icon_background: "assets/icon/icon_background.png"
 
 flutter:
   uses-material-design: true
