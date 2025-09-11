@@ -40,40 +40,34 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   String? _previousPlayingId;
   PlaybackState? _previousPlaybackState;
 
+  // A more robust scrolling method.
   void _scrollToIndex(int index) {
     if (index < 0 || index >= _itemKeys.length) return;
-
-    // We must wait until after the build phase is complete before using the
-    // ScrollController.
+ 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) {
-        debugPrint("Scroll aborted: Controller not attached.");
+      final key = _itemKeys[index];
+      if (key.currentContext == null) {
+        debugPrint("Cannot scroll to index $index: context is null.");
         return;
       }
-
-      // --- STAGE 1: PRE-JUMP ---
-      // Perform an immediate, non-animated jump to an estimated position *before*
-      // the target shloka. This forces the lazy list to build widgets in the
-      // vicinity of our target. By jumping *before* it, we ensure that
-      // `Scrollable.ensureVisible` will have a predictable "scroll down" behavior,
-      // avoiding the "off-by-one" error from previous attempts.
-      final preIndex = (index - 2).clamp(0, index);
-      // Use a generous average height estimate to increase reliability.
-      final estimatedOffset = preIndex * 500.0;
-      _scrollController.jumpTo(estimatedOffset);
-
-      // --- STAGE 2: SMOOTH SCROLL ---
-      // Schedule the final, precise scroll for the next event loop tick. This
-      // gives the framework time to complete the layout pass after the jump.
-      Future.delayed(const Duration(milliseconds: 50), () {
-        final key = _itemKeys[index];
-        if (key.currentContext != null) {
-          debugPrint("Context found for index $index. Performing smooth scroll...");
-          Scrollable.ensureVisible(key.currentContext!, duration: const Duration(milliseconds: 800), curve: Curves.easeInOutCubic, alignment: 0.15);
-        } else {
-          debugPrint("Smooth scroll failed: context is null for index $index after pre-jump. Item heights may vary significantly.");
-        }
-      });
+ 
+      // Check if the item is already reasonably visible.
+      final RenderBox renderBox = key.currentContext!.findRenderObject() as RenderBox;
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenSize = MediaQuery.of(context).size;
+      final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
+ 
+      // Is the item within the visible area (below app bar, above bottom of screen)?
+      final isVisible = (position.dy >= topPadding) && (position.dy + renderBox.size.height <= screenSize.height);
+ 
+      if (!isVisible) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.1, // Align near the top of the viewport.
+        );
+      }
     });
   }
 
@@ -188,30 +182,26 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                 final currentPlayingId = audioProvider.currentPlayingShlokaId;
                 final currentPlaybackState = audioProvider.playbackState;
 
-                // --- AUTO-SCROLL LOGIC ---
-                if (currentPlayingId != null) {
-                  final playingIndex = shlokas.indexWhere(
-                      (s) => '${s.chapterNo}.${s.shlokNo}' == currentPlayingId);
-                  if (playingIndex != -1) {
-                    _scrollToIndex(playingIndex);
-                  }
-                }
-
                 // --- CONTINUOUS PLAY LOGIC ---
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  // Detect completion: previous state was playing, current is not.
+                  // Detect when a shloka finishes playing naturally. This is true when
+                  // the previous state was 'playing' and the current state is 'stopped'.
                   if (_previousPlayingId != null &&
                       _previousPlaybackState == PlaybackState.playing &&
-                      currentPlayingId != _previousPlayingId) {
+                      currentPlaybackState == PlaybackState.stopped) {
                     if (_isContinuousPlayEnabled) {
-                      final lastPlayedIndex = shlokas.indexWhere((s) =>
-                          '${s.chapterNo}.${s.shlokNo}' == _previousPlayingId);
+                      // Find the index of the shloka that just finished.
+                      final lastPlayedIndex = shlokas.indexWhere(
+                          (s) => '${s.chapterNo}.${s.shlokNo}' == _previousPlayingId);
 
                       if (lastPlayedIndex != -1 &&
                           lastPlayedIndex < shlokas.length - 1) {
                         final ShlokaResult nextShloka =
                             shlokas[lastPlayedIndex + 1];
+                        // Play the next shloka.
                         audioProvider.playOrPauseShloka(nextShloka);
+                        // Scroll to the next shloka.
+                        _scrollToIndex(lastPlayedIndex + 1);
                       }
                     }
                   }
@@ -219,6 +209,15 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   _previousPlaybackState = currentPlaybackState;
                 });
 
+                // --- AUTO-SCROLL LOGIC ---
+                // Scroll when the playing shloka changes.
+                if (currentPlayingId != null && currentPlayingId != _previousPlayingId) {
+                  final playingIndex = shlokas.indexWhere(
+                      (s) => '${s.chapterNo}.${s.shlokNo}' == currentPlayingId);
+                  if (playingIndex != -1) {
+                    _scrollToIndex(playingIndex);
+                  }
+                }
                 return CustomScrollView(
                   controller: _scrollController,
                   slivers: [
