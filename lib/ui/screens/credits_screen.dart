@@ -84,6 +84,12 @@ final List<CreditItem> creditsData = [
     source: 'Internal desing',
     description: 'Different lotus are generated using AI like copilot',
   ),
+
+  const CreditItem(
+    category: 'Source Code',
+    source: 'https://github.com/digish/bhagvad_gita_flutter',
+    description: 'Source code is open source and available on GitHub under the MIT License.',
+  ),
 ];
 
 final List<AuthorProfile> authorProfilesData = [
