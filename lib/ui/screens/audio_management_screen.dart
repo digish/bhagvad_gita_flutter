@@ -11,6 +11,7 @@
 *
 **/
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/static_data.dart';
@@ -72,63 +73,73 @@ class _ChapterAudioTile extends StatelessWidget {
     final progress = audioProvider.getChapterDownloadProgress(chapterNumber);
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            // Chapter Number Icon
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.primary,
-              child: Text(
-                chapterNumber.toString(),
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.0),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+          child: Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(12.0),
+              border: Border.all(color: Colors.green.shade100.withOpacity(0.4), width: 1),
             ),
-            const SizedBox(width: 16),
-            // Chapter Name and Status Text
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'अध्याय $chapterNumber: $chapterName',
-                    style: theme.textTheme.titleMedium,
-                    overflow: TextOverflow.ellipsis,
+            child: Row(
+              children: [
+                // Chapter Number Icon
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primary.withOpacity(0.9),
+                  child: Text(
+                    chapterNumber.toString(),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: DefaultTextStyle(
-                      style: theme.textTheme.bodySmall ?? const TextStyle(),
-                      child: switch (status) {
-                        AssetPackStatus.downloaded =>
-                          const Text('Downloaded', style: TextStyle(color: Colors.green)),
-                        AssetPackStatus.pending =>
-                          const Text('Download pending...', style: TextStyle(color: Colors.orange)),
-                        AssetPackStatus.downloading => Text(
-                            'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
-                            style: TextStyle(color: theme.colorScheme.primary),
-                          ),
-                        AssetPackStatus.failed =>
-                          const Text('Download failed', style: TextStyle(color: Colors.red)),
-                        AssetPackStatus.notDownloaded =>
-                          const Text('Not downloaded', style: TextStyle(color: Colors.grey)),
-                        AssetPackStatus.unknown =>
-                          const Text('Status unknown', style: TextStyle(color: Colors.grey)),
-                      },
+                ),
+                const SizedBox(width: 16),
+                // Chapter Name and Status Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'अध्याय $chapterNumber: $chapterName',
+                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.black.withOpacity(0.85), fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                ],
-              ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: DefaultTextStyle(
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54) ?? const TextStyle(),
+                          child: switch (status) {
+                            AssetPackStatus.downloaded =>
+                              const Text('Downloaded', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
+                            AssetPackStatus.pending =>
+                              const Text('Download pending...', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w500)),
+                            AssetPackStatus.downloading => Text(
+                                'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
+                                style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w500),
+                              ),
+                            AssetPackStatus.failed =>
+                              const Text('Download failed', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                            AssetPackStatus.notDownloaded =>
+                              const Text('Not downloaded'),
+                            AssetPackStatus.unknown =>
+                              const Text('Status unknown'),
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Action Button/Indicator
+                _buildActionButton(context, status, audioProvider),
+              ],
             ),
-            const SizedBox(width: 16),
-            // Action Button/Indicator
-            _buildActionButton(context, status, audioProvider),
-          ],
+          ),
         ),
       ),
     );
@@ -167,7 +178,7 @@ class _ChapterAudioTile extends StatelessWidget {
       case AssetPackStatus.notDownloaded:
       default:
         return IconButton(
-          icon: const Icon(Icons.download_for_offline_outlined, size: 30),
+          icon: Icon(Icons.download_for_offline_outlined, size: 30, color: Colors.grey.shade700),
           onPressed: () {
             debugPrint("[UI] Download button pressed for chapter $chapterNumber");
             audioProvider.initiateChapterAudioDownload(chapterNumber);
