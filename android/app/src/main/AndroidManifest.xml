@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
-        android:label="bhagvad_gita_flutter"
+        android:label="Gita"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
