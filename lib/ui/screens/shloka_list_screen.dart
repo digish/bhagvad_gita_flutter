@@ -124,7 +124,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            const SimpleGradientBackground(),
+            SimpleGradientBackground(
+                startColor: Colors.amber.shade100), // Golden for the emblem
             Consumer2<ShlokaListProvider, AudioProvider>(
               builder: (context, provider, audioProvider, child) {
                 if (provider.isLoading) {
@@ -379,7 +380,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double contentOpacity = t;
 
     return Container(
-      color: Colors.black.withOpacity(0.4),
+      color: Colors.black.withOpacity(0.01),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -387,7 +388,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
           Positioned(
             top: paddingTop,
             left: 4,
-            child: const BackButton(color: Colors.white),
+            child: const BackButton(color: Colors.black87),
           ),
 
           // Title (fades in)
@@ -401,7 +402,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
+                      color: Colors.black87,
                       fontWeight: FontWeight.bold,
                       fontSize: titleCurrentFontSize,
                     ),
@@ -427,7 +428,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                       onChanged: onSwitchChanged,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
+                    Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54))
                   ],
                 ),
               ),

@@ -1,9 +1,5 @@
 - add assets in seperate git repository
 - sun moon location
 - other search options like man , motivation, famous quotes 
-- make lotus leavs drop shadow
-
-
-- search by chapter number and shlok number is not happening fix that 
 
 

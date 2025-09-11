@@ -31,8 +31,8 @@ class ChaptersScreen extends StatelessWidget {
         children: [
           // 1. --- This is the background widget ---
           // It's the first child, so it's at the bottom of the stack.
-          //const DarkenedAnimatedBackground(opacity: 0.7),
-          const SimpleGradientBackground(),
+          const SimpleGradientBackground(
+              startColor: Colors.white), // White for the white lotus
 
           // 2. --- This is your original content ---
           // This Column is placed on top of the background.

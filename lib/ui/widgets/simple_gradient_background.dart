@@ -17,11 +17,12 @@ import './glowing_lotus.dart';
 
 
 class SimpleGradientBackground extends StatefulWidget {
-  const SimpleGradientBackground({super.key});
+  final Color? startColor;
+
+  const SimpleGradientBackground({super.key, this.startColor});
 
   @override
-  State<SimpleGradientBackground> createState() =>
-      _SimpleGradientBackgroundState();
+  State<SimpleGradientBackground> createState() => _SimpleGradientBackgroundState();
 }
 
 class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
@@ -48,11 +49,20 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
+        // Use the provided start color for the gradient, or default to white if null.
+        final gradientStartColor = widget.startColor ?? Colors.white;
+
         return Stack(
           fit: StackFit.expand,
           children: [
             Container(
-              color: Colors.white,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [gradientStartColor.withOpacity(1.0), Colors.white],
+                  begin: Alignment.topCenter,
+                  end: Alignment.center, // Fades to white by the center
+                ),
+              ),
             ),
             // Use the reusable GlowingLotus widget
             const GlowingLotus(

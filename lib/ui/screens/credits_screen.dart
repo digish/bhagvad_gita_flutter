@@ -54,9 +54,24 @@ final List<CreditItem> creditsData = [
     source: 'https://archive.org/details/bhagavad-gita-1-18',
     description: 'Audio resourece as provided by Swami Brahmananda',
   ),
+
+  const CreditItem(
+    category: 'Geeta Text',
+    source: 'https://sanskritdocuments.org/doc_giitaa/gitAanvayasandhivigraha.html?lang=sa',
+    description: 'shloka-anvay and sandhi-vigrah is a derived work from this work done by Sunder Hattangadi',
+  ),
+
+
+  const CreditItem(
+    category: 'Transliteration Tool',
+    source: 'http://www.learnsanskrit.org/tools/sanscript',
+    description: 'Transliteration tool used.',
+  ),
+
+
   const CreditItem(
     category: 'Lotus mandala Image',
-    source: 'freepik.com',
+    source: 'www.freepik.com',
     description: 'Lotus mandala image from artist on Freepik.com',
   ),
   const CreditItem(
@@ -222,8 +237,8 @@ class CreditsScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFFDFCFB), // A light, warm background
       body: Stack(
         children: [
-          // Use the refactored widget with light colors
-          const SimpleGradientBackground(),
+          SimpleGradientBackground(
+              startColor: const Color.fromARGB(255, 240, 255, 126)), // Golden-brown for credits
           CustomScrollView(
             slivers: [
               SliverToBoxAdapter(

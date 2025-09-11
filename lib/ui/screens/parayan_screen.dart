@@ -89,7 +89,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
       body: Stack(
         children: [
           //DarkenedAnimatedBackground(opacity: 0.7),
-          SimpleGradientBackground(),
+          SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
           Column(
             children: [
               // --- Header Row ---

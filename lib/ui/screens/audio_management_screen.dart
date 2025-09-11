@@ -32,7 +32,8 @@ class AudioManagementScreen extends StatelessWidget {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          const SimpleGradientBackground(),
+          SimpleGradientBackground(
+              startColor: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
           SafeArea(
             child: Consumer<AudioProvider>(
               builder: (context, audioProvider, child) {
