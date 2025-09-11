@@ -100,13 +100,26 @@ class _ChapterAudioTile extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (status == AssetPackStatus.downloading)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.primary),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: DefaultTextStyle(
+                      style: theme.textTheme.bodySmall ?? const TextStyle(),
+                      child: switch (status) {
+                        AssetPackStatus.downloaded =>
+                          const Text('Downloaded', style: TextStyle(color: Colors.green)),
+                        AssetPackStatus.pending =>
+                          const Text('Download pending...', style: TextStyle(color: Colors.orange)),
+                        AssetPackStatus.downloading => Text(
+                            'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(color: theme.colorScheme.primary),
+                          ),
+                        AssetPackStatus.failed =>
+                          const Text('Download failed', style: TextStyle(color: Colors.red)),
+                        AssetPackStatus.notDownloaded =>
+                          const Text('Not downloaded', style: TextStyle(color: Colors.grey)),
+                        AssetPackStatus.unknown =>
+                          const Text('Status unknown', style: TextStyle(color: Colors.grey)),
+                      },
                       ),
                     ),
                 ],
@@ -129,6 +142,12 @@ class _ChapterAudioTile extends StatelessWidget {
     switch (status) {
       case AssetPackStatus.downloaded:
         return const Icon(Icons.check_circle, color: Colors.green, size: 30);
+      case AssetPackStatus.pending:
+        return const SizedBox(
+          width: 30,
+          height: 30,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        );
       case AssetPackStatus.downloading:
         return SizedBox(
           width: 30,
@@ -149,8 +168,10 @@ class _ChapterAudioTile extends StatelessWidget {
       default:
         return IconButton(
           icon: const Icon(Icons.download_for_offline_outlined, size: 30),
-          onPressed: () =>
-              audioProvider.initiateChapterAudioDownload(chapterNumber),
+          onPressed: () {
+            debugPrint("[UI] Download button pressed for chapter $chapterNumber");
+            audioProvider.initiateChapterAudioDownload(chapterNumber);
+          },
           tooltip: 'Download Audio',
         );
     }

@@ -329,8 +329,18 @@ class FullShlokaCard extends StatelessWidget {
     if (downloadStatus == AssetPackStatus.notDownloaded) {
       return _ActionButton(
         icon: Icons.download_for_offline_outlined,
-        onPressed: () => audioProvider
-            .initiateChapterAudioDownload(int.parse(shloka.chapterNo)),
+        onPressed: () {
+          debugPrint("[UI] Download button pressed for shloka ${shloka.chapterNo}.${shloka.shlokNo}");
+          audioProvider
+              .initiateChapterAudioDownload(int.parse(shloka.chapterNo));
+        },
+      );
+    }
+    if (downloadStatus == AssetPackStatus.pending) {
+      return _ActionButton(
+        icon: Icons.download_for_offline_outlined,
+        onPressed: () =>
+            audioProvider.initiateChapterAudioDownload(int.parse(shloka.chapterNo)),
       );
     }
     if (downloadStatus == AssetPackStatus.downloading) {
