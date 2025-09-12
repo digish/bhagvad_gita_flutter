@@ -13,7 +13,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../data/database_helper.dart'; // Import the conditional factory
+import '../data/database_helper.dart';
 import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import '../data/database_helper_interface.dart';
@@ -29,8 +29,7 @@ class WordItem extends SearchResultItem {
 }
 
 class SearchProvider extends ChangeNotifier {
-  // It no longer creates its own instance. It receives the initialized one.
-  final DatabaseHelperInterface _dbHelper; 
+  final DatabaseHelperInterface _dbHelper;
   SearchProvider(this._dbHelper);
   
   String _searchQuery = '';
@@ -47,7 +46,6 @@ class SearchProvider extends ChangeNotifier {
       if (_searchQuery.isEmpty) {
         _searchResults = [];
       } else {
-        // Use the dbHelper instance passed to the provider
         final words = await _dbHelper.searchWords(_searchQuery);
         final shlokas = await _dbHelper.searchShlokas(_searchQuery);
         _searchResults = [

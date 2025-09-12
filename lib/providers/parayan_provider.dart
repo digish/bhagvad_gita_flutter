@@ -17,7 +17,7 @@ import '../models/shloka_result.dart';
 import '../data/database_helper_interface.dart';
 
 class ParayanProvider extends ChangeNotifier {
-  // 1. It no longer creates its own instance. It receives the initialized one.
+  // Receives an initialized DatabaseHelperInterface for platform-agnostic DB access.
   final DatabaseHelperInterface _dbHelper;
 
   bool _isLoading = true;
@@ -28,15 +28,12 @@ class ParayanProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   List<ShlokaResult> get shlokas => _shlokas;
 
-  // 2. The constructor now accepts the database helper.
   ParayanProvider(this._dbHelper) {
     _fetchAllShlokas();
   }
 
   Future<void> _fetchAllShlokas() async {
     _chapterStartIndices = [];
-
-    // The rest of your logic remains exactly the same!
     _shlokas = (await _dbHelper.getAllShlokas()).where((shloka) {
       final isValidChapter = int.tryParse(shloka.chapterNo) != null;
       final isValidShlok = int.tryParse(shloka.shlokNo) != null;

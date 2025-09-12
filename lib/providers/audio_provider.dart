@@ -92,7 +92,6 @@ class AudioProvider extends ChangeNotifier {
   // --- PUBLIC METHODS ---
 
   AssetPackStatus getChapterPackStatus(int chapterNumber) {
-    if (_useLocalAssets || Platform.isIOS) return AssetPackStatus.downloaded;
     final packName = _getPackName(chapterNumber);
     return _packStatus[packName] ?? AssetPackStatus.unknown;
   }
@@ -102,7 +101,6 @@ class AudioProvider extends ChangeNotifier {
     return _downloadProgress[packName] ?? 0.0;
   }
 
-  // MODIFIED: This is the main change to support background audio
   Future<void> playOrPauseShloka(ShlokaResult shloka) async {
     final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
     final isCurrentlyPlaying = _currentPlayingShlokaId == shlokaId;
@@ -123,7 +121,6 @@ class AudioProvider extends ChangeNotifier {
 
     try {
       final assetPath = await _getShlokaAssetPath(shloka);
-      debugPrint("[AUDIO_PLAYBACK] Received asset path: $assetPath");
       // If the asset path is null (e.g., download failed or not yet complete),
       // set an error state and stop.
       if (assetPath == null) {
@@ -195,7 +192,6 @@ class AudioProvider extends ChangeNotifier {
       // Initialize all to notDownloaded. The status will be updated by the listener
       // if a download is in progress or when one is initiated.
       _packStatus[packName] = AssetPackStatus.notDownloaded;
-      debugPrint("[ASSET_DELIVERY] Initial status for $packName set to notDownloaded.");
     }
     notifyListeners();
     // This listener will inform us of the status of any active or future downloads.
@@ -312,7 +308,6 @@ class AudioProvider extends ChangeNotifier {
     final packName = _getPackName(chapter);
     final chapterPadded = chapter.toString().padLeft(2, '0');
 
-    debugPrint("[ASSET_DELIVERY] Calling AssetDelivery.getAssetPackPath for $packName...");
     // This call is now only used to get the path of an already available pack.
     // The `count` and `namingPattern` are ignored on Android but required by the method signature.
     try {
@@ -354,14 +349,12 @@ class AudioProvider extends ChangeNotifier {
       if (_useLocalAssets || Platform.isIOS) {
         return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.opus';
       } else {
-        debugPrint("[ASSET_DELIVERY] Getting asset path for playback: Chapter $chapter, Shloka $shlokNum");
         // Use the new helper to get the base path for the chapter.
         final assetPackPath = await _getShlokaAssetPathForChapter(chapter);
         if (assetPackPath == null) {
           debugPrint("[ASSET_DELIVERY] Base asset pack path for chapter $chapter is null. Cannot construct shloka path.");
           return null;
         }
-        // The final path is the directory returned by the plugin + the specific filename.
         // IMPORTANT: The filename here must exactly match the file in your asset pack's assets folder.
         final finalPath = '$assetPackPath/ch${chapterPadded}_sh$shlokPadded.opus';
         debugPrint("[ASSET_DELIVERY] Constructed final path for playback: $finalPath");

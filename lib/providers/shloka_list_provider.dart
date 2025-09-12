@@ -53,7 +53,7 @@ class ShlokaListProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // NEW: Case #0: Query is a "chapter,shloka" or "chapter.shloka" reference.
+    // Case #0: Query is a "chapter,shloka" or "chapter.shloka" reference.
     final shlokaRefMatch = RegExp(r'^(\d+)[,.](\d+)$').firstMatch(_searchQuery);
 
     if (shlokaRefMatch != null) {
@@ -61,7 +61,6 @@ class ShlokaListProvider extends ChangeNotifier {
       final shlokNum = int.tryParse(shlokaRefMatch.group(2)!);
       _shlokas = await _dbHelper.getShlokasByChapter(chapter);
       if (shlokNum != null) {
-        // Per the new requirement, filter the list to show only the specific shloka.
         _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
         _initialScrollIndex = null; // No scrolling needed for a single item.
       }
@@ -85,7 +84,6 @@ class ShlokaListProvider extends ChangeNotifier {
           final shlokNum = parsedData['shlok'];
           _shlokas = await _dbHelper.getShlokasByChapter(chapter);
           if (shlokNum != null) {
-            // Apply the same logic here: show only the specific shloka.
             _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
             _initialScrollIndex = null;
           }
@@ -115,6 +113,5 @@ class ShlokaListProvider extends ChangeNotifier {
 
   void setLastScrolledId(String? id) {
     _lastScrolledId = id;
-    // No need to notify listeners, this is for internal state management.
   }
 }
