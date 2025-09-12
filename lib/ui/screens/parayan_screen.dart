@@ -152,7 +152,16 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           fromHeroContext,
                           toHeroContext,
                         ) {
-                          return (toHeroContext.widget as Hero).child;
+                          // ✨ FIX: Added the rotation animation to match the other lotuses.
+                          final rotationAnimation = animation.drive(
+                            Tween<double>(begin: 0.0, end: 1.0),
+                          );
+                          return RotationTransition(
+                            turns: rotationAnimation,
+                            // Use the widget from the destination Hero as the shuttle
+                            // so it animates to the final size and position smoothly.
+                            child: (toHeroContext.widget as Hero).child,
+                          );
                         },
                         child: Image.asset(
                           'assets/images/lotus_blue12.png',
