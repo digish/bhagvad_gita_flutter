@@ -29,7 +29,7 @@ const Map<int, int> _shlokaCounts = {
 };
 
 // --- DEVELOPMENT SWITCH ---
-const bool _useLocalAssets = true;
+const bool _useLocalAssets = false;
 
 
 // Enum to represent the state of the audio player for a specific shloka
