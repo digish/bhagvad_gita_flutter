@@ -13,6 +13,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/parayan_provider.dart';
@@ -40,6 +41,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
     'अध्याय 1, श्लोक 1',
   );
 
+  // --- NEW: State to track the currently playing shloka ID ---
+  String? _currentlyPlayingId;
+
   void _updateCurrentPositionLabel() {
     final provider = Provider.of<ParayanProvider>(context, listen: false);
     final positions = _itemPositionsListener.itemPositions.value;
@@ -60,11 +64,25 @@ class _ParayanScreenState extends State<ParayanScreen> {
   @override
   void initState() {
     super.initState();
+    // --- NEW: Listen to AudioProvider for UI updates ---
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    audioProvider.addListener(_audioListener);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _itemPositionsListener.itemPositions.addListener(
         _updateCurrentPositionLabel,
       );
     });
+  }
+
+  // --- NEW: Listener to update the playing ID ---
+  void _audioListener() {
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    if (mounted && _currentlyPlayingId != audioProvider.currentPlayingShlokaId) {
+      setState(() {
+        _currentlyPlayingId = audioProvider.currentPlayingShlokaId;
+      });
+    }
   }
 
   @override
@@ -74,6 +92,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _itemPositionsListener.itemPositions.removeListener(
       _updateCurrentPositionLabel,
     );
+    // --- NEW: Clean up the audio listener ---
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    audioProvider.removeListener(_audioListener);
     super.dispose();
   }
 
@@ -211,6 +232,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
                                 //_ParayanShlokaCard(shloka: shloka),
                                 FullShlokaCard(
                                   shloka: shloka,
+                                  // --- NEW: Pass down the playing ID and a callback ---
+                                  currentlyPlayingId: _currentlyPlayingId,
+                                  onPlayPause: () {
+                                    setState(() {
+                                      _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
+                                    });
+                                  },
                                   config: FullShlokaCardConfig(
                                     showSpeaker: false,
                                     showAnvay: _showAnvay,

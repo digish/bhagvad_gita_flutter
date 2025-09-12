@@ -21,11 +21,15 @@ import '../widgets/sneaky_emblem.dart';
 class FullShlokaCard extends StatelessWidget {
   final ShlokaResult shloka;
   final FullShlokaCardConfig config;
+  final String? currentlyPlayingId; // The reliable ID from the parent screen
+  final VoidCallback? onPlayPause; // Callback for when play/pause is pressed
 
   const FullShlokaCard({
     super.key,
     required this.shloka,
     this.config = const FullShlokaCardConfig(),
+    this.currentlyPlayingId,
+    this.onPlayPause,
   });
 
   // This is your existing text formatting logic, it remains unchanged.
@@ -372,7 +376,12 @@ class FullShlokaCard extends StatelessWidget {
     }
     return _ActionButton(
       icon: Icons.play_circle_outline,
-      onPressed: () => audioProvider.playOrPauseShloka(shloka),
+      onPressed: () {
+        // Call the provider to play the audio
+        audioProvider.playOrPauseShloka(shloka);
+        // Notify the parent screen that a manual play was initiated
+        onPlayPause?.call();
+      },
     );
   }
 
@@ -383,12 +392,18 @@ class FullShlokaCard extends StatelessWidget {
     return Consumer<AudioProvider>(
       builder: (context, audioProvider, child) {
         final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
+        // Use the reliable ID passed from the parent for UI logic
         final isPlayingThisShloka =
-            audioProvider.currentPlayingShlokaId == shlokaId;
+            currentlyPlayingId == shlokaId;
         final playbackState = audioProvider.playbackState;
         final chapterNumber = int.tryParse(shloka.chapterNo) ?? 0;
         final downloadStatus =
             audioProvider.getChapterPackStatus(chapterNumber);
+
+        // --- LOGGING FOR HIGHLIGHT ---
+        if (isPlayingThisShloka && playbackState == PlaybackState.playing) {
+          debugPrint("[HIGHLIGHT] Card $shlokaId is being built with highlight ON.");
+        }
 
         return Stack(
           clipBehavior: Clip.none,

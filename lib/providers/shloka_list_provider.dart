@@ -23,10 +23,12 @@ class ShlokaListProvider extends ChangeNotifier {
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
   int? _initialScrollIndex;
+  String? _lastScrolledId;
 
   bool get isLoading => _isLoading;
   List<ShlokaResult> get shlokas => _shlokas;
   int? get initialScrollIndex => _initialScrollIndex;
+  String? get lastScrolledId => _lastScrolledId;
 
   ShlokaListProvider(this._searchQuery, this._dbHelper) {
     _fetchShlokas();
@@ -109,5 +111,10 @@ class ShlokaListProvider extends ChangeNotifier {
   /// Used by the UI to clear the scroll index after scrolling is complete.
   void clearScrollIndex() {
     _initialScrollIndex = null;
+  }
+
+  void setLastScrolledId(String? id) {
+    _lastScrolledId = id;
+    // No need to notify listeners, this is for internal state management.
   }
 }

@@ -34,11 +34,77 @@ class ShlokaListScreen extends StatefulWidget {
 class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
-  bool _isContinuousPlayEnabled = false;
+  bool _isContinuousPlayEnabled = false; // To control the feature
 
-  // To detect when a shloka finishes playing
-  String? _previousPlayingId;
-  PlaybackState? _previousPlaybackState;
+  // --- MODIFIED: State tracking for continuous play ---
+  // Per your design, we now track the ID and whether playback has truly started.
+  String? _currentShlokId;
+  bool _hasPlaybackStarted = false;
+  
+  // --- FIX: Initialize the provider in initState to make it available to listeners ---
+  late final ShlokaListProvider _shlokaProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    final dbHelper = Provider.of<DatabaseHelperInterface>(context, listen: false);
+    _shlokaProvider = ShlokaListProvider(widget.searchQuery, dbHelper);
+
+    // Listen to audio provider changes to implement continuous play.
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    audioProvider.addListener(_handleAudioChange);
+  }
+
+  @override
+  void dispose() {
+    // Clean up the listener when the screen is disposed.
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    audioProvider.removeListener(_handleAudioChange);
+    _shlokaProvider.dispose(); // Dispose the provider we created.
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // This should not be async. We want to react to state changes, not wait for them.
+  void _handleAudioChange() {
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    final currentPlaybackState = audioProvider.playbackState;
+
+    // State Machine Action: just audio playing event comes
+    if (currentPlaybackState == PlaybackState.playing) {
+      if (_currentShlokId != null) _hasPlaybackStarted = true;
+      debugPrint("[CONTINUOUS_PLAY_SM] Playback started for $_currentShlokId. Flag set to true.");
+      return; // Nothing more to do
+    }
+
+    // State Machine Action: just audio stopped event comes
+    if (currentPlaybackState == PlaybackState.stopped) {
+      debugPrint("[CONTINUOUS_PLAY_SM] Stopped event received. Non-stop: $_isContinuousPlayEnabled, Playback Started: $_hasPlaybackStarted");
+      // Condition: if nonstop_play_flag is true and playback_state was set to true
+      if (_isContinuousPlayEnabled && _hasPlaybackStarted) {
+        final lastPlayedIndex = _shlokaProvider.shlokas.indexWhere((s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
+        debugPrint("[CONTINUOUS_PLAY_SM] Last played shloka index: $lastPlayedIndex");
+
+        if (lastPlayedIndex != -1 && lastPlayedIndex < _shlokaProvider.shlokas.length - 1) {
+          final nextShloka = _shlokaProvider.shlokas[lastPlayedIndex + 1];
+          final nextShlokaId = '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
+          debugPrint("[CONTINUOUS_PLAY_SM] Triggering next shloka: $nextShlokaId");
+
+          // Fire the next shloka without awaiting its completion.
+          audioProvider.playOrPauseShloka(nextShloka);
+          // Set our local state to track the new shloka
+          _currentShlokId = nextShlokaId;
+
+        } else {
+          debugPrint("[CONTINUOUS_PLAY_SM] End of chapter or shloka not found. Stopping.");
+        }
+
+        // Reset playback_state = false
+        _hasPlaybackStarted = false;
+        debugPrint("[CONTINUOUS_PLAY_SM] Playback flag reset to false.");
+      }
+    }
+  }
 
   // A more robust scrolling method.
   void _scrollToIndex(int index) {
@@ -61,6 +127,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       final isVisible = (position.dy >= topPadding) && (position.dy + renderBox.size.height <= screenSize.height);
  
       if (!isVisible) {
+        debugPrint("[SCROLL] Item at index $index is not visible. Scrolling now.");
         Scrollable.ensureVisible(
           key.currentContext!,
           duration: const Duration(milliseconds: 600),
@@ -68,206 +135,220 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           alignment: 0.1, // Align near the top of the viewport.
         );
       }
+      else {
+        debugPrint("[SCROLL] Item at index $index is already visible. No scroll needed.");
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final dbHelper = Provider.of<DatabaseHelperInterface>(context, listen: false);
-
     // Try to parse chapter number for showing the emblem header.
+    // This handles cases like a query of "1" or "1,21".
+    
+    // When a user presses play, we need to initialize our state machine.
+    // We can't do this in the listener, so we'll do it here.
+    final audioProviderForInit = Provider.of<AudioProvider>(context, listen: false);
+    if (audioProviderForInit.playbackState == PlaybackState.stopped) {
+      _hasPlaybackStarted = false;
+    }
     // This handles cases like a query of "1" or "1,21".
     final chapterNumber = int.tryParse(widget.searchQuery.split(',').first.trim());
 
-    return ChangeNotifierProvider(
-      create: (_) => ShlokaListProvider(widget.searchQuery, dbHelper),
-      child: Scaffold(
-        // The AppBar is now conditional. It only shows for search results (non-chapter views).
-        // For chapter views, the SliverPersistentHeader acts as the AppBar.
-        appBar: chapterNumber == null
-            ? AppBar(
-                title: Text(
-                  StaticData.getQueryTitle(widget.searchQuery),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // The switch is placed first.
-                        Switch(
-                          value: _isContinuousPlayEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _isContinuousPlayEnabled = value;
-                            });
-                          },
-                          // This makes the switch more compact vertically.
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    // Use .value to provide the existing instance created in initState.
+    return ChangeNotifierProvider.value(
+      value: _shlokaProvider,
+      child: Builder(builder: (context) {
+        return Scaffold(
+          // The AppBar is now conditional. It only shows for search results (non-chapter views).
+          // For chapter views, the SliverPersistentHeader acts as the AppBar.
+          appBar: chapterNumber == null
+              ? AppBar(
+                  title: Text(
+                    StaticData.getQueryTitle(widget.searchQuery),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
-                        // The label is placed below the switch.
-                        Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
-                      ],
-                    ),
                   ),
-                ],
-                backgroundColor: Colors.black.withOpacity(0.4),
-                elevation: 0,
-                centerTitle: true,
-              )
-            : null,
-        extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            SimpleGradientBackground(
-                startColor: Colors.amber.shade100), // Golden for the emblem
-            Consumer2<ShlokaListProvider, AudioProvider>(
-              builder: (context, provider, audioProvider, child) {
-                if (provider.isLoading) {
-                  // For chapter views, show the emblem header and a loading indicator.
-                  // This ensures the Hero widget is present during the page transition.
-                  if (chapterNumber != null) {
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // The switch is placed first.
+                          Switch(
+                            value: _isContinuousPlayEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _isContinuousPlayEnabled = value;
+                              });
+                            },
+                            // This makes the switch more compact vertically.
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          // The label is placed below the switch.
+                          Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
+                        ],
+                      ),
+                    ),
+                  ],
+                  backgroundColor: Colors.black.withOpacity(0.4),
+                  elevation: 0,
+                  centerTitle: true,
+                )
+              : null,
+          extendBodyBehindAppBar: true,
+          body: Stack(
+            children: [
+              SimpleGradientBackground(
+                  startColor: Colors.amber.shade100), // Golden for the emblem
+              Consumer2<ShlokaListProvider, AudioProvider>(
+                builder: (context, provider, audioProvider, child) {
+                  if (provider.isLoading) {
+                    // For chapter views, show the emblem header and a loading indicator.
+                    // This ensures the Hero widget is present during the page transition.
+                    if (chapterNumber != null) {
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _ChapterEmblemHeader(chapterNumber: chapterNumber),
+                              const SizedBox(height: 32),
+                              const CircularProgressIndicator(),
+                            ],
+                          ),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _ChapterEmblemHeader(chapterNumber: chapterNumber),
-                            const SizedBox(height: 32),
-                            const CircularProgressIndicator(),
-                          ],
-                        ),
+                      );
+                    }
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.shlokas.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No shlokas found for "${widget.searchQuery}".',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Colors.white.withOpacity(0.8),
+                            ),
                       ),
                     );
                   }
-                  return const Center(child: CircularProgressIndicator());
-                }
 
-                if (provider.shlokas.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No shlokas found for "${widget.searchQuery}".',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withOpacity(0.8),
-                          ),
-                    ),
-                  );
-                }
+                  // Ensure the keys list is synchronized with the shlokas list
+                  // before attempting to scroll.
+                  if (provider.shlokas.isNotEmpty && _itemKeys.length != provider.shlokas.length) {
+                    _itemKeys = List.generate(provider.shlokas.length, (_) => GlobalKey());
+                  }
 
-                // Ensure the keys list is synchronized with the shlokas list
-                // before attempting to scroll.
-                if (provider.shlokas.isNotEmpty && _itemKeys.length != provider.shlokas.length) {
-                  _itemKeys = List.generate(provider.shlokas.length, (_) => GlobalKey());
-                }
+                  // If an initial scroll index is set by the provider, trigger the scroll.
+                  if (provider.initialScrollIndex != null) {
+                    debugPrint(
+                      "Scrolling to initial index: ${provider.initialScrollIndex!}",
+                    );
+                    _scrollToIndex(provider.initialScrollIndex!);
+                    // Clear the index in the provider to prevent re-scrolling on rebuilds.
+                    provider.clearScrollIndex();
+                  }
 
-                // If an initial scroll index is set by the provider, trigger the scroll.
-                if (provider.initialScrollIndex != null) {
-                  debugPrint(
-                    "Scrolling to initial index: ${provider.initialScrollIndex!}",
-                  );
-                  _scrollToIndex(provider.initialScrollIndex!);
-                  // Clear the index in the provider to prevent re-scrolling on rebuilds.
-                  provider.clearScrollIndex();
-                }
-
-                final shlokas = provider.shlokas;
-                final currentPlayingId = audioProvider.currentPlayingShlokaId;
-                final currentPlaybackState = audioProvider.playbackState;
-
-                // --- CONTINUOUS PLAY LOGIC ---
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  // Detect when a shloka finishes playing naturally. This is true when
-                  // the previous state was 'playing' and the current state is 'stopped'.
-                  if (_previousPlayingId != null &&
-                      _previousPlaybackState == PlaybackState.playing &&
-                      currentPlaybackState == PlaybackState.stopped) {
-                    if (_isContinuousPlayEnabled) {
-                      // Find the index of the shloka that just finished.
-                      final lastPlayedIndex = shlokas.indexWhere(
-                          (s) => '${s.chapterNo}.${s.shlokNo}' == _previousPlayingId);
-
-                      if (lastPlayedIndex != -1 &&
-                          lastPlayedIndex < shlokas.length - 1) {
-                        final ShlokaResult nextShloka =
-                            shlokas[lastPlayedIndex + 1];
-                        // Play the next shloka.
-                        audioProvider.playOrPauseShloka(nextShloka);
-                        // Scroll to the next shloka.
-                        _scrollToIndex(lastPlayedIndex + 1);
+                  final shlokas = provider.shlokas;
+                  final currentPlayingId = audioProvider.currentPlayingShlokaId;
+                  
+                  // --- AUTO-SCROLL LOGIC ---
+                  // Scroll when the playing shloka changes.
+                  // We use a post-frame callback to ensure widgets are built.
+                  /* WidgetsBinding.instance.addPostFrameCallback((_) {
+                    debugPrint("[AUTO-SCROLL] Checking scroll condition. Current ID: $currentPlayingId, Last ID: $_lastPlayedId");
+                    if (currentPlayingId != null && currentPlayingId != _lastPlayedId) {
+                      debugPrint("[AUTO-SCROLL] Condition MET. Triggering scroll for ID $currentPlayingId.");
+                      final playingIndex = shlokas.indexWhere(
+                          (s) => '${s.chapterNo}.${s.shlokNo}' == currentPlayingId);
+                      if (playingIndex != -1) {
+                        _scrollToIndex(playingIndex);
                       }
                     }
-                  }
-                  _previousPlayingId = currentPlayingId;
-                  _previousPlaybackState = currentPlaybackState;
-                });
-
-                // --- AUTO-SCROLL LOGIC ---
-                // Scroll when the playing shloka changes.
-                if (currentPlayingId != null && currentPlayingId != _previousPlayingId) {
-                  final playingIndex = shlokas.indexWhere(
-                      (s) => '${s.chapterNo}.${s.shlokNo}' == currentPlayingId);
-                  if (playingIndex != -1) {
-                    _scrollToIndex(playingIndex);
-                  }
-                }
-                return CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    // If this is a search view (no chapter number), add top padding
-                    // to account for the AppBar since extendBodyBehindAppBar is true.
-                    if (chapterNumber == null)
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                  }); */
+                  // --- REVISED AUTO-SCROLL LOGIC ---
+                  // This logic is now simpler and more direct. It triggers whenever the
+                  // playing ID from the provider changes.
+                  // We still read from the provider here for UI updates, but our state machine is independent.
+                  // We use a post-frame callback to ensure the widget tree is built before scrolling.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // The scroll should be based on our reliable local state, not the provider's.
+                    if (_currentShlokId != null && _currentShlokId != provider.lastScrolledId) {
+                      final playingIndex = shlokas.indexWhere(
+                          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
+                      if (playingIndex != -1) {
+                        _scrollToIndex(playingIndex);
+                        provider.setLastScrolledId(_currentShlokId); // Prevent re-scrolling
+                      }
+                    }
+                  });
+                  return CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      // If this is a search view (no chapter number), add top padding
+                      // to account for the AppBar since extendBodyBehindAppBar is true.
+                      if (chapterNumber == null)
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                          ),
+                        ),
+                      if (chapterNumber != null)
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _AnimatingHeaderDelegate(
+                            chapterNumber: chapterNumber,
+                            title: StaticData.getQueryTitle(widget.searchQuery),
+                            isContinuousPlayEnabled: _isContinuousPlayEnabled,
+                            onSwitchChanged: (value) {
+                              setState(() {
+                                _isContinuousPlayEnabled = value;
+                              });
+                            },
+                            minExtent: MediaQuery.of(context).padding.top + kToolbarHeight,
+                            // Increased maxExtent to make room for the title below the emblem
+                            maxExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 250,
+                          ),
+                        ),
+                      // Add some spacing between the header and the first card for chapter views
+                      if (chapterNumber != null)
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 100),
+                        ),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => Container(
+                              key: _itemKeys[index],
+                              child: FullShlokaCard(
+                                shloka: shlokas[index],
+                                config: _cardConfig,
+                                currentlyPlayingId: _currentShlokId, // Pass down our reliable state
+                                onPlayPause: () {
+                                  // When the user manually plays, update our local tracker.
+                                  _currentShlokId = '${shlokas[index].chapterNo}.${shlokas[index].shlokNo}';
+                                  _hasPlaybackStarted = false; // Reset for the new shloka
+                                },
+                              )),
+                          childCount: shlokas.length,
                         ),
                       ),
-                    if (chapterNumber != null)
-                      SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _AnimatingHeaderDelegate(
-                          chapterNumber: chapterNumber,
-                          title: StaticData.getQueryTitle(widget.searchQuery),
-                          isContinuousPlayEnabled: _isContinuousPlayEnabled,
-                          onSwitchChanged: (value) {
-                            setState(() {
-                              _isContinuousPlayEnabled = value;
-                            });
-                          },
-                          minExtent: MediaQuery.of(context).padding.top + kToolbarHeight,
-                          // Increased maxExtent to make room for the title below the emblem
-                          maxExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 250,
-                        ),
-                      ),
-                    // Add some spacing between the header and the first card for chapter views
-                    if (chapterNumber != null)
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: 100),
-                      ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => Container(
-                            key: _itemKeys[index],
-                            child: FullShlokaCard(shloka: shlokas[index], config: _cardConfig)),
-                        childCount: shlokas.length,
-                      ),
-                    ),
-                    const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+                      const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 

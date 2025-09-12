@@ -3,3 +3,5 @@
 - other search options like man , motivation, famous quotes 
 
 
+- remove logs
+- changes for IOS

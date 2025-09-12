@@ -12,6 +12,7 @@
 **/
 
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:asset_delivery/asset_delivery.dart';
@@ -28,7 +29,7 @@ const Map<int, int> _shlokaCounts = {
 };
 
 // --- DEVELOPMENT SWITCH ---
-const bool _useLocalAssets = false;
+const bool _useLocalAssets = true;
 
 
 // Enum to represent the state of the audio player for a specific shloka
@@ -70,9 +71,9 @@ class AudioProvider extends ChangeNotifier {
     await session.configure(const AudioSessionConfiguration.speech());
 
     // 2. Initialize asset delivery listeners if required
-    if (!_useLocalAssets) {
+    if (!_useLocalAssets && !Platform.isIOS) {
       await _initializeAssetDeliveryListeners();
-    } else { debugPrint("[AUDIO_PROVIDER] Using local assets. Skipping asset delivery initialization."); }
+    } else { debugPrint("[AUDIO_PROVIDER] Using local/bundled assets. Skipping asset delivery initialization."); }
     
     // 3. Set up player state and error listeners
     _listenToPlayerState();
@@ -91,7 +92,7 @@ class AudioProvider extends ChangeNotifier {
   // --- PUBLIC METHODS ---
 
   AssetPackStatus getChapterPackStatus(int chapterNumber) {
-    if (_useLocalAssets) return AssetPackStatus.downloaded;
+    if (_useLocalAssets || Platform.isIOS) return AssetPackStatus.downloaded;
     final packName = _getPackName(chapterNumber);
     return _packStatus[packName] ?? AssetPackStatus.unknown;
   }
@@ -115,7 +116,8 @@ class AudioProvider extends ChangeNotifier {
       return;
     }
 
-    await _stop();
+    // Stop the player but don't notify listeners yet to prevent a flicker state.
+    await _stop(notify: false);
     _currentPlayingShlokaId = shlokaId;
     _setPlaybackState(PlaybackState.loading);
 
@@ -139,7 +141,7 @@ class AudioProvider extends ChangeNotifier {
       );
 
       // Determine if it's a local asset or a file path from asset_delivery
-      final uri = _useLocalAssets ? Uri.parse('asset:///$assetPath') : Uri.file(assetPath);
+      final uri = (_useLocalAssets || Platform.isIOS) ? Uri.parse('asset:///$assetPath') : Uri.file(assetPath);
       
       // Use setAudioSource with the tagged URI
       final source = AudioSource.uri(uri, tag: mediaItem);
@@ -153,7 +155,7 @@ class AudioProvider extends ChangeNotifier {
   }
 
   Future<void> initiateChapterAudioDownload(int chapterNumber) async {
-    if (_useLocalAssets) return;
+    if (_useLocalAssets || Platform.isIOS) return;
     final packName = _getPackName(chapterNumber);
     final currentStatus = getChapterPackStatus(chapterNumber);
 
@@ -265,10 +267,16 @@ class AudioProvider extends ChangeNotifier {
 
   void _listenToPlayerState() {
     _audioPlayer.playerStateStream.listen((state) {
-      if (_currentPlayingShlokaId == null) return;
+      // The 'playing' boolean is the source of truth for playback activity.
+      final isPlaying = state.playing;
+
       switch (state.processingState) {
         case ProcessingState.idle:
+          // This state is ambiguous and can be emitted during transitions.
+          // It's safer to not react to it directly. Errors and completions are handled elsewhere.
+          break;
         case ProcessingState.completed:
+          // The track finished playing naturally. This is a definitive stop.
           _stop();
           break;
         case ProcessingState.loading:
@@ -276,23 +284,24 @@ class AudioProvider extends ChangeNotifier {
           _setPlaybackState(PlaybackState.loading);
           break;
         case ProcessingState.ready:
-          _setPlaybackState(
-              state.playing ? PlaybackState.playing : PlaybackState.paused);
+          // The player is ready. The 'isPlaying' boolean determines the final state.
+          _setPlaybackState(isPlaying ? PlaybackState.playing : PlaybackState.paused);
           break;
       }
     });
   }
 
-  Future<void> _stop() async {
+  Future<void> _stop({bool notify = true}) async {
     await _audioPlayer.stop();
     _currentPlayingShlokaId = null;
-    _setPlaybackState(PlaybackState.stopped);
+    _setPlaybackState(PlaybackState.stopped, notify: notify);
   }
 
-  void _setPlaybackState(PlaybackState state) {
+  void _setPlaybackState(PlaybackState state, {bool notify = true}) {
     if (_playbackState != state) {
+      debugPrint("[AUDIO_PROVIDER] State changing from $_playbackState to $state for ID $_currentPlayingShlokaId");
       _playbackState = state;
-      notifyListeners();
+      if (notify) notifyListeners();
     }
   }
 
@@ -341,7 +350,8 @@ class AudioProvider extends ChangeNotifier {
       // Use the original, preferred naming scheme: 1-based and zero-padded.
       final shlokPadded = shlokNum.toString().padLeft(2, '0');
 
-      if (_useLocalAssets) {
+      // MODIFIED: Use bundled assets for iOS or if _useLocalAssets is true
+      if (_useLocalAssets || Platform.isIOS) {
         return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.opus';
       } else {
         debugPrint("[ASSET_DELIVERY] Getting asset path for playback: Chapter $chapter, Shloka $shlokNum");
