@@ -35,6 +35,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
   bool _isContinuousPlayEnabled = false;
+  bool _useLargeFonts = false;
 
   String? _currentShlokId;
   bool _hasPlaybackStarted = false;
@@ -159,28 +160,25 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
-                  ),
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Switch(
-                            value: _isContinuousPlayEnabled,
-                            onChanged: (value) => setState(() => _isContinuousPlayEnabled = value),
-                            // This makes the switch more compact vertically.
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          // The label is placed below the switch.
-                          Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),                  
                   backgroundColor: Colors.black.withOpacity(0.4),
                   elevation: 0,
                   centerTitle: true,
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(50.0),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                           _AppBarSwitch(
+                              label: 'Large Font', value: _useLargeFonts, onChanged: (value) => setState(() => _useLargeFonts = value)),
+                           _AppBarSwitch(
+                              label: 'Non-Stop Play', value: _isContinuousPlayEnabled, onChanged: (value) => setState(() => _isContinuousPlayEnabled = value)),
+                        ],
+                      ),
+                    ),
+                  ),
                 )
               : null,
           extendBodyBehindAppBar: true,
@@ -273,9 +271,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                             title: StaticData.getQueryTitle(widget.searchQuery),
                             isContinuousPlayEnabled: _isContinuousPlayEnabled,
                             onSwitchChanged: (value) => setState(() => _isContinuousPlayEnabled = value),
-                            minExtent: MediaQuery.of(context).padding.top + kToolbarHeight,
-                            // Increased maxExtent to make room for the title below the emblem
-                            maxExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 250,
+                            useLargeFonts: _useLargeFonts,
+                            onLargeFontSwitchChanged: (value) => setState(() => _useLargeFonts = value),
+                            minExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 50, // Increased for the second row
+                            // Further increase maxExtent to ensure title and switches are visible initially
+                            maxExtent: MediaQuery.of(context).padding.top + 350,
                           ),
                         ),
                       // Add some spacing between the header and the first card for chapter views
@@ -289,7 +289,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               key: _itemKeys[index],
                               child: FullShlokaCard(
                                 shloka: shlokas[index],
-                                config: _cardConfig,
+                                config: _cardConfig.copyWith(useLargeFonts: _useLargeFonts),
                                 currentlyPlayingId: _currentShlokId,
                                 onPlayPause: () {
                                   // When the user manually plays, update our local tracker.
@@ -324,6 +324,38 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     spacingCompact: false,
     isLightTheme: true,
   );
+}
+
+/// A reusable widget for switches in the AppBar.
+class _AppBarSwitch extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _AppBarSwitch({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row( // Each switch is a Row: Label + Switch
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.white70)),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
 }
 
 class _ChapterEmblemHeader extends StatelessWidget {
@@ -367,6 +399,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String title;
   final bool isContinuousPlayEnabled;
   final ValueChanged<bool> onSwitchChanged;
+  final bool useLargeFonts;
+  final ValueChanged<bool> onLargeFontSwitchChanged;
   @override
   final double minExtent;
   @override
@@ -377,6 +411,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.title,
     required this.isContinuousPlayEnabled,
     required this.onSwitchChanged,
+    required this.useLargeFonts,
+    required this.onLargeFontSwitchChanged,
     required this.minExtent,
     required this.maxExtent,
   });
@@ -398,13 +434,13 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double minLeft = 56.0; // Position next to back button
     final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
 
-    final double maxTop = minExtent; // Start below the final appbar area
+    final double maxTop = paddingTop + 20; // Start near the top
     final double minTop = paddingTop + (kToolbarHeight - minSize) / 2;
     final double currentTop = lerpDouble(maxTop, minTop, t)!;
 
     // --- NEW: Title animation ---
     // Position
-    final double titleMaxTop = maxTop + maxSize + 16; // Below the large emblem
+    final double titleMaxTop = maxTop + maxSize + 8; // Positioned right below the large emblem
     final double titleMinTop = paddingTop;
     final double titleCurrentTop = lerpDouble(titleMaxTop, titleMinTop, t)!;
 
@@ -418,7 +454,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double titleCurrentFontSize = lerpDouble(titleMaxFontSize, titleMinFontSize, t)!;
 
     // Opacity for elements that appear when collapsed
-    final double contentOpacity = t;
+    // Let's make the controls visible from the start by changing the opacity logic
+    final double controlsOpacity = lerpDouble(0.0, 1.0, t.clamp(0.5, 1.0))!;
+    final double collapsedHeaderOpacity = t;
 
     return Container(
       color: Colors.black.withOpacity(0.01),
@@ -438,7 +476,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
             left: titleCurrentHorizontalPadding,
             right: titleCurrentHorizontalPadding,
             height: kToolbarHeight,
-            child: Center(
+            child: Opacity(
+              opacity: lerpDouble(1.0, 0.0, t.clamp(0.0, 0.5) * 2)!, // Fade out the large title
               child: Text(
                 title,
                 textAlign: TextAlign.center,
@@ -452,26 +491,48 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
 
+          // A separate title that fades in when collapsed
+          Positioned(
+            top: paddingTop,
+            left: 100,
+            right: 100,
+            height: kToolbarHeight,
+            child: Opacity(
+              opacity: collapsedHeaderOpacity,
+              child: Center(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.black87, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+          ),
+
           // Actions (fades in)
           Positioned(
             top: paddingTop,
             right: 0,
             height: kToolbarHeight,
-            child: Opacity(
-              opacity: contentOpacity,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Switch(
-                      value: isContinuousPlayEnabled,
-                      onChanged: onSwitchChanged,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    Text('Non-Stop Play', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54))
-                  ],
-                ),
+            child: Container(), // This space is now empty, actions are moved below
+          ),
+
+          // --- NEW: Positioned controls row ---
+          Positioned(
+            top: paddingTop + kToolbarHeight, // Positioned below the main app bar area
+            left: 0,
+            right: 0,
+            height: 50, // The height we added to minExtent
+            child: Opacity( // Fades in with the rest of the collapsed header
+              opacity: collapsedHeaderOpacity, 
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _HeaderSwitch(label: 'Large Font', value: useLargeFonts, onChanged: onLargeFontSwitchChanged),
+                  _HeaderSwitch(label: 'Non-Stop Play', value: isContinuousPlayEnabled, onChanged: onSwitchChanged),
+                ],
               ),
             ),
           ),
@@ -517,6 +578,38 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         chapterNumber != oldDelegate.chapterNumber ||
         title != oldDelegate.title ||
         isContinuousPlayEnabled != oldDelegate.isContinuousPlayEnabled ||
-        onSwitchChanged != oldDelegate.onSwitchChanged;
+        onSwitchChanged != oldDelegate.onSwitchChanged ||
+        useLargeFonts != oldDelegate.useLargeFonts ||
+        onLargeFontSwitchChanged != oldDelegate.onLargeFontSwitchChanged;
+  }
+}
+
+/// A reusable widget for switches in the collapsing header.
+class _HeaderSwitch extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _HeaderSwitch({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row( // Each switch is a Row: Label + Switch
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+        ),
+      ],
+    );
   }
 }

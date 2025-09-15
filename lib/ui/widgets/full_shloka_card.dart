@@ -229,7 +229,7 @@ class FullShlokaCard extends StatelessWidget {
                               children: formatItalicText(
                                 shloka.shlok,
                                 TextStyle(
-                                  fontSize: 20,
+                                  fontSize: config.useLargeFonts ? 24 : 20,
                                   fontStyle: FontStyle.italic,
                                   color: primaryTextColor,
                                   fontFamily: 'NotoSerif',
@@ -286,7 +286,7 @@ class FullShlokaCard extends StatelessWidget {
                             children: formatItalicText(
                                 shloka.anvay,
                                 TextStyle(
-                                  fontSize: 20,
+                                  fontSize: config.useLargeFonts ? 24 : 20,
                                   fontStyle: FontStyle.normal,
                                   color: secondaryTextColor,
                                   fontFamily: 'NotoSerif',
@@ -307,10 +307,12 @@ class FullShlokaCard extends StatelessWidget {
                       )),
                   const SizedBox(height: 8),
                   Text(shloka.bhavarth,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: TextStyle(
+                        fontSize: config.useLargeFonts ? 20 : 16, // Similar to Anvay, but balanced for paragraphs
                         fontStyle: FontStyle.normal,
                         color: secondaryTextColor,
-                        height: 1.4,
+                        fontFamily: 'NotoSerif', // Consistent font family
+                        height: 1.5, // Improved line spacing for readability
                       )),
                 ],
               ],
@@ -463,6 +465,7 @@ class FullShlokaCardConfig {
   final bool showShlokIndex;
   final bool spacingCompact;
   final bool isLightTheme;
+  final bool useLargeFonts;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -474,6 +477,7 @@ class FullShlokaCardConfig {
     this.showShlokIndex = true,
     this.spacingCompact = false,
     this.isLightTheme = false,
+    this.useLargeFonts = false,
   });
 
   static const minimal = FullShlokaCardConfig(
@@ -486,10 +490,12 @@ class FullShlokaCardConfig {
     showShlokIndex: true,
     spacingCompact: true,
     isLightTheme: false,
+    useLargeFonts: false,
   );
 
   static const lightThemeDefault = FullShlokaCardConfig(
     isLightTheme: true,
+    useLargeFonts: false,
   );
 
   static const minimalLight = FullShlokaCardConfig(
@@ -502,5 +508,32 @@ class FullShlokaCardConfig {
     showShlokIndex: true,
     spacingCompact: true,
     isLightTheme: true,
+    useLargeFonts: false,
   );
+
+  FullShlokaCardConfig copyWith({
+    bool? showSpeaker,
+    bool? showAnvay,
+    bool? showBhavarth,
+    bool? showSeparator,
+    bool? showColoredCard,
+    bool? showEmblem,
+    bool? showShlokIndex,
+    bool? spacingCompact,
+    bool? isLightTheme,
+    bool? useLargeFonts,
+  }) {
+    return FullShlokaCardConfig(
+      showSpeaker: showSpeaker ?? this.showSpeaker,
+      showAnvay: showAnvay ?? this.showAnvay,
+      showBhavarth: showBhavarth ?? this.showBhavarth,
+      showSeparator: showSeparator ?? this.showSeparator,
+      showColoredCard: showColoredCard ?? this.showColoredCard,
+      showEmblem: showEmblem ?? this.showEmblem,
+      showShlokIndex: showShlokIndex ?? this.showShlokIndex,
+      spacingCompact: spacingCompact ?? this.spacingCompact,
+      isLightTheme: isLightTheme ?? this.isLightTheme,
+      useLargeFonts: useLargeFonts ?? this.useLargeFonts,
+    );
+  }
 }
