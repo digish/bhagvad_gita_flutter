@@ -81,22 +81,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-
 flutter_launcher_icons:
   android: true
-  ios: false
-  # Path to the standard icon for older Android versions and iOS
-  image_path: "assets/icon/icon_square.png" # A standard 1024x1024 square icon
-
-  # --- Adaptive Icon Settings ---
-  # Path to your new foreground image (with transparency)
-  adaptive_icon_foreground: "assets/icon/icon_foreground.png" 
-
-  # A hex color for the background layer
-  # adaptive_icon_background: "#FFFDFCFB" # Using the light, warm background from your app
-
-  # Or, you can use an image for the background instead of a color:
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon_square.png"
   adaptive_icon_background: "assets/icon/icon_background.png"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 flutter:
   uses-material-design: true
@@ -112,24 +103,24 @@ flutter:
     - assets/emblems/authors/
     - assets/database/
     - assets/fonts/
-    # - assets/audio/Chapter1_audio/
-    # - assets/audio/Chapter2_audio/
-    # - assets/audio/Chapter3_audio/
-    # - assets/audio/Chapter4_audio/
-    # - assets/audio/Chapter5_audio/
-    # - assets/audio/Chapter6_audio/
-    # - assets/audio/Chapter7_audio/
-    # - assets/audio/Chapter8_audio/
-    # - assets/audio/Chapter9_audio/
-    # - assets/audio/Chapter10_audio/
-    # - assets/audio/Chapter11_audio/
-    # - assets/audio/Chapter12_audio/
-    # - assets/audio/Chapter13_audio/
-    # - assets/audio/Chapter14_audio/
-    # - assets/audio/Chapter15_audio/
-    # - assets/audio/Chapter16_audio/
-    # - assets/audio/Chapter17_audio/
-    # - assets/audio/Chapter18_audio/
+    - assets/audio/Chapter1_audio/
+    - assets/audio/Chapter2_audio/
+    - assets/audio/Chapter3_audio/
+    - assets/audio/Chapter4_audio/
+    - assets/audio/Chapter5_audio/
+    - assets/audio/Chapter6_audio/
+    - assets/audio/Chapter7_audio/
+    - assets/audio/Chapter8_audio/
+    - assets/audio/Chapter9_audio/
+    - assets/audio/Chapter10_audio/
+    - assets/audio/Chapter11_audio/
+    - assets/audio/Chapter12_audio/
+    - assets/audio/Chapter13_audio/
+    - assets/audio/Chapter14_audio/
+    - assets/audio/Chapter15_audio/
+    - assets/audio/Chapter16_audio/
+    - assets/audio/Chapter17_audio/
+    - assets/audio/Chapter18_audio/
     
 
   fonts:
