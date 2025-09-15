@@ -44,6 +44,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- NEW: State to track the currently playing shloka ID ---
   String? _currentlyPlayingId;
 
+  // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
+  AudioProvider? _audioProvider;
+
   void _updateCurrentPositionLabel() {
     final provider = Provider.of<ParayanProvider>(context, listen: false);
     final positions = _itemPositionsListener.itemPositions.value;
@@ -64,9 +67,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
   @override
   void initState() {
     super.initState();
-    // --- NEW: Listen to AudioProvider for UI updates ---
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    audioProvider.addListener(_audioListener);
+    _audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    _audioProvider?.addListener(_audioListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _itemPositionsListener.itemPositions.addListener(
@@ -77,10 +79,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   // --- NEW: Listener to update the playing ID ---
   void _audioListener() {
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    if (mounted && _currentlyPlayingId != audioProvider.currentPlayingShlokaId) {
+    if (mounted && _currentlyPlayingId != _audioProvider?.currentPlayingShlokaId) {
       setState(() {
-        _currentlyPlayingId = audioProvider.currentPlayingShlokaId;
+        _currentlyPlayingId = _audioProvider?.currentPlayingShlokaId;
       });
     }
   }
@@ -92,9 +93,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _itemPositionsListener.itemPositions.removeListener(
       _updateCurrentPositionLabel,
     );
-    // --- NEW: Clean up the audio listener ---
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    audioProvider.removeListener(_audioListener);
+    _audioProvider?.removeListener(_audioListener);
     super.dispose();
   }
 

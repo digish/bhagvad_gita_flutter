@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:flutter/foundation.dart';
 import '../../data/database_helper.dart';
 import '../../navigation/app_router.dart';
 import '../../providers/search_provider.dart';
@@ -163,12 +164,13 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
           onTap: () => context.push(AppRoutes.chapters),
         ),
         // In search_screen.dart's _buildSpeedDial method
-        SpeedDialChild(
-          child: const Icon(Icons.headset),
-          label: 'Manage Audio',
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          onTap: () => context.push(AppRoutes.audioManagement),
-        ),
+        if (defaultTargetPlatform != TargetPlatform.iOS)
+          SpeedDialChild(
+            child: const Icon(Icons.headset),
+            label: 'Manage Audio',
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            onTap: () => context.push(AppRoutes.audioManagement),
+          ),
         SpeedDialChild(
           child: const Icon(Icons.info_outline),
           label: 'Credits',

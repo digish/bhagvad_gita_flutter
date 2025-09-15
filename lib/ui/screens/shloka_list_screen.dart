@@ -42,22 +42,24 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
 
+  // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
+  AudioProvider? _audioProvider;
+
   @override
   void initState() {
     super.initState();
     final dbHelper = Provider.of<DatabaseHelperInterface>(context, listen: false);
     _shlokaProvider = ShlokaListProvider(widget.searchQuery, dbHelper);
 
-    // Listen to audio provider changes to implement continuous play.
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    audioProvider.addListener(_handleAudioChange);
+    // ✨ FIX: Get the provider once and store it.
+    _audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    _audioProvider?.addListener(_handleAudioChange);
   }
 
   @override
   void dispose() {
-    // Clean up the listener when the screen is disposed.
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    audioProvider.removeListener(_handleAudioChange);
+    // ✨ FIX: Use the stored provider instance for safe cleanup.
+    _audioProvider?.removeListener(_handleAudioChange);
     _shlokaProvider.dispose(); // Dispose the provider we created.
     _scrollController.dispose();
     super.dispose();
@@ -65,7 +67,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   // This should not be async. We want to react to state changes, not wait for them.
   void _handleAudioChange() {
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    // ✨ FIX: Use the stored provider instance.
+    final audioProvider = _audioProvider;
+    if (audioProvider == null) return; // Safety check
     final currentPlaybackState = audioProvider.playbackState;
 
     if (currentPlaybackState == PlaybackState.playing) {
