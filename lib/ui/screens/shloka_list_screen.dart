@@ -39,7 +39,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   String? _currentShlokId;
   bool _hasPlaybackStarted = false;
   
-  // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
 
   @override
@@ -63,18 +62,19 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     super.dispose();
   }
 
-  // This should not be async. We want to react to state changes, not wait for them.
   void _handleAudioChange() {
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
     final currentPlaybackState = audioProvider.playbackState;
 
     if (currentPlaybackState == PlaybackState.playing) {
       if (_currentShlokId != null) _hasPlaybackStarted = true;
-      debugPrint("[CONTINUOUS_PLAY_SM] Playback started for $_currentShlokId. Flag set to true.");
+      debugPrint(
+          "[CONTINUOUS_PLAY_SM] Playback started for $_currentShlokId. Flag set to true.");
       return;
     }
     if (currentPlaybackState == PlaybackState.stopped) {
-      debugPrint("[CONTINUOUS_PLAY_SM] Stopped event received. Non-stop: $_isContinuousPlayEnabled, Playback Started: $_hasPlaybackStarted");
+      debugPrint(
+          "[CONTINUOUS_PLAY_SM] Stopped event received. Non-stop: $_isContinuousPlayEnabled, Playback Started: $_hasPlaybackStarted");
       // Condition: if nonstop_play_flag is true and playback_state was set to true
       if (_isContinuousPlayEnabled && _hasPlaybackStarted) {
         final lastPlayedIndex = _shlokaProvider.shlokas.indexWhere((s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
@@ -82,9 +82,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
         if (lastPlayedIndex != -1 && lastPlayedIndex < _shlokaProvider.shlokas.length - 1) {
           final nextShloka = _shlokaProvider.shlokas[lastPlayedIndex + 1];
-          final nextShlokaId = '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
-          debugPrint("[CONTINUOUS_PLAY_SM] Triggering next shloka: $nextShlokaId");
-
+          final nextShlokaId = '${nextShloka.chapterNo}.${nextShloka.shlokNo}';          debugPrint("[CONTINUOUS_PLAY_SM] Triggering next shloka: $nextShlokaId");
           audioProvider.playOrPauseShloka(nextShloka);
           _currentShlokId = nextShlokaId;
 
@@ -97,9 +95,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
   }
 
-  // A more robust scrolling method.
   void _scrollToIndex(int index) {
     if (index < 0 || index >= _itemKeys.length) return;
+
+    // Ensure the widget is still mounted before trying to access its context.
+    if (!mounted) return;
  
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final key = _itemKeys[index];
@@ -135,10 +135,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
-    final audioProviderForInit = Provider.of<AudioProvider>(context, listen: false);
-    if (audioProviderForInit.playbackState == PlaybackState.stopped) {
-      _hasPlaybackStarted = false; // Reset continuous play tracker
-    }
     // This handles cases like a query of "1" or "1,21".
     final chapterNumber = int.tryParse(widget.searchQuery.split(',').first.trim());
 
@@ -237,18 +233,15 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
                   final shlokas = provider.shlokas;                  
                   // --- AUTO-SCROLL LOGIC ---
-                  // This logic triggers whenever the playing ID changes, either from user
-                  // interaction or continuous play.
-                  // We still read from the provider here for UI updates, but our state machine is independent.
                   // We use a post-frame callback to ensure the widget tree is built before scrolling.
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    // The scroll should be based on our reliable local state, not the provider's.
                     if (_currentShlokId != null && _currentShlokId != provider.lastScrolledId) {
                       final playingIndex = shlokas.indexWhere(
                           (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
                       if (playingIndex != -1) {
                         _scrollToIndex(playingIndex);
-                        provider.setLastScrolledId(_currentShlokId); // Prevent re-scrolling
+                        // Prevent re-scrolling on every rebuild
+                        provider.setLastScrolledId(_currentShlokId);
                       }
                     }
                   });
@@ -290,6 +283,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 onPlayPause: () {
                                   // When the user manually plays, update our local tracker.
                                   _currentShlokId = '${shlokas[index].chapterNo}.${shlokas[index].shlokNo}';
+                                  // If the last playback was fully stopped, reset the continuous play flag.
+                                  // This is the correct place to reset this state, not in the build method.
+                                  if (audioProvider.playbackState == PlaybackState.stopped) {
+                                    _hasPlaybackStarted = false;
+                                  }
                                   _hasPlaybackStarted = false; // Reset for the new shloka
                                 },
                               )),
