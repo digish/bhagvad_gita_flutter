@@ -245,95 +245,97 @@ class CreditsScreen extends StatelessWidget {
         children: [
           SimpleGradientBackground(
               startColor: const Color.fromARGB(255, 240, 255, 126)), // Golden-brown for credits
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 48),
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Hero(
-                        tag: 'creditsLotusHero', // A new unique tag
-                        child: Image.asset(
-                          'assets/images/lotus_gold.png', // A new golden lotus asset
-                          height: 120,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Credits & Acknowledgements',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.brown.shade800,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Wrap(
-                        spacing: 16,
-                        runSpacing: 12,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              _launchUrl(
-                                  'https://play.google.com/store/apps/developer?id=Komal+Pandya');
-                            },
-                            icon: const Icon(Icons.shop_2_outlined),
-                            label: const Text('More Apps'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.brown.shade700,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () => _shareApp(context),
-                            icon: const Icon(Icons.share_outlined),
-                            label: const Text('Share App'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.brown.shade700,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index < creditsData.length) {
-                      return _CreditCard(item: creditsData[index]);
-                    }
-                    // Add a header for quotes section
-                    if (index == creditsData.length) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 40.0, bottom: 16.0),
-                        child: Text(
-                          'Words of Wisdom',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.brown.shade800,
-                            fontWeight: FontWeight.bold,
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24), // Adjusted padding after SafeArea
+                      GestureDetector(
+                        onTap: () => context.pop(),
+                        child: Hero(
+                          tag: 'creditsLotusHero', // A new unique tag
+                          child: Image.asset(
+                            'assets/images/lotus_gold.png', // A new golden lotus asset
+                            height: 120,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                      );
-                    }
-                    final profileIndex = index - creditsData.length - 1;
-                    return _AuthorCard(profile: authorProfilesData[profileIndex]);
-                  },
-                  childCount: creditsData.length + authorProfilesData.length + 1,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Credits & Acknowledgements',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.brown.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _launchUrl(
+                                    'https://play.google.com/store/apps/developer?id=Komal+Pandya');
+                              },
+                              icon: const Icon(Icons.shop_2_outlined),
+                              label: const Text('More Apps'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.brown.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => _shareApp(context),
+                              icon: const Icon(Icons.share_outlined),
+                              label: const Text('Share App'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.brown.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
-              ),
-              const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
-            ],
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index < creditsData.length) {
+                        return _CreditCard(item: creditsData[index]);
+                      }
+                      // Add a header for quotes section
+                      if (index == creditsData.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 40.0, bottom: 16.0),
+                          child: Text(
+                            'Words of Wisdom',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: Colors.brown.shade800,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      }
+                      final profileIndex = index - creditsData.length - 1;
+                      return _AuthorCard(profile: authorProfilesData[profileIndex]);
+                    },
+                    childCount: creditsData.length + authorProfilesData.length + 1,
+                  ),
+                ),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+              ],
+            ),
           ),
         ],
       ),

@@ -36,8 +36,9 @@ class ChaptersScreen extends StatelessWidget {
 
           // 2. --- This is your original content ---
           // This Column is placed on top of the background.
-          Column(
-            children: [
+          SafeArea(
+            child: Column(
+              children: [
               // 1. --- This is the starting Hero widget ---
               const SizedBox(height: 24),
               GestureDetector(
@@ -102,7 +103,8 @@ class ChaptersScreen extends StatelessWidget {
                   },
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

@@ -111,17 +111,18 @@ class _ParayanScreenState extends State<ParayanScreen> {
         children: [
           //DarkenedAnimatedBackground(opacity: 0.7),
           SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
-          Column(
-            children: [
-              // --- Header Row ---
-              Padding(
-                // Add padding to account for the status bar
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 12,
-                  left: 16,
-                  right: 16,
-                  bottom: 12,
-                ),
+          SafeArea(
+            child: Column(
+              children: [
+                // --- Header Row ---
+                Padding(
+                  // The SafeArea handles the status bar, so we only need our desired content padding.
+                  padding: const EdgeInsets.only(
+                    top: 12,
+                    left: 16,
+                    right: 16,
+                    bottom: 12,
+                  ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,139 +188,140 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     ),
                   ],
                 ),
-              ),
+                ),
 
-              /// 🌿 Wrap ScrollablePositionedList + ScrollIndicator in a Stack
-              Expanded(
-                child: Consumer<ParayanProvider>(
-                  builder: (context, provider, child) {
-                    if (provider.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+                /// 🌿 Wrap ScrollablePositionedList + ScrollIndicator in a Stack
+                Expanded(
+                  child: Consumer<ParayanProvider>(
+                    builder: (context, provider, child) {
+                      if (provider.isLoading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    final shlokas = provider.shlokas;
+                      final shlokas = provider.shlokas;
 
-                    return Stack(
-                      children: [
-                        /// 📜 Main ScrollablePositionedList
-                        ScrollablePositionedList.builder(
-                          itemScrollController: _itemScrollController,
-                          itemPositionsListener: _itemPositionsListener,
-                          itemCount: shlokas.length,
-                          padding: const EdgeInsets.only(
-                            bottom: 8.0,
-                            right: 50,
-                          ),
-                          itemBuilder: (context, index) {
-                            final shloka = shlokas[index];
-                            final previousShloka = (index > 0)
-                                ? shlokas[index - 1]
-                                : null;
-
-                            final isChapterStart =
-                                previousShloka == null ||
-                                shloka.chapterNo != previousShloka.chapterNo;
-                            final isChapterEnd =
-                                (index == shlokas.length - 1) ||
-                                shloka.chapterNo !=
-                                    shlokas[index + 1].chapterNo;
-                            final speakerChanged =
-                                previousShloka != null &&
-                                previousShloka.speaker != shloka.speaker;
-
-                            return Column(
-                              children: [
-                                if (isChapterStart)
-                                  _ChapterStartHeader(
-                                    chapterNumber:
-                                        int.tryParse(shloka.chapterNo) ?? 0,
-                                  ),
-                                if (speakerChanged | isChapterStart)
-                                  _SpeakerHeader(
-                                    speaker: shloka.speaker ?? "Uvacha",
-                                  ),
-                                //_ParayanShlokaCard(shloka: shloka),
-                                FullShlokaCard(
-                                  shloka: shloka,
-                                  // --- NEW: Pass down the playing ID and a callback ---
-                                  currentlyPlayingId: _currentlyPlayingId,
-                                  onPlayPause: () {
-                                    setState(() {
-                                      _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
-                                    });
-                                  },
-                                  config: FullShlokaCardConfig(
-                                    showSpeaker: false,
-                                    showAnvay: _showAnvay,
-                                    showBhavarth: false,
-                                    showSeparator: _showAnvay,
-                                    showColoredCard: false,
-                                    showEmblem: false,
-                                    showShlokIndex: true,
-                                    spacingCompact: true,
-                                    isLightTheme: true,
-                                  ),
-                                ),
-
-                                if (isChapterEnd)
-                                  _ChapterEndFooter(
-                                    chapterNumber:
-                                        int.tryParse(shloka.chapterNo) ?? 0,
-                                    chapterName:
-                                        StaticData.geetaAdhyay[(int.tryParse(
-                                                  shloka.chapterNo,
-                                                ) ??
-                                                1) -
-                                            1],
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-
-                        /// 🐝 Custom Scroll Indicator
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: CustomScrollIndicator(
-                            itemCount: shlokas.length,
-                            chapterMarkers: provider.chapterStartIndices,
-                            chapterLabels: provider.chapterStartIndices.map((
-                              i,
-                            ) {
-                              final chapterNo = shlokas[i].chapterNo;
-                              final name =
-                                  StaticData.geetaAdhyay[(int.tryParse(
-                                            chapterNo,
-                                          ) ??
-                                          1) -
-                                      1];
-                              return chapterNo; // or return 'Adhyay $chapterNo\n$name' for full label
-                            }).toList(),
-
-                            /// 🐝 Use ItemPositionsListener to track scroll position
+                      return Stack(
+                        children: [
+                          /// 📜 Main ScrollablePositionedList
+                          ScrollablePositionedList.builder(
+                            itemScrollController: _itemScrollController,
                             itemPositionsListener: _itemPositionsListener,
+                            itemCount: shlokas.length,
+                            padding: const EdgeInsets.only(
+                              bottom: 8.0,
+                              right: 50,
+                            ),
+                            itemBuilder: (context, index) {
+                              final shloka = shlokas[index];
+                              final previousShloka = (index > 0)
+                                  ? shlokas[index - 1]
+                                  : null;
 
-                            /// 🪷 Scroll to chapter using ItemScrollController
-                            onLotusTap: (index) {
-                              final chapterIndex =
-                                  provider.chapterStartIndices[index];
+                              final isChapterStart =
+                                  previousShloka == null ||
+                                  shloka.chapterNo != previousShloka.chapterNo;
+                              final isChapterEnd =
+                                  (index == shlokas.length - 1) ||
+                                  shloka.chapterNo !=
+                                      shlokas[index + 1].chapterNo;
+                              final speakerChanged =
+                                  previousShloka != null &&
+                                  previousShloka.speaker != shloka.speaker;
 
-                              _itemScrollController.scrollTo(
-                                index: chapterIndex,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeInOut,
+                              return Column(
+                                children: [
+                                  if (isChapterStart)
+                                    _ChapterStartHeader(
+                                      chapterNumber:
+                                          int.tryParse(shloka.chapterNo) ?? 0,
+                                    ),
+                                  if (speakerChanged | isChapterStart)
+                                    _SpeakerHeader(
+                                      speaker: shloka.speaker ?? "Uvacha",
+                                    ),
+                                  //_ParayanShlokaCard(shloka: shloka),
+                                  FullShlokaCard(
+                                    shloka: shloka,
+                                    // --- NEW: Pass down the playing ID and a callback ---
+                                    currentlyPlayingId: _currentlyPlayingId,
+                                    onPlayPause: () {
+                                      setState(() {
+                                        _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
+                                      });
+                                    },
+                                    config: FullShlokaCardConfig(
+                                      showSpeaker: false,
+                                      showAnvay: _showAnvay,
+                                      showBhavarth: false,
+                                      showSeparator: _showAnvay,
+                                      showColoredCard: false,
+                                      showEmblem: false,
+                                      showShlokIndex: true,
+                                      spacingCompact: true,
+                                      isLightTheme: true,
+                                    ),
+                                  ),
+
+                                  if (isChapterEnd)
+                                    _ChapterEndFooter(
+                                      chapterNumber:
+                                          int.tryParse(shloka.chapterNo) ?? 0,
+                                      chapterName:
+                                          StaticData.geetaAdhyay[(int.tryParse(
+                                                    shloka.chapterNo,
+                                                  ) ??
+                                                  1) -
+                                              1],
+                                    ),
+                                ],
                               );
                             },
                           ),
-                        ),
-                      ],
-                    );
-                  },
+
+                          /// 🐝 Custom Scroll Indicator
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: CustomScrollIndicator(
+                              itemCount: shlokas.length,
+                              chapterMarkers: provider.chapterStartIndices,
+                              chapterLabels: provider.chapterStartIndices.map((
+                                i,
+                              ) {
+                                final chapterNo = shlokas[i].chapterNo;
+                                final name =
+                                    StaticData.geetaAdhyay[(int.tryParse(
+                                              chapterNo,
+                                            ) ??
+                                            1) -
+                                        1];
+                                return chapterNo; // or return 'Adhyay $chapterNo\n$name' for full label
+                              }).toList(),
+
+                              /// 🐝 Use ItemPositionsListener to track scroll position
+                              itemPositionsListener: _itemPositionsListener,
+
+                              /// 🪷 Scroll to chapter using ItemScrollController
+                              onLotusTap: (index) {
+                                final chapterIndex =
+                                    provider.chapterStartIndices[index];
+
+                                _itemScrollController.scrollTo(
+                                  index: chapterIndex,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

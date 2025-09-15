@@ -71,64 +71,69 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
             ),
           ),
 
-          // ... rest of the screen is unchanged
-          AnimatedAlign(
-            alignment: isSearching ? Alignment.topCenter : Alignment.center,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: 60.0,
-                left: 16.0,
-                right: 16.0,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: !isSearching
-                          ? AnimatedScale(
-                              scale:
-                                  MediaQuery.of(context).viewInsets.bottom > 0
-                                  ? 0.7
-                                  : 1.0,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              child: const Lotus(),
-                            )
-                          : const SizedBox.shrink(),
+          // Wrap the interactive UI in a SafeArea
+          SafeArea(
+            child: Stack(
+              children: [
+                AnimatedAlign(
+                  alignment: isSearching ? Alignment.topCenter : Alignment.center,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  child: Padding(
+                    // Removed hardcoded top padding, SafeArea handles it.
+                    padding: const EdgeInsets.only(
+                      top: 16.0,
+                      left: 16.0,
+                      right: 16.0,
                     ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      height: MediaQuery.of(context).viewInsets.bottom > 16
-                          ? 0
-                          : 10,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: !isSearching
+                                ? AnimatedScale(
+                                    scale: MediaQuery.of(context).viewInsets.bottom > 0
+                                        ? 0.7
+                                        : 1.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    child: const Lotus(),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: MediaQuery.of(context).viewInsets.bottom > 16 ? 0 : 10,
+                          ),
+                          _buildSearchBar(provider),
+                        ],
+                      ),
                     ),
-                    _buildSearchBar(provider),
-                  ],
+                  ),
                 ),
-              ),
+                if (isSearching)
+                  Padding(
+                    // Adjusted padding to position the list below the search bar area.
+                    padding: const EdgeInsets.only(top: 100.0),
+                    child: ListView.builder(
+                      itemCount: provider.searchResults.length,
+                      itemBuilder: (context, index) {
+                        final item = provider.searchResults[index];
+                        if (item is ShlokaItem) {
+                          return ShlokaResultCard(shloka: item.shloka);
+                        }
+                        if (item is WordItem) {
+                          return WordResultCard(word: item.word);
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (isSearching)
-            Padding(
-              padding: const EdgeInsets.only(top: 120.0),
-              child: ListView.builder(
-                itemCount: provider.searchResults.length,
-                itemBuilder: (context, index) {
-                  final item = provider.searchResults[index];
-                  if (item is ShlokaItem) {
-                    return ShlokaResultCard(shloka: item.shloka);
-                  }
-                  if (item is WordItem) {
-                    return WordResultCard(word: item.word);
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
         ],
       ),
     );
