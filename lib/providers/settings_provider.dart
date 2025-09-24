@@ -16,19 +16,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
+  static const String _showBackgroundKey = 'showBackground';
   static const double _defaultFontSize = 20.0;
+  static const bool _defaultShowBackground = true;
 
   double _fontSize = _defaultFontSize;
   double get fontSize => _fontSize;
 
+  bool _showBackground = _defaultShowBackground;
+  bool get showBackground => _showBackground;
+
   SettingsProvider() {
-    _loadFontSize();
+    _loadSettings();
   }
 
-  Future<void> _loadFontSize() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     // Load the saved font size, or fall back to the default.
     _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
+    // Load the saved background visibility, or fall back to the default.
+    _showBackground = prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
     notifyListeners();
   }
 
@@ -38,5 +45,13 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Save the new font size to persistent storage.
     await prefs.setDouble(_fontSizeKey, newSize);
+  }
+
+  Future<void> setShowBackground(bool newValue) async {
+    _showBackground = newValue;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    // Save the new background visibility to persistent storage.
+    await prefs.setBool(_showBackgroundKey, newValue);
   }
 }

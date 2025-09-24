@@ -85,7 +85,7 @@ class _GlowingLotusState extends State<GlowingLotus>
                 SvgPicture.asset(
                   'assets/images/lotus_art.svg',
                   colorFilter: ColorFilter.mode(
-                      const Color.fromARGB(255, 164, 6, 138).withOpacity(0.9), BlendMode.srcIn),
+                      const Color.fromARGB(255, 164, 6, 138).withOpacity(0.2), BlendMode.srcIn),
                 ),
               ],
             ),

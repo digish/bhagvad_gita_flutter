@@ -102,11 +102,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
         ), */
-      backgroundColor: Colors.black,
+      // ✨ FIX: Set background color based on settings.
+      backgroundColor: settingsProvider.showBackground
+          ? Colors.black // Original dark background for gradient
+          : Colors.grey.shade200, // Solid light background for readability
       body: Stack(
         children: [
-          //DarkenedAnimatedBackground(opacity: 0.7),
-          SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
+          if (settingsProvider.showBackground)
+            SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
           Consumer<ParayanProvider>(
             builder: (context, provider, child) {
               if (provider.isLoading) {
@@ -387,8 +390,6 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
         final double textOpacity = lerpDouble(1.0, 0.0, t.clamp(0.0, 0.5) * 2)!;
         final double collapsedTextOpacity = t;
 
-        final double expandedControlsOpacity = lerpDouble(1.0, 0.0, t.clamp(0.0, 0.7) * 1.4)!;
-
         return Container(
           height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
           color: Colors.indigo.shade50.withOpacity(t * 0.95),
@@ -396,38 +397,6 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
             fit: StackFit.expand,
             children: [
               // Expanded Controls (unchanged)
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: Opacity(
-                  opacity: expandedControlsOpacity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _FontSizeControl(
-                        currentSize: widget.settingsProvider.fontSize,
-                        onDecrement: () {
-                          if (widget.settingsProvider.fontSize > 16.0) {
-                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize - 2.0);
-                          }
-                        },
-                        onIncrement: () {
-                          if (widget.settingsProvider.fontSize < 32.0) {
-                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize + 2.0);
-                          }
-                        },
-                        color: Colors.black87,
-                      ),
-                      // This button needs to be part of the parent state.
-                      // For now, we'll just show a placeholder.
-                      (context.findAncestorStateOfType<_ParayanScreenState>()!)._buildDisplayModeButton(),
-
-                    ],
-                  ),
-                ),
-              ),
-
               // Collapsed Controls (unchanged)
               Positioned(
                 top: MediaQuery.of(context).padding.top + kToolbarHeight,
@@ -454,6 +423,19 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                         color: Colors.black54,
                       ),
                       (context.findAncestorStateOfType<_ParayanScreenState>()!)._buildDisplayModeButton(),
+                      // --- NEW: Background Toggle Button (Collapsed) ---
+                      Consumer<SettingsProvider>(
+                        builder: (context, settings, _) {
+                          return IconButton(
+                            icon: Icon(
+                              settings.showBackground ? Icons.image : Icons.image_not_supported,
+                              color: Colors.black54,
+                            ),
+                            tooltip: settings.showBackground ? 'Hide Background' : 'Show Background',
+                            onPressed: () => settings.setShowBackground(!settings.showBackground),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),

@@ -215,6 +215,21 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
   }
 
+  // --- NEW: Helper for background toggle button ---
+  Widget _buildBackgroundToggleButton({required Color color}) {
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    final showBackground = Provider.of<SettingsProvider>(context).showBackground;
+
+    return IconButton(
+      icon: Icon(
+        showBackground ? Icons.image : Icons.image_not_supported,
+        color: color,
+      ),
+      tooltip: showBackground ? 'Hide Background' : 'Show Background',
+      onPressed: () => settingsProvider.setShowBackground(!showBackground),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
@@ -236,6 +251,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       value: _shlokaProvider,
       child: Builder(builder: (context) {
         return Scaffold(
+          // ✨ FIX: Set background color based on settings.
+          // This will be visible if the gradient is hidden.
+          backgroundColor: settingsProvider.showBackground
+              ? null // Let the gradient handle it
+              : Colors.grey.shade200,
           appBar: chapterNumber == null
               ? AppBar(
                   title: Text(
@@ -271,6 +291,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                              color: Colors.white,
                            ),
                            _buildPlaybackModeButton(isHeader: false),
+                           _buildBackgroundToggleButton(color: Colors.white70),
                         ],
                       ),
                     ),
@@ -280,11 +301,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           extendBodyBehindAppBar: true,
           body: Stack(
             children: [
-              SimpleGradientBackground(
-                startColor: chapterNumber == null
-                    ? Colors.pink.shade100 // Pink for search results to match lotus
-                    : Colors.amber.shade100, // Amber for chapter view
-              ),
+              if (settingsProvider.showBackground)
+                SimpleGradientBackground(
+                  startColor: chapterNumber == null
+                      ? Colors.pink.shade100 // Pink for search results to match lotus
+                      : Colors.amber.shade100, // Amber for chapter view
+                ),
               Consumer2<ShlokaListProvider, AudioProvider>(
                 builder: (context, provider, audioProvider, child) {
                   if (provider.isLoading) {
@@ -382,6 +404,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
                               }
                             },
+                            onBackgroundToggle: () => settingsProvider.setShowBackground(!settingsProvider.showBackground),
                             minExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 50, // Increased for the second row
                             // Further increase maxExtent to ensure title and switches are visible initially
                             maxExtent: MediaQuery.of(context).padding.top + 350,
@@ -512,6 +535,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final VoidCallback onFontSizeIncrement;
   final VoidCallback onFontSizeDecrement;
   @override
+  final VoidCallback onBackgroundToggle;
   final double minExtent;
   @override
   final double maxExtent;
@@ -525,6 +549,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onFontSizeIncrement,
     required this.onFontSizeDecrement,
     required this.minExtent,
+    required this.onBackgroundToggle,
     required this.maxExtent,
   });
 
@@ -649,6 +674,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                     color: Colors.black54,
                   ),
                   _buildPlaybackModeButtonForHeader(),
+                  _buildBackgroundToggleButtonForHeader(),
                 ],
               ),
             ),
@@ -724,6 +750,19 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     );
   }
 
+  Widget _buildBackgroundToggleButtonForHeader() {
+    // This doesn't need to be part of the stateful widget as it reads from provider.
+    return Consumer<SettingsProvider>(builder: (context, settings, _) {
+      return IconButton(
+        icon: Icon(
+          settings.showBackground ? Icons.image : Icons.image_not_supported,
+          color: Colors.black54,
+        ),
+        onPressed: onBackgroundToggle,
+        tooltip: settings.showBackground ? 'Hide Background' : 'Show Background',
+      );
+    });
+  }
   @override
   bool shouldRebuild(_AnimatingHeaderDelegate oldDelegate) {
     return minExtent != oldDelegate.minExtent ||
@@ -734,7 +773,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         onPlaybackModePressed != oldDelegate.onPlaybackModePressed ||
         currentFontSize != oldDelegate.currentFontSize ||
         onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
-        onFontSizeDecrement != oldDelegate.onFontSizeDecrement;
+        onFontSizeDecrement != oldDelegate.onFontSizeDecrement ||
+        onBackgroundToggle != oldDelegate.onBackgroundToggle;
   }
 }
 
