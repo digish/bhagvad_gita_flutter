@@ -14,6 +14,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart'; // Import the share_plus package
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../widgets/sneaky_emblem.dart';
@@ -124,6 +125,43 @@ class FullShlokaCard extends StatelessWidget {
     }
   }
 
+  // --- NEW: Share functionality ---
+  void _shareShloka(BuildContext context) {
+    final shlokaIdentifier =
+        'Shrimad Bhagavad Gita\nअध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
+
+    // Clean up the shloka text for sharing
+    String cleanShlok = shloka.shlok
+        .replaceAll('<C>', '\n') // Replace center marker with newline
+        .replaceAll('*', '\n') // Replace couplet separator with newline
+        .replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥') // Clean up shloka numbers
+        .trim();
+
+    // --- NEW: App link for sharing ---
+    const String appLink =
+        'https://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta';
+
+    final shareText = '''
+$shlokaIdentifier
+
+${shloka.speaker != null && shloka.speaker!.isNotEmpty ? '${shloka.speaker}:' : ''}
+$cleanShlok
+
+---
+
+अन्वय:
+${shloka.anvay}
+
+टिका:
+${shloka.bhavarth}''';
+
+    // --- MODIFIED: Add a footer with the app link ---
+    final shareTextWithFooter =
+        '$shareText\n\n---\nShared from the Shrimad Bhagavad Gita app:\n$appLink';
+
+    Share.share(shareTextWithFooter, subject: shlokaIdentifier);
+  }
+
   // --- MODIFIED buildCardContent ---
   // It now accepts audio state to handle highlighting and passing data to the button
   Widget buildCardContent(
@@ -223,6 +261,11 @@ class FullShlokaCard extends StatelessWidget {
                                 ),
                               // --- MODIFICATION: Add spacer and audio button ---
                               const Spacer(),
+                              _ActionButton(
+                                icon: Icons.share_outlined,
+                                onPressed: () => _shareShloka(context),
+                              ),
+                              const SizedBox(width: 8),
                               _buildAudioActionButton(
                                 context: context,
                                 shloka: shloka,
