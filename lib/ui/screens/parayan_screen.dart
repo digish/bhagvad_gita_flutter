@@ -50,6 +50,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- NEW: State to track the currently playing shloka ID ---
   String? _currentlyPlayingId;
 
+  // --- NEW: Key and state to measure the header's height ---
+  final GlobalKey _headerKey = GlobalKey();
+  double _headerHeight = 200.0; // A reasonable default.
+
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
@@ -80,6 +84,15 @@ class _ParayanScreenState extends State<ParayanScreen> {
       _itemPositionsListener.itemPositions.addListener(
         _updateCurrentPositionLabel,
       );
+      // --- NEW: Measure the header's height after the first frame ---
+      _measureHeader();
+    });
+  }
+
+  void _measureHeader() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final RenderBox? headerBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (headerBox != null && headerBox.hasSize && mounted) setState(() => _headerHeight = headerBox.size.height);
     });
   }
 
@@ -123,83 +136,43 @@ class _ParayanScreenState extends State<ParayanScreen> {
         children: [
           //DarkenedAnimatedBackground(opacity: 0.7),
           SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
-          SafeArea(
-            child: Column(
+          Stack( // ✨ FIX: Use a Stack to layer the header over the list
               children: [
-                // --- Header Row ---
-                Padding(
-                  // The SafeArea handles the status bar, so we only need our desired content padding.
-                  padding: const EdgeInsets.only(
-                    top: 12,
-                    left: 16,
-                    right: 16,
-                    bottom: 12,
-                  ),
-                child: Column(
-                  children: [
-                    // --- Top Row: Lotus and Label ---
-                    _buildCenterWidget(context),
-                    const SizedBox(height: 16), // Spacing between rows
-                    // --- Bottom Row: Controls ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // --- List Layer (at the bottom of the Stack) ---
+                Consumer<ParayanProvider>(
+                  builder: (context, provider, child) {
+                    if (provider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                
+                    // --- NEW: Determine card configuration based on display mode ---
+                    final FullShlokaCardConfig cardConfig;
+                    switch (_displayMode) {
+                      case ParayanDisplayMode.shlokOnly:
+                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
+                        break;
+                      case ParayanDisplayMode.shlokAndAnvay:
+                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
+                        break;
+                      case ParayanDisplayMode.all:
+                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
+                        break;
+                    }
+                
+                    final shlokas = provider.shlokas;
+                
+                    return Stack(
                       children: [
-                        // Font Size Control
-                        _FontSizeControl(
-                          currentSize: settingsProvider.fontSize,
-                          onDecrement: () {
-                            if (settingsProvider.fontSize > minFontSize) {
-                              settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
-                            }
-                          },
-                          onIncrement: () {
-                            if (settingsProvider.fontSize < maxFontSize) {
-                              settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
-                            }
-                          },
-                          color: Colors.black87,
-                        ),
-                        // Anvay Switch
-                        _buildDisplayModeButton(),
-                      ],
-                    ),
-                  ],
-                ),
-                ),
-
-                /// 🌿 Wrap ScrollablePositionedList + ScrollIndicator in a Stack
-                Expanded(
-                  child: Consumer<ParayanProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.isLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      // --- NEW: Determine card configuration based on display mode ---
-                      final FullShlokaCardConfig cardConfig;
-                      switch (_displayMode) {
-                        case ParayanDisplayMode.shlokOnly:
-                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
-                          break;
-                        case ParayanDisplayMode.shlokAndAnvay:
-                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
-                          break;
-                        case ParayanDisplayMode.all:
-                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
-                          break;
-                      }
-
-
-                      final shlokas = provider.shlokas;
-
-                      return Stack(
-                        children: [
-                          /// 📜 Main ScrollablePositionedList
-                          ScrollablePositionedList.builder(
+                        /// 📜 Main ScrollablePositionedList
+                        ScrollablePositionedList.builder(
                             itemScrollController: _itemScrollController,
                             itemPositionsListener: _itemPositionsListener,
                             itemCount: shlokas.length,
-                            padding: const EdgeInsets.only(
+                            padding: EdgeInsets.only(
+                              // ✨ FIX: Add top padding to prevent the first item from being hidden by the header.
+                              // 140 is a good starting point, adjust as needed.
+                              // ✨ FIX: Add extra padding to the measured height to push the list down.
+                              top: _headerHeight + 40.0,
                               bottom: 8.0,
                               right: 50,
                             ),
@@ -272,12 +245,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
                                 i,
                               ) {
                                 final chapterNo = shlokas[i].chapterNo;
-                                final name =
-                                    StaticData.geetaAdhyay[(int.tryParse(
-                                              chapterNo,
-                                            ) ??
-                                            1) -
-                                        1];
                                 return chapterNo; // or return 'Adhyay $chapterNo\n$name' for full label
                               }).toList(),
 
@@ -301,15 +268,83 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       );
                     },
                   ),
+                // --- Header Layer (on top of the Stack) ---
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  // ✨ FIX: Use a ValueListenableBuilder to react to scroll changes
+                  child: ValueListenableBuilder<Iterable<ItemPosition>>(
+                    valueListenable: _itemPositionsListener.itemPositions,
+                    builder: (context, positions, child) {
+                      // ✨ FIX: Get the status bar height to apply as padding.
+                      final statusBarHeight = MediaQuery.of(context).padding.top;
+                      double opacity = 0.0;
+                      // Calculate opacity based on scroll position.
+                      if (positions.isNotEmpty) {
+                        // Get the position of the first item in the list.
+                        final firstItem = positions.firstWhere(
+                          (p) => p.index == 0,
+                          orElse: () => positions.first,
+                        );
+                        // ✨ FIX: The opacity calculation should use the measured header height, not a fixed value.
+                        // This ensures the fade effect starts exactly when the list scrolls under the header.
+                        // We calculate how much of the header area has been scrolled over.
+                        final scrollAmount = _headerHeight - firstItem.itemLeadingEdge;
+                      // Clamp the opacity between 0.0 and 1.0.
+                        opacity = (scrollAmount / 80.0).clamp(0.0, 1.0);
+                      }
+
+                      return Container(
+                        // ✨ FIX: Use a light blue that complements the background gradient.
+                        // This creates a softer, more integrated look than plain white.
+                        color: Colors.indigo.shade50.withOpacity(opacity * 0.5),
+                        // ✨ FIX: Add status bar height to the top padding.
+                        padding: EdgeInsets.only(
+                            top: statusBarHeight + 12,
+                            left: 16,
+                            right: 16,
+                            bottom: 12),
+                        child: child, // The header content
+                      );
+                    },
+                    // The actual header content, which doesn't need to rebuild on every scroll tick.
+                    child: Column(
+                      key: _headerKey, // ✨ FIX: Assign key to the content to be measured.
+                      children: [
+                        _buildCenterWidget(context),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // This widget is defined below, ensure it's part of the measured content.
+                            _FontSizeControl(
+                              currentSize: settingsProvider.fontSize,
+                              onDecrement: () {
+                                if (settingsProvider.fontSize > minFontSize) {
+                                  settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
+                                }
+                              },
+                              onIncrement: () {
+                                if (settingsProvider.fontSize < maxFontSize) {
+                                  settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
+                                }
+                              },
+                              color: Colors.black87,
+                            ),
+                            // This widget is defined below, ensure it's part of the measured content.
+                            _buildDisplayModeButton(),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
         ],
       ),
     );
   }
-
+                
   Widget _buildCenterWidget(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -338,7 +373,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
             },
             child: Image.asset(
               'assets/images/lotus_blue12.png',
-              height: 60, // Reduced size to fit in a row
+              height: 120,
               fit: BoxFit.contain,
             ),
           ),
