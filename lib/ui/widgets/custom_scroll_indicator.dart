@@ -21,7 +21,7 @@ class CustomScrollIndicator extends StatefulWidget {
   final List<int> chapterMarkers;
   final List<String> chapterLabels;
   final Function(int index) onLotusTap;
-  final ItemPositionsListener itemPositionsListener;
+  final ItemPositionsListener itemPositionsListener; // ✨ FIX: Revert to listener
 
   const CustomScrollIndicator({
     super.key,
@@ -29,7 +29,7 @@ class CustomScrollIndicator extends StatefulWidget {
     required this.chapterMarkers,
     required this.chapterLabels,
     required this.onLotusTap,
-    required this.itemPositionsListener,
+    required this.itemPositionsListener, // ✨ FIX: Revert
   });
 
   @override
@@ -48,28 +48,21 @@ class _CustomScrollIndicatorState extends State<CustomScrollIndicator> {
     super.initState();
     _loadImages();
 
+    // ✨ FIX: Listen to the ItemPositionsListener for accurate updates.
     widget.itemPositionsListener.itemPositions.addListener(() {
       final positions = widget.itemPositionsListener.itemPositions.value;
 
       if (positions.isNotEmpty) {
-        final firstVisible = positions
-            .where((p) => p.itemLeadingEdge >= 0)
-            .reduce(
-              (min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min,
-            );
+        // Find the item with the smallest index to represent the top of the viewport.
+        final firstVisible = positions.reduce(
+          (min, p) => p.index < min.index ? p : min,
+        );
 
         final scrollIndex = firstVisible.index;
+        // Calculate scroll ratio based on item index, which is more stable.
         final scrollRatio = scrollIndex / (widget.itemCount - 1);
-        _scrollRatio = scrollRatio.clamp(0.0, 1.0);
 
-        setState(() {
-          _scrollRatio = scrollRatio.clamp(0.0, 1.0);
-          _isInteracting = true;
-        });
-
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) setState(() => _isInteracting = false);
-        });
+        if (mounted) setState(() => _scrollRatio = scrollRatio.clamp(0.0, 1.0));
       }
     });
   }

@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
+import 'dart:ui';
 import '../../models/shloka_result.dart';
 import '../../providers/parayan_provider.dart';
 import '../widgets/custom_scroll_indicator.dart';
@@ -34,45 +35,22 @@ class ParayanScreen extends StatefulWidget {
 }
 
 class _ParayanScreenState extends State<ParayanScreen> {
-  final List<GlobalKey> _itemKeys = [];
-  final GlobalKey _listViewKey = GlobalKey();
-  final ScrollController _scrollController = ScrollController();
+  // ✨ FIX: Revert to ItemScrollController and ItemPositionsListener for accuracy.
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener =
-      ItemPositionsListener.create();
-  // --- NEW: State for display mode, replacing the old boolean ---
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+
   ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
 
-  final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
+  final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier( // This is not used anymore but kept for potential future use.
     'अध्याय 1, श्लोक 1',
   );
 
   // --- NEW: State to track the currently playing shloka ID ---
   String? _currentlyPlayingId;
 
-  // --- NEW: Key and state to measure the header's height ---
-  final GlobalKey _headerKey = GlobalKey();
-  double _headerHeight = 200.0; // A reasonable default.
-
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
-  void _updateCurrentPositionLabel() {
-    final provider = Provider.of<ParayanProvider>(context, listen: false);
-    final positions = _itemPositionsListener.itemPositions.value;
-    if (positions.isNotEmpty) {
-      final firstVisible = positions
-          .where((p) => p.itemLeadingEdge >= 0)
-          .reduce(
-            (min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min,
-          );
-
-      final shloka = provider.shlokas[firstVisible.index];
-
-      _currentPositionLabelNotifier.value =
-          'अध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
-    }
-  }
 
   @override
   void initState() {
@@ -80,20 +58,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_audioListener);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _itemPositionsListener.itemPositions.addListener(
-        _updateCurrentPositionLabel,
-      );
-      // --- NEW: Measure the header's height after the first frame ---
-      _measureHeader();
-    });
-  }
 
-  void _measureHeader() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final RenderBox? headerBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
-      if (headerBox != null && headerBox.hasSize && mounted) setState(() => _headerHeight = headerBox.size.height);
-    });
   }
 
   // --- NEW: Listener to update the playing ID ---
@@ -107,13 +72,19 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _currentPositionLabelNotifier.dispose(); // ✨ Add this line
-    _itemPositionsListener.itemPositions.removeListener(
-      _updateCurrentPositionLabel,
-    );
     _audioProvider?.removeListener(_audioListener);
     super.dispose();
+  }
+
+  // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
+  void _scrollToIndex(int index) {
+    // ✨ FIX: Use the itemScrollController which is designed for this.
+    _itemScrollController.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   @override
@@ -136,258 +107,124 @@ class _ParayanScreenState extends State<ParayanScreen> {
         children: [
           //DarkenedAnimatedBackground(opacity: 0.7),
           SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
-          Stack( // ✨ FIX: Use a Stack to layer the header over the list
-              children: [
-                // --- List Layer (at the bottom of the Stack) ---
-                Consumer<ParayanProvider>(
-                  builder: (context, provider, child) {
-                    if (provider.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                
-                    // --- NEW: Determine card configuration based on display mode ---
-                    final FullShlokaCardConfig cardConfig;
-                    switch (_displayMode) {
-                      case ParayanDisplayMode.shlokOnly:
-                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
-                        break;
-                      case ParayanDisplayMode.shlokAndAnvay:
-                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
-                        break;
-                      case ParayanDisplayMode.all:
-                        cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
-                        break;
-                    }
-                
-                    final shlokas = provider.shlokas;
-                
-                    return Stack(
-                      children: [
-                        /// 📜 Main ScrollablePositionedList
-                        ScrollablePositionedList.builder(
-                            itemScrollController: _itemScrollController,
-                            itemPositionsListener: _itemPositionsListener,
-                            itemCount: shlokas.length,
-                            padding: EdgeInsets.only(
-                              // ✨ FIX: Add top padding to prevent the first item from being hidden by the header.
-                              // 140 is a good starting point, adjust as needed.
-                              // ✨ FIX: Add extra padding to the measured height to push the list down.
-                              top: _headerHeight + 40.0,
-                              bottom: 8.0,
-                              right: 50,
-                            ),
-                            itemBuilder: (context, index) {
-                              final shloka = shlokas[index];
-                              final previousShloka = (index > 0)
-                                  ? shlokas[index - 1]
-                                  : null;
+          Consumer<ParayanProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+          
+              // --- NEW: Determine card configuration based on display mode ---
+              final FullShlokaCardConfig cardConfig;
+              switch (_displayMode) {
+                case ParayanDisplayMode.shlokOnly:
+                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
+                  break;
+                case ParayanDisplayMode.shlokAndAnvay:
+                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
+                  break;
+                case ParayanDisplayMode.all:
+                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
+                  break;
+              }
+          
+              final shlokas = provider.shlokas;
 
-                              final isChapterStart =
-                                  previousShloka == null ||
-                                  shloka.chapterNo != previousShloka.chapterNo;
-                              final isChapterEnd =
-                                  (index == shlokas.length - 1) ||
-                                  shloka.chapterNo !=
-                                      shlokas[index + 1].chapterNo;
-                              final speakerChanged =
-                                  previousShloka != null &&
-                                  previousShloka.speaker != shloka.speaker;
-
-                              return Column(
-                                children: [
-                                  if (isChapterStart)
-                                    _ChapterStartHeader(
-                                      chapterNumber:
-                                          int.tryParse(shloka.chapterNo) ?? 0,
-                                    ),
-                                  if (speakerChanged | isChapterStart)
-                                    _SpeakerHeader(
-                                      speaker: shloka.speaker ?? "Uvacha",
-                                    ),
-                                  //_ParayanShlokaCard(shloka: shloka),
-                                  FullShlokaCard(
-                                    shloka: shloka,
-                                    // --- NEW: Pass down the playing ID and a callback ---
-                                    currentlyPlayingId: _currentlyPlayingId,
-                                    onPlayPause: () {
-                                      setState(() {
-                                        _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
-                                      });
-                                    },
-                                    config: cardConfig.copyWith(showSpeaker: false, showColoredCard: false, showEmblem: false, showShlokIndex: true, spacingCompact: true, isLightTheme: true),
-                                  ),
-
-                                  if (isChapterEnd)
-                                    _ChapterEndFooter(
-                                      chapterNumber:
-                                          int.tryParse(shloka.chapterNo) ?? 0,
-                                      chapterName:
-                                          StaticData.geetaAdhyay[(int.tryParse(
-                                                    shloka.chapterNo,
-                                                  ) ??
-                                                  1) -
-                                              1],
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
-
-                          /// 🐝 Custom Scroll Indicator
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            bottom: 0,
-                            child: CustomScrollIndicator(
-                              itemCount: shlokas.length,
-                              chapterMarkers: provider.chapterStartIndices,
-                              chapterLabels: provider.chapterStartIndices.map((
-                                i,
-                              ) {
-                                final chapterNo = shlokas[i].chapterNo;
-                                return chapterNo; // or return 'Adhyay $chapterNo\n$name' for full label
-                              }).toList(),
-
-                              /// 🐝 Use ItemPositionsListener to track scroll position
-                              itemPositionsListener: _itemPositionsListener,
-
-                              /// 🪷 Scroll to chapter using ItemScrollController
-                              onLotusTap: (index) {
-                                final chapterIndex =
-                                    provider.chapterStartIndices[index];
-
-                                _itemScrollController.scrollTo(
-                                  index: chapterIndex,
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.easeInOut,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                // --- Header Layer (on top of the Stack) ---
-                Positioned(
-                  top: 0, left: 0, right: 0,
-                  // ✨ FIX: Use a ValueListenableBuilder to react to scroll changes
-                  child: ValueListenableBuilder<Iterable<ItemPosition>>(
-                    valueListenable: _itemPositionsListener.itemPositions,
-                    builder: (context, positions, child) {
-                      // ✨ FIX: Get the status bar height to apply as padding.
-                      final statusBarHeight = MediaQuery.of(context).padding.top;
-                      double opacity = 0.0;
-                      // Calculate opacity based on scroll position.
-                      if (positions.isNotEmpty) {
-                        // Get the position of the first item in the list.
-                        final firstItem = positions.firstWhere(
-                          (p) => p.index == 0,
-                          orElse: () => positions.first,
-                        );
-                        // ✨ FIX: The opacity calculation should use the measured header height, not a fixed value.
-                        // This ensures the fade effect starts exactly when the list scrolls under the header.
-                        // We calculate how much of the header area has been scrolled over.
-                        final scrollAmount = _headerHeight - firstItem.itemLeadingEdge;
-                      // Clamp the opacity between 0.0 and 1.0.
-                        opacity = (scrollAmount / 80.0).clamp(0.0, 1.0);
-                      }
-
-                      return Container(
-                        // ✨ FIX: Use a light blue that complements the background gradient.
-                        // This creates a softer, more integrated look than plain white.
-                        color: Colors.indigo.shade50.withOpacity(opacity * 0.5),
-                        // ✨ FIX: Add status bar height to the top padding.
-                        padding: EdgeInsets.only(
-                            top: statusBarHeight + 12,
-                            left: 16,
-                            right: 16,
-                            bottom: 12),
-                        child: child, // The header content
-                      );
-                    },
-                    // The actual header content, which doesn't need to rebuild on every scroll tick.
-                    child: Column(
-                      key: _headerKey, // ✨ FIX: Assign key to the content to be measured.
-                      children: [
-                        _buildCenterWidget(context),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // This widget is defined below, ensure it's part of the measured content.
-                            _FontSizeControl(
-                              currentSize: settingsProvider.fontSize,
-                              onDecrement: () {
-                                if (settingsProvider.fontSize > minFontSize) {
-                                  settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
-                                }
-                              },
-                              onIncrement: () {
-                                if (settingsProvider.fontSize < maxFontSize) {
-                                  settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
-                                }
-                              },
-                              color: Colors.black87,
-                            ),
-                            // This widget is defined below, ensure it's part of the measured content.
-                            _buildDisplayModeButton(),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+              // ✨ FIX: Revert to ScrollablePositionedList
+              return ScrollablePositionedList.builder(
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
+                itemCount: shlokas.length,
+                // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
+                // without interfering with the item position listener.
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 240,
+                  right: 50,
+                  bottom: 8.0,
                 ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-                
-  Widget _buildCenterWidget(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Hero(
-            tag: 'blueLotusHero',
-            flightShuttleBuilder: (
-              flightContext,
-              animation,
-              flightDirection,
-              fromHeroContext,
-              toHeroContext,
-            ) {
-              // ✨ FIX: Added the rotation animation to match the other lotuses.
-              final rotationAnimation = animation.drive(
-                Tween<double>(begin: 0.0, end: 1.0),
-              );
-              return RotationTransition(
-                turns: rotationAnimation,
-                // Use the widget from the destination Hero as the shuttle
-                // so it animates to the final size and position smoothly.
-                child: (toHeroContext.widget as Hero).child,
+                itemBuilder: (context, index) {
+                  final shloka = shlokas[index];
+                  final previousShloka = (index > 0) ? shlokas[index - 1] : null;
+
+                  final isChapterStart = previousShloka == null || shloka.chapterNo != previousShloka.chapterNo;
+                  final isChapterEnd = (index == shlokas.length - 1) || shloka.chapterNo != shlokas[index + 1].chapterNo;
+                  final speakerChanged = previousShloka != null && previousShloka.speaker != shloka.speaker;
+
+                  return Column(
+                    children: [
+                      if (isChapterStart)
+                        _ChapterStartHeader(
+                          chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                        ),
+                      if (speakerChanged || isChapterStart)
+                        _SpeakerHeader(
+                          speaker: shloka.speaker ?? "Uvacha",
+                        ),
+                      FullShlokaCard(
+                        shloka: shloka,
+                        currentlyPlayingId: _currentlyPlayingId,
+                        onPlayPause: () {
+                          setState(() {
+                            _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
+                          });
+                        },
+                        config: cardConfig.copyWith(showSpeaker: false, showColoredCard: false, showEmblem: false, showShlokIndex: true, spacingCompact: true, isLightTheme: true),
+                      ),
+                      if (isChapterEnd)
+                        _ChapterEndFooter(
+                          chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                          chapterName: StaticData.geetaAdhyay[(int.tryParse(shloka.chapterNo) ?? 1) - 1],
+                        ),
+                    ],
+                  );
+                },
               );
             },
-            child: Image.asset(
-              'assets/images/lotus_blue12.png',
-              height: 120,
-              fit: BoxFit.contain,
-            ),
           ),
-        ),
-        ValueListenableBuilder<String>(
-          valueListenable: _currentPositionLabelNotifier,
-          builder: (context, value, child) {
-            return Text(
-              value,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
-            );
-          },
-        ),
-      ],
+          // ✨ NEW: The scroll indicator now sits on top of the CustomScrollView
+          Consumer<ParayanProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return const SizedBox.shrink();
+              }
+              // The header is a separate stateful widget, so we can't directly access its
+              // animation controller here. However, we can listen to the same scroll
+              // positions to derive the animation state.
+              return ValueListenableBuilder<Iterable<ItemPosition>>(
+                  valueListenable: _itemPositionsListener.itemPositions,
+                  builder: (context, positions, _) {
+                bool isAtTop = positions.isEmpty ||
+                    (positions.first.index == 0 && positions.first.itemLeadingEdge >= 0);
+                final double topPadding = isAtTop
+                    ? 240.0 // Expanded header height
+                    : MediaQuery.of(context).padding.top + kToolbarHeight + 50; // Collapsed header height
+              return Positioned(
+                right: 0,
+                top: topPadding,
+                bottom: 0,
+                child: CustomScrollIndicator(
+                  itemPositionsListener: _itemPositionsListener, // ✨ FIX: Pass the listener
+                  itemCount: provider.shlokas.length,
+                  chapterMarkers: provider.chapterStartIndices,
+                  chapterLabels: provider.chapterStartIndices.map((i) {
+                    final chapterNo = provider.shlokas[i].chapterNo;
+                    return chapterNo;
+                  }).toList(),
+                  onLotusTap: (index) {
+                    final chapterIndex = provider.chapterStartIndices[index];
+                    _scrollToIndex(chapterIndex);
+                  },
+                ),
+              );
+              });
+            },
+          ),
+          // --- Animating Header Layer ---
+          AnimatingParayanHeader(
+            itemPositionsListener: _itemPositionsListener,
+            settingsProvider: settingsProvider,
+          ),
+        ],
+      ),
     );
   }
 
@@ -432,6 +269,248 @@ class _ParayanScreenState extends State<ParayanScreen> {
           borderRadius: BorderRadius.circular(20.0),
         ),
       ),
+    );
+  }
+}
+
+// ✨ NEW: A dedicated StatefulWidget for the animating header.
+class AnimatingParayanHeader extends StatefulWidget {
+  final ItemPositionsListener itemPositionsListener;
+  final SettingsProvider settingsProvider;
+
+  const AnimatingParayanHeader({
+    super.key,
+    required this.itemPositionsListener,
+    required this.settingsProvider,
+  });
+
+  @override
+  State<AnimatingParayanHeader> createState() => _AnimatingParayanHeaderState();
+}
+
+class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+  String _currentLabel = 'अध्याय 1, श्लोक 1';
+  int _lastTopIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    widget.itemPositionsListener.itemPositions.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    widget.itemPositionsListener.itemPositions.removeListener(_scrollListener);
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    final positions = widget.itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty || !mounted) return;
+
+    // --- Trigger Logic ---
+    // Find the item with the smallest index to determine scroll direction for the animation.
+    final absoluteTopItem = positions.reduce((min, p) => p.index < min.index ? p : min);
+
+    // If the top item is index 0 and it's at the top of the list, reverse the animation.
+    if (absoluteTopItem.index == 0 && absoluteTopItem.itemLeadingEdge >= 0) {
+      if (_animationController.status != AnimationStatus.dismissed) {        
+        _animationController.reverse();
+      }
+    } else {
+      // Otherwise, if the animation isn't already completed, play it forward.
+      if (_animationController.status != AnimationStatus.completed) {        
+        _animationController.forward();
+      }
+    }
+
+
+
+    // --- Shloka Count Logic ---
+    // ✨ FIX: Find the first item that is visible *below* the header.
+    final double headerHeight = lerpDouble(240.0, MediaQuery.of(context).padding.top + kToolbarHeight + 50, _animationController.value)!;    
+    final visibleBelowHeader = positions.where((p) => p.itemTrailingEdge > headerHeight);
+
+    // ✨ FIX: Check if any items are visible below the header before reducing.
+    final ItemPosition topVisibleItem = visibleBelowHeader.isNotEmpty
+        ? visibleBelowHeader.reduce((min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min)
+        : absoluteTopItem; // Fallback to the absolute top item if none are fully visible yet.
+
+    if (topVisibleItem.index != _lastTopIndex) {
+      final parayanProvider = Provider.of<ParayanProvider>(context, listen: false);
+      if (parayanProvider.shlokas.isNotEmpty && topVisibleItem.index < parayanProvider.shlokas.length) {
+        final shloka = parayanProvider.shlokas[topVisibleItem.index];
+        setState(() {
+          _currentLabel = 'अध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
+          _lastTopIndex = topVisibleItem.index;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // These values are now static within the build method.
+    const double maxHeaderHeight = 240;
+    final double minHeaderHeight = MediaQuery.of(context).padding.top + kToolbarHeight + 50;
+
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        // The animation progress 't' is now driven by the AnimationController.
+        final t = _animationController.value;
+
+        // All the lerp calculations remain the same.
+        const double maxLotusSize = 120.0;
+        const double minLotusSize = 40.0;
+        final double currentLotusSize = lerpDouble(maxLotusSize, minLotusSize, t)!;
+        final double maxLotusTop = MediaQuery.of(context).padding.top + 20;
+        final double minLotusTop = MediaQuery.of(context).padding.top + (kToolbarHeight - minLotusSize) / 2;
+        final double currentLotusTop = lerpDouble(maxLotusTop, minLotusTop, t)!;
+        final double maxLotusLeft = (MediaQuery.of(context).size.width - maxLotusSize) / 2;
+        final double minLotusLeft = 16.0;
+        final double currentLotusLeft = lerpDouble(maxLotusLeft, minLotusLeft, t)!;
+
+        final double maxTextTop = currentLotusTop + maxLotusSize + 8;
+        final double minTextTop = minLotusTop;
+        final double currentTextTop = lerpDouble(maxTextTop, minTextTop, t)!;
+        final double maxTextLeft = 0;
+        final double minTextLeft = minLotusLeft + minLotusSize + 16;
+        final double currentTextLeft = lerpDouble(maxTextLeft, minTextLeft, t)!;
+        final double textOpacity = lerpDouble(1.0, 0.0, t.clamp(0.0, 0.5) * 2)!;
+        final double collapsedTextOpacity = t;
+
+        final double expandedControlsOpacity = lerpDouble(1.0, 0.0, t.clamp(0.0, 0.7) * 1.4)!;
+
+        return Container(
+          height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
+          color: Colors.indigo.shade50.withOpacity(t * 0.95),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Expanded Controls (unchanged)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Opacity(
+                  opacity: expandedControlsOpacity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _FontSizeControl(
+                        currentSize: widget.settingsProvider.fontSize,
+                        onDecrement: () {
+                          if (widget.settingsProvider.fontSize > 16.0) {
+                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize - 2.0);
+                          }
+                        },
+                        onIncrement: () {
+                          if (widget.settingsProvider.fontSize < 32.0) {
+                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize + 2.0);
+                          }
+                        },
+                        color: Colors.black87,
+                      ),
+                      // This button needs to be part of the parent state.
+                      // For now, we'll just show a placeholder.
+                      (context.findAncestorStateOfType<_ParayanScreenState>()!)._buildDisplayModeButton(),
+
+                    ],
+                  ),
+                ),
+              ),
+
+              // Collapsed Controls (unchanged)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight,
+                left: 0,
+                right: 0,
+                height: 50,
+                child: Opacity(
+                  opacity: collapsedTextOpacity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _FontSizeControl(
+                        currentSize: widget.settingsProvider.fontSize,
+                        onDecrement: () {
+                          if (widget.settingsProvider.fontSize > 16.0) {
+                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize - 2.0);
+                          }
+                        },
+                        onIncrement: () {
+                          if (widget.settingsProvider.fontSize < 32.0) {
+                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize + 2.0);
+                          }
+                        },
+                        color: Colors.black54,
+                      ),
+                      (context.findAncestorStateOfType<_ParayanScreenState>()!)._buildDisplayModeButton(),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Animating Lotus (unchanged)
+              Positioned(
+                top: currentLotusTop,
+                left: currentLotusLeft,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Hero(
+                    tag: 'blueLotusHero',
+                    flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                      final rotationAnimation = animation.drive(Tween<double>(begin: 0.0, end: 1.0));
+                      return RotationTransition(turns: rotationAnimation, child: (toHeroContext.widget as Hero).child);
+                    },
+                    child: Image.asset('assets/images/lotus_blue12.png', height: currentLotusSize, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+
+              // Animating Text Label (now uses state variable)
+              Positioned(
+                top: currentTextTop,
+                left: currentTextLeft,
+                right: 0,
+                height: kToolbarHeight,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Opacity(
+                      opacity: textOpacity,
+                      child: Text(
+                        _currentLabel,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Opacity(
+                      opacity: collapsedTextOpacity,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _currentLabel,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.black87),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
