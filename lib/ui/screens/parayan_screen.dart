@@ -23,6 +23,9 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
 
+// --- NEW: Enum to manage the content display modes ---
+enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
+
 class ParayanScreen extends StatefulWidget {
   const ParayanScreen({super.key});
 
@@ -37,7 +40,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
-  bool _showAnvay = true;
+  // --- NEW: State for display mode, replacing the old boolean ---
+  ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
+
   final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
     'अध्याय 1, श्लोक 1',
   );
@@ -155,19 +160,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           color: Colors.black87,
                         ),
                         // Anvay Switch
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Anvay'),
-                            Switch(
-                              value: _showAnvay,
-                              onChanged: (val) {
-                                setState(() => _showAnvay = val);
-                              },
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          ],
-                        ),
+                        _buildDisplayModeButton(),
                       ],
                     ),
                   ],
@@ -181,6 +174,21 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       if (provider.isLoading) {
                         return const Center(child: CircularProgressIndicator());
                       }
+
+                      // --- NEW: Determine card configuration based on display mode ---
+                      final FullShlokaCardConfig cardConfig;
+                      switch (_displayMode) {
+                        case ParayanDisplayMode.shlokOnly:
+                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
+                          break;
+                        case ParayanDisplayMode.shlokAndAnvay:
+                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
+                          break;
+                        case ParayanDisplayMode.all:
+                          cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
+                          break;
+                      }
+
 
                       final shlokas = provider.shlokas;
 
@@ -233,18 +241,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                                         _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
                                       });
                                     },
-                                    config: FullShlokaCardConfig(
-                                      baseFontSize: settingsProvider.fontSize,
-                                      showSpeaker: false,
-                                      showAnvay: _showAnvay,
-                                      showBhavarth: false,
-                                      showSeparator: _showAnvay,
-                                      showColoredCard: false,
-                                      showEmblem: false,
-                                      showShlokIndex: true,
-                                      spacingCompact: true,
-                                      isLightTheme: true,
-                                    ),
+                                    config: cardConfig.copyWith(showSpeaker: false, showColoredCard: false, showEmblem: false, showShlokIndex: true, spacingCompact: true, isLightTheme: true),
                                   ),
 
                                   if (isChapterEnd)
@@ -356,6 +353,50 @@ class _ParayanScreenState extends State<ParayanScreen> {
           },
         ),
       ],
+    );
+  }
+
+  // --- NEW: Cycle button for display mode ---
+  void _cycleDisplayMode() {
+    setState(() {
+      final nextIndex = (_displayMode.index + 1) % ParayanDisplayMode.values.length;
+      _displayMode = ParayanDisplayMode.values[nextIndex];
+    });
+  }
+
+  Widget _buildDisplayModeButton() {
+    IconData icon;
+    String label;
+
+    switch (_displayMode) {
+      case ParayanDisplayMode.shlokOnly:
+        icon = Icons.article_outlined;
+        label = 'Shlok Only';
+        break;
+      case ParayanDisplayMode.shlokAndAnvay:
+        icon = Icons.segment;
+        label = 'Shlok & Anvay';
+        break;
+      case ParayanDisplayMode.all:
+        icon = Icons.view_headline;
+        label = 'Show All';
+        break;
+    }
+
+    return OutlinedButton.icon(
+      onPressed: _cycleDisplayMode,
+      icon: Icon(icon, color: Colors.black54, size: 20),
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: BorderSide(color: Colors.black.withOpacity(0.2)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+      ),
     );
   }
 }
