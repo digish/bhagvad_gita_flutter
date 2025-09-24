@@ -23,6 +23,8 @@ import '../widgets/full_shloka_card.dart';
 import '../../data/static_data.dart';
 import '../../data/database_helper_interface.dart';
 
+enum PlaybackMode { single, continuous, repeatOne }
+
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
   const ShlokaListScreen({super.key, required this.searchQuery});
@@ -34,8 +36,10 @@ class ShlokaListScreen extends StatefulWidget {
 class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
-  bool _isContinuousPlayEnabled = false;
   bool _useLargeFonts = false;
+
+  // ✨ FIX: State for the playback mode, replacing the old boolean.
+  PlaybackMode _playbackMode = PlaybackMode.single;
 
   String? _currentShlokId;
   bool _hasPlaybackStarted = false;
@@ -79,26 +83,41 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       return;
     }
     if (currentPlaybackState == PlaybackState.stopped) {
-      debugPrint("[CONTINUOUS_PLAY_SM] Stopped event received. Non-stop: $_isContinuousPlayEnabled, Playback Started: $_hasPlaybackStarted");
-      // Condition: if nonstop_play_flag is true and playback_state was set to true
-      if (_isContinuousPlayEnabled && _hasPlaybackStarted) {
-        final lastPlayedIndex = _shlokaProvider.shlokas.indexWhere((s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
-        debugPrint("[CONTINUOUS_PLAY_SM] Last played shloka index: $lastPlayedIndex");
+      debugPrint("[PLAYBACK_SM] Stopped event received. Mode: $_playbackMode, Playback Started: $_hasPlaybackStarted");
 
-        if (lastPlayedIndex != -1 && lastPlayedIndex < _shlokaProvider.shlokas.length - 1) {
-          final nextShloka = _shlokaProvider.shlokas[lastPlayedIndex + 1];
-          final nextShlokaId = '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
-          debugPrint("[CONTINUOUS_PLAY_SM] Triggering next shloka: $nextShlokaId");
+      if (!_hasPlaybackStarted) return; // Don't do anything if playback wasn't properly started.
 
-          audioProvider.playOrPauseShloka(nextShloka);
-          _currentShlokId = nextShlokaId;
-
-        } else {
-          debugPrint("[CONTINUOUS_PLAY_SM] End of chapter or shloka not found. Stopping.");
-        }
+      final lastPlayedIndex = _shlokaProvider.shlokas.indexWhere((s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId);
+      if (lastPlayedIndex == -1) {
+        debugPrint("[PLAYBACK_SM] Could not find last played shloka. Stopping.");
         _hasPlaybackStarted = false;
-        debugPrint("[CONTINUOUS_PLAY_SM] Playback flag reset to false.");
+        return;
       }
+
+      switch (_playbackMode) {
+        case PlaybackMode.single:
+          // Do nothing, just let it stop.
+          debugPrint("[PLAYBACK_SM] Mode is 'single'. Playback will stop.");
+          break;
+        case PlaybackMode.continuous:
+          debugPrint("[PLAYBACK_SM] Mode is 'continuous'. Checking for next shloka.");
+          if (lastPlayedIndex < _shlokaProvider.shlokas.length - 1) {
+            final nextShloka = _shlokaProvider.shlokas[lastPlayedIndex + 1];
+            final nextShlokaId = '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
+            debugPrint("[PLAYBACK_SM] Triggering next shloka: $nextShlokaId");
+            audioProvider.playOrPauseShloka(nextShloka);
+            _currentShlokId = nextShlokaId;
+          } else {
+            debugPrint("[PLAYBACK_SM] End of chapter. Stopping.");
+          }
+          break;
+        case PlaybackMode.repeatOne:
+          debugPrint("[PLAYBACK_SM] Mode is 'repeatOne'. Repeating shloka $_currentShlokId.");
+          final currentShloka = _shlokaProvider.shlokas[lastPlayedIndex];
+          audioProvider.playOrPauseShloka(currentShloka);
+          break;
+      }
+      _hasPlaybackStarted = false; // Reset the flag after handling the event.
     }
   }
 
@@ -137,6 +156,66 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     });
   }
 
+  // --- NEW: Helper methods for the playback mode cycle button ---
+
+  void _cyclePlaybackMode() {
+    setState(() {
+      final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
+      _playbackMode = PlaybackMode.values[nextIndex];
+    });
+  }
+
+  Widget _buildPlaybackModeButton({required bool isHeader}) {
+    IconData icon;
+    String tooltip;
+
+    switch (_playbackMode) {
+      case PlaybackMode.single:
+        icon = Icons.play_arrow;
+        tooltip = 'Single Play';
+        break;
+      case PlaybackMode.continuous:
+        icon = Icons.playlist_play;
+        tooltip = 'Continuous Play';
+        break;
+      case PlaybackMode.repeatOne:
+        icon = Icons.repeat_one;
+        tooltip = 'Repeat Shloka';
+        break;
+    }
+
+    // ✨ FIX: Unify button styles. The search result screen now gets a styled button.
+    if (isHeader) {
+      // This is for the expanded app bar in chapter view, which is just an icon.
+      return Tooltip(
+        message: tooltip,
+        child: IconButton(
+          icon: Icon(icon),
+          color: Colors.white70,
+          onPressed: _cyclePlaybackMode,
+        ),
+      );
+    } else {
+      // This is for the search result app bar.
+      return OutlinedButton.icon(
+        onPressed: _cyclePlaybackMode,
+        icon: Icon(icon, color: Colors.white70, size: 20),
+        label: Text(
+          tooltip, // Use the full tooltip as the label
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // A slightly more opaque border for better contrast
+          side: BorderSide(color: Colors.white.withOpacity(0.7)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+        ),
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
@@ -161,7 +240,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),                  
-                  backgroundColor: Colors.black.withOpacity(0.4),
+                  // ✨ FIX: New background color to complement the pink gradient.
+                  backgroundColor: Colors.pink.shade900,
                   elevation: 0,
                   centerTitle: true,
                   bottom: PreferredSize(
@@ -173,8 +253,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         children: [
                            _AppBarSwitch(
                               label: 'Large Font', value: _useLargeFonts, onChanged: (value) => setState(() => _useLargeFonts = value)),
-                           _AppBarSwitch(
-                              label: 'Non-Stop Play', value: _isContinuousPlayEnabled, onChanged: (value) => setState(() => _isContinuousPlayEnabled = value)),
+                           _buildPlaybackModeButton(isHeader: false),
                         ],
                       ),
                     ),
@@ -184,7 +263,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           extendBodyBehindAppBar: true,
           body: Stack(
             children: [
-              SimpleGradientBackground(startColor: Colors.amber.shade100),
+              SimpleGradientBackground(
+                startColor: chapterNumber == null
+                    ? Colors.pink.shade100 // Pink for search results to match lotus
+                    : Colors.amber.shade100, // Amber for chapter view
+              ),
               Consumer2<ShlokaListProvider, AudioProvider>(
                 builder: (context, provider, audioProvider, child) {
                   if (provider.isLoading) {
@@ -269,8 +352,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           delegate: _AnimatingHeaderDelegate(
                             chapterNumber: chapterNumber,
                             title: StaticData.getQueryTitle(widget.searchQuery),
-                            isContinuousPlayEnabled: _isContinuousPlayEnabled,
-                            onSwitchChanged: (value) => setState(() => _isContinuousPlayEnabled = value),
+                            playbackMode: _playbackMode,
+                            onPlaybackModePressed: _cyclePlaybackMode,
                             useLargeFonts: _useLargeFonts,
                             onLargeFontSwitchChanged: (value) => setState(() => _useLargeFonts = value),
                             minExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 50, // Increased for the second row
@@ -346,8 +429,8 @@ class _AppBarSwitch extends StatelessWidget {
         Text(label,
             style: Theme.of(context)
                 .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.white70)),
+                .bodySmall // Use a brighter white for better contrast on the new background
+                ?.copyWith(color: Colors.white)),
         Switch(
           value: value,
           onChanged: onChanged,
@@ -397,8 +480,8 @@ class _ChapterEmblemHeader extends StatelessWidget {
 class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int chapterNumber;
   final String title;
-  final bool isContinuousPlayEnabled;
-  final ValueChanged<bool> onSwitchChanged;
+  final PlaybackMode playbackMode;
+  final VoidCallback onPlaybackModePressed;
   final bool useLargeFonts;
   final ValueChanged<bool> onLargeFontSwitchChanged;
   @override
@@ -409,8 +492,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   _AnimatingHeaderDelegate({
     required this.chapterNumber,
     required this.title,
-    required this.isContinuousPlayEnabled,
-    required this.onSwitchChanged,
+    required this.playbackMode,
+    required this.onPlaybackModePressed,
     required this.useLargeFonts,
     required this.onLargeFontSwitchChanged,
     required this.minExtent,
@@ -459,7 +542,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double collapsedHeaderOpacity = t;
 
     return Container(
-      color: Colors.black.withOpacity(0.01),
+      // ✨ FIX: Animate the background color to become less transparent as it collapses.
+      color: Colors.white.withOpacity(lerpDouble(0.0, 0.85, t)!),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -531,7 +615,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _HeaderSwitch(label: 'Large Font', value: useLargeFonts, onChanged: onLargeFontSwitchChanged),
-                  _HeaderSwitch(label: 'Non-Stop Play', value: isContinuousPlayEnabled, onChanged: onSwitchChanged),
+                  _buildPlaybackModeButtonForHeader(),
                 ],
               ),
             ),
@@ -571,14 +655,50 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     );
   }
 
+  Widget _buildPlaybackModeButtonForHeader() {
+    IconData icon;
+    String label;
+
+    switch (playbackMode) {
+      case PlaybackMode.single:
+        icon = Icons.play_arrow;
+        label = 'Single Play';
+        break;
+      case PlaybackMode.continuous:
+        icon = Icons.playlist_play;
+        label = 'Continuous';
+        break;
+      case PlaybackMode.repeatOne:
+        icon = Icons.repeat_one;
+        label = 'Repeat';
+        break;
+    }
+
+    return OutlinedButton.icon(
+      onPressed: onPlaybackModePressed,
+      icon: Icon(icon, color: Colors.black54, size: 20),
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: BorderSide(color: Colors.black.withOpacity(0.2)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+      ),
+    );
+  }
+
   @override
   bool shouldRebuild(_AnimatingHeaderDelegate oldDelegate) {
     return minExtent != oldDelegate.minExtent ||
         maxExtent != oldDelegate.maxExtent ||
         chapterNumber != oldDelegate.chapterNumber ||
         title != oldDelegate.title ||
-        isContinuousPlayEnabled != oldDelegate.isContinuousPlayEnabled ||
-        onSwitchChanged != oldDelegate.onSwitchChanged ||
+        playbackMode != oldDelegate.playbackMode ||
+        onPlaybackModePressed != oldDelegate.onPlaybackModePressed ||
         useLargeFonts != oldDelegate.useLargeFonts ||
         onLargeFontSwitchChanged != oldDelegate.onLargeFontSwitchChanged;
   }
