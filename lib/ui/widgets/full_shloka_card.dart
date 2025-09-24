@@ -389,12 +389,14 @@ ${shloka.bhavarth}''';
     required AssetPackStatus downloadStatus,
     required AudioProvider audioProvider,
   }) {
-    if (downloadStatus == AssetPackStatus.notDownloaded) {
+    // --- FIX: Show download icon for both 'notDownloaded' and 'unknown' states ---
+    if (downloadStatus == AssetPackStatus.notDownloaded || downloadStatus == AssetPackStatus.unknown) {
       return _ActionButton(
         icon: Icons.download_for_offline_outlined,
         onPressed: () {
           debugPrint("[UI] Download button pressed for shloka ${shloka.chapterNo}.${shloka.shlokNo}");
           audioProvider
+              // We can safely parse here as chapterNo is always a valid integer string.
               .initiateChapterAudioDownload(int.parse(shloka.chapterNo));
         },
       );

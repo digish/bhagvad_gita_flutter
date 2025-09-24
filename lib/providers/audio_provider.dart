@@ -186,14 +186,28 @@ class AudioProvider extends ChangeNotifier {
   Future<void> _initializeAssetDeliveryListeners() async {
     debugPrint("[ASSET_DELIVERY] Initializing asset delivery listeners...");
     // On startup, we don't know the status of on-demand packs.
-    // We'll assume they are not downloaded and let getShlokaAssetPath figure it out.
     final packNames = List.generate(18, (i) => _getPackName(i + 1));
     for (final packName in packNames) {
-      // Initialize all to notDownloaded. The status will be updated by the listener
-      // if a download is in progress or when one is initiated.
-      _packStatus[packName] = AssetPackStatus.notDownloaded;
+      // Initialize all to unknown first.
+      _packStatus[packName] = AssetPackStatus.unknown;
     }
-    notifyListeners();
+
+    // Now, query the actual status of all packs.
+    // We must check each one individually.
+    for (var i = 0; i < 18; i++) {
+      final chapter = i + 1;
+      final packName = _getPackName(chapter);
+      try {
+        // Try to get the path. If it succeeds, the pack is downloaded.
+        final path = await _getShlokaAssetPathForChapter(chapter);
+        _packStatus[packName] = (path != null) ? AssetPackStatus.downloaded : AssetPackStatus.notDownloaded;
+      } catch (e) {
+        // This is expected if the pack is not downloaded.
+        _packStatus[packName] = AssetPackStatus.notDownloaded;
+      }
+    }
+    debugPrint("[ASSET_DELIVERY] Initial pack statuses loaded: $_packStatus");
+
     // This listener will inform us of the status of any active or future downloads.
     debugPrint("[ASSET_DELIVERY] Registering for asset pack status updates.");
     AssetDelivery.getAssetPackStatus(_updateStatusFromMap);
@@ -335,10 +349,9 @@ class AudioProvider extends ChangeNotifier {
       }
       return assetPackPath;
     } catch (e, s) {
-      debugPrint("[ASSET_DELIVERY] FAILED to get asset pack path for $packName. Error: $e");
-      debugPrint("[ASSET_DELIVERY] Stack trace: $s");
-      // Re-throw the exception to be caught by the caller (initiateChapterAudioDownload)
-      rethrow;
+      // This is an expected failure if the pack is not on the device.
+      debugPrint("[ASSET_DELIVERY] Could not get asset pack path for $packName (likely not downloaded). Error: $e");
+      return null;
     }
   }
 
