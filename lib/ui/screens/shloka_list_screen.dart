@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/shloka_result.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
@@ -36,7 +37,6 @@ class ShlokaListScreen extends StatefulWidget {
 class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
-  bool _useLargeFonts = false;
 
   // ✨ FIX: State for the playback mode, replacing the old boolean.
   PlaybackMode _playbackMode = PlaybackMode.single;
@@ -215,7 +215,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
@@ -225,6 +224,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
     // This handles cases like a query of "1" or "1,21".
     final chapterNumber = int.tryParse(widget.searchQuery.split(',').first.trim());
+
+    // --- NEW: Constants for font size control ---
+    const double minFontSize = 16.0;
+    const double maxFontSize = 32.0;
+    const double fontStep = 2.0;
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     // Use .value to provide the existing instance created in initState.
     return ChangeNotifierProvider.value(
@@ -251,8 +256,20 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                           _AppBarSwitch(
-                              label: 'Large Font', value: _useLargeFonts, onChanged: (value) => setState(() => _useLargeFonts = value)),
+                           _FontSizeControl(
+                             currentSize: settingsProvider.fontSize,
+                             onDecrement: () {
+                               if (settingsProvider.fontSize > minFontSize) {
+                                 settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
+                               }
+                             },
+                             onIncrement: () {
+                               if (settingsProvider.fontSize < maxFontSize) {
+                                 settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
+                               }
+                             },
+                             color: Colors.white,
+                           ),
                            _buildPlaybackModeButton(isHeader: false),
                         ],
                       ),
@@ -354,8 +371,17 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                             title: StaticData.getQueryTitle(widget.searchQuery),
                             playbackMode: _playbackMode,
                             onPlaybackModePressed: _cyclePlaybackMode,
-                            useLargeFonts: _useLargeFonts,
-                            onLargeFontSwitchChanged: (value) => setState(() => _useLargeFonts = value),
+                            currentFontSize: settingsProvider.fontSize,
+                            onFontSizeIncrement: () {
+                              if (settingsProvider.fontSize < maxFontSize) {
+                                settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
+                              }
+                            },
+                            onFontSizeDecrement: () {
+                              if (settingsProvider.fontSize > minFontSize) {
+                                settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
+                              }
+                            },
                             minExtent: MediaQuery.of(context).padding.top + kToolbarHeight + 50, // Increased for the second row
                             // Further increase maxExtent to ensure title and switches are visible initially
                             maxExtent: MediaQuery.of(context).padding.top + 350,
@@ -372,7 +398,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               key: _itemKeys[index],
                               child: FullShlokaCard(
                                 shloka: shlokas[index],
-                                config: _cardConfig.copyWith(useLargeFonts: _useLargeFonts),
+                                config: _cardConfig.copyWith(baseFontSize: settingsProvider.fontSize),
                                 currentlyPlayingId: _currentShlokId,
                                 onPlayPause: () {
                                   // When the user manually plays, update our local tracker.
@@ -405,7 +431,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     showEmblem: true,
     showShlokIndex: true,
     spacingCompact: false,
-    isLightTheme: true,
+    isLightTheme: true, // This will be overridden by the logic below
   );
 }
 
@@ -482,8 +508,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String title;
   final PlaybackMode playbackMode;
   final VoidCallback onPlaybackModePressed;
-  final bool useLargeFonts;
-  final ValueChanged<bool> onLargeFontSwitchChanged;
+  final double currentFontSize;
+  final VoidCallback onFontSizeIncrement;
+  final VoidCallback onFontSizeDecrement;
   @override
   final double minExtent;
   @override
@@ -494,8 +521,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.title,
     required this.playbackMode,
     required this.onPlaybackModePressed,
-    required this.useLargeFonts,
-    required this.onLargeFontSwitchChanged,
+    required this.currentFontSize,
+    required this.onFontSizeIncrement,
+    required this.onFontSizeDecrement,
     required this.minExtent,
     required this.maxExtent,
   });
@@ -614,7 +642,12 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _HeaderSwitch(label: 'Large Font', value: useLargeFonts, onChanged: onLargeFontSwitchChanged),
+                  _FontSizeControl(                    
+                    currentSize: currentFontSize,
+                    onDecrement: onFontSizeDecrement,
+                    onIncrement: onFontSizeIncrement,
+                    color: Colors.black54,
+                  ),
                   _buildPlaybackModeButtonForHeader(),
                 ],
               ),
@@ -699,8 +732,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         title != oldDelegate.title ||
         playbackMode != oldDelegate.playbackMode ||
         onPlaybackModePressed != oldDelegate.onPlaybackModePressed ||
-        useLargeFonts != oldDelegate.useLargeFonts ||
-        onLargeFontSwitchChanged != oldDelegate.onLargeFontSwitchChanged;
+        currentFontSize != oldDelegate.currentFontSize ||
+        onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
+        onFontSizeDecrement != oldDelegate.onFontSizeDecrement;
   }
 }
 
@@ -728,6 +762,51 @@ class _HeaderSwitch extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+// --- NEW: Font size control widget ---
+class _FontSizeControl extends StatelessWidget {
+  final double currentSize;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+  final Color color;
+
+  const _FontSizeControl({
+    required this.currentSize,
+    required this.onDecrement,
+    required this.onIncrement,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(Icons.remove, color: color),
+          onPressed: onDecrement,
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            '${currentSize.toInt()}',
+            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.add, color: color),
+          onPressed: onIncrement,
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
         ),
       ],
     );

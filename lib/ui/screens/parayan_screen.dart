@@ -14,6 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/audio_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/parayan_provider.dart';
@@ -99,6 +100,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // --- NEW: Constants for font size control ---
+    const double minFontSize = 16.0;
+    const double maxFontSize = 32.0;
+    const double fontStep = 2.0;
+    // Use a Consumer to rebuild when font size changes.
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return Scaffold(
       /*appBar: AppBar(
           title: const Text('Full Parayan'),
@@ -122,66 +130,43 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     right: 16,
                     bottom: 12,
                   ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    // 1. --- Position Label ---
-                    ValueListenableBuilder<String>(
-                      valueListenable: _currentPositionLabelNotifier,
-                      builder: (context, value, child) {
-                        return Text(
-                          value,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        );
-                      },
-                    ),
-
-                    // 2. --- Lotus Hero Widget ---
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Hero(
-                        tag: 'blueLotusHero',
-                        flightShuttleBuilder: (
-                          flightContext,
-                          animation,
-                          flightDirection,
-                          fromHeroContext,
-                          toHeroContext,
-                        ) {
-                          // ✨ FIX: Added the rotation animation to match the other lotuses.
-                          final rotationAnimation = animation.drive(
-                            Tween<double>(begin: 0.0, end: 1.0),
-                          );
-                          return RotationTransition(
-                            turns: rotationAnimation,
-                            // Use the widget from the destination Hero as the shuttle
-                            // so it animates to the final size and position smoothly.
-                            child: (toHeroContext.widget as Hero).child,
-                          );
-                        },
-                        child: Image.asset(
-                          'assets/images/lotus_blue12.png',
-                          height: 100, // Reduced size to fit in a row
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-
-                    // 3. --- Anvay Switch (Grouped) ---
+                    // --- Top Row: Lotus and Label ---
+                    _buildCenterWidget(context),
+                    const SizedBox(height: 16), // Spacing between rows
+                    // --- Bottom Row: Controls ---
                     Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Anvay'),
-                        Switch(
-                          value: _showAnvay,
-                          onChanged: (val) {
-                            setState(() => _showAnvay = val);
+                        // Font Size Control
+                        _FontSizeControl(
+                          currentSize: settingsProvider.fontSize,
+                          onDecrement: () {
+                            if (settingsProvider.fontSize > minFontSize) {
+                              settingsProvider.setFontSize(settingsProvider.fontSize - fontStep);
+                            }
                           },
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onIncrement: () {
+                            if (settingsProvider.fontSize < maxFontSize) {
+                              settingsProvider.setFontSize(settingsProvider.fontSize + fontStep);
+                            }
+                          },
+                          color: Colors.black87,
+                        ),
+                        // Anvay Switch
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Anvay'),
+                            Switch(
+                              value: _showAnvay,
+                              onChanged: (val) {
+                                setState(() => _showAnvay = val);
+                              },
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -249,6 +234,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                                       });
                                     },
                                     config: FullShlokaCardConfig(
+                                      baseFontSize: settingsProvider.fontSize,
                                       showSpeaker: false,
                                       showAnvay: _showAnvay,
                                       showBhavarth: false,
@@ -326,6 +312,52 @@ class _ParayanScreenState extends State<ParayanScreen> {
       ),
     );
   }
+
+  Widget _buildCenterWidget(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Hero(
+            tag: 'blueLotusHero',
+            flightShuttleBuilder: (
+              flightContext,
+              animation,
+              flightDirection,
+              fromHeroContext,
+              toHeroContext,
+            ) {
+              // ✨ FIX: Added the rotation animation to match the other lotuses.
+              final rotationAnimation = animation.drive(
+                Tween<double>(begin: 0.0, end: 1.0),
+              );
+              return RotationTransition(
+                turns: rotationAnimation,
+                // Use the widget from the destination Hero as the shuttle
+                // so it animates to the final size and position smoothly.
+                child: (toHeroContext.widget as Hero).child,
+              );
+            },
+            child: Image.asset(
+              'assets/images/lotus_blue12.png',
+              height: 60, // Reduced size to fit in a row
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        ValueListenableBuilder<String>(
+          valueListenable: _currentPositionLabelNotifier,
+          builder: (context, value, child) {
+            return Text(
+              value,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+            );
+          },
+        ),
+      ],
+    );
+  }
 }
 
 // --- Reusable private widgets for the list items ---
@@ -353,6 +385,51 @@ class _ChapterStartHeader extends StatelessWidget {
           color: const Color.fromARGB(255, 4, 123, 192),
         ),
       ),
+    );
+  }
+}
+
+// --- NEW: Font size control widget (copied from shloka_list_screen) ---
+class _FontSizeControl extends StatelessWidget {
+  final double currentSize;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+  final Color color;
+
+  const _FontSizeControl({
+    required this.currentSize,
+    required this.onDecrement,
+    required this.onIncrement,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(Icons.remove, color: color),
+          onPressed: onDecrement,
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            '${currentSize.toInt()}',
+            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.add, color: color),
+          onPressed: onIncrement,
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+      ],
     );
   }
 }

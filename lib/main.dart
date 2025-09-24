@@ -20,6 +20,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'navigation/app_router.dart';
 import 'providers/audio_provider.dart';
 import 'data/database_helper.dart';
+import 'providers/settings_provider.dart';
 import 'data/database_helper_interface.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -43,6 +44,7 @@ Future<void> main() async { // <-- Make main async
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AudioProvider()),
         Provider<DatabaseHelperInterface>.value(value: dbHelper),
       ],
@@ -65,4 +67,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

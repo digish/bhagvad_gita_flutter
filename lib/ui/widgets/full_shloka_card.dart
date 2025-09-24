@@ -18,6 +18,9 @@ import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../widgets/sneaky_emblem.dart';
 
+// --- NEW: Configurable variable to control font sizing logic ---
+const bool _enableDynamicFontSizing = false;
+
 class FullShlokaCard extends StatelessWidget {
   final ShlokaResult shloka;
   final FullShlokaCardConfig config;
@@ -35,48 +38,59 @@ class FullShlokaCard extends StatelessWidget {
   // This is your existing text formatting logic, it remains unchanged.
   List<TextSpan> formatItalicText(
       String rawText, TextStyle baseStyle, double maxWidth) {
-    final spans = <TextSpan>[];
     String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
     final isFourLine = processed.contains('<C>');
     final couplets = processed.split('*');
+    
+    // --- ✨ NEW LOGIC: Step 1 - Find the single smallest font size needed for the whole block ---
+    double uniformFontSize = baseStyle.fontSize ?? 20;
+    final allLines = <String>[];
+
     for (var couplet in couplets) {
       final parts = couplet.split('<C>');
       for (int i = 0; i < parts.length; i++) {
         String line = parts[i].trim();
-        if (isFourLine && i % 2 == 1) {
-          line = '       $line';
-        }
-        final isLastCouplet = couplet == couplets.last;
-        final isLastLine = i == parts.length - 1 && isLastCouplet;
-        line = line.replaceAll('॥', '॥');
-        final lineText = isLastLine ? line : '$line\n';
-        double fontSize = baseStyle.fontSize ?? 20;
+        allLines.add(line);
+      }
+    }
+
+    // --- MODIFIED: Use the configurable variable to control the logic ---
+    if (_enableDynamicFontSizing) {
+      for (final line in allLines) {
+        if (uniformFontSize <= 12) break; // Don't shrink further
+
         TextPainter painter;
         do {
           painter = TextPainter(
-            text: TextSpan(
-                text: lineText, style: baseStyle.copyWith(fontSize: fontSize)),
+            text: TextSpan(text: line, style: baseStyle.copyWith(fontSize: uniformFontSize)),
             maxLines: 1,
             textDirection: TextDirection.ltr,
-            textAlign: TextAlign.left,
-            ellipsis: null,
-            textWidthBasis: TextWidthBasis.parent,
           )..layout(maxWidth: double.infinity);
-          if (painter.width > maxWidth) fontSize -= 1;
-        } while (painter.width > maxWidth && fontSize > 12);
-        if (painter.width > maxWidth && fontSize <= 12) {
-          spans.add(
-              TextSpan(text: lineText, style: baseStyle.copyWith(fontSize: 14)));
-          continue;
-        }
-        final adjustedStyle = baseStyle.copyWith(
-          fontSize: fontSize,
-          height: 1.6,
-          fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
-        );
-        spans.add(TextSpan(text: '$line\n', style: adjustedStyle));
+
+          if (painter.width > maxWidth) {
+            uniformFontSize -= 1;
+          } else {
+            break; // This line fits, move to the next line
+          }
+        } while (painter.width > maxWidth && uniformFontSize > 12);
       }
     }
+
+    // --- ✨ NEW LOGIC: Step 2 - Build the TextSpans using the uniform font size ---
+    final spans = <TextSpan>[];
+    final adjustedStyle = baseStyle.copyWith(
+      fontSize: uniformFontSize,
+      height: 1.6,
+      fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
+    );
+
+    for (int i = 0; i < allLines.length; i++) {
+      final line = allLines[i];
+      final isLastLine = i == allLines.length - 1;
+      final lineText = isLastLine ? line : '$line\n';
+      spans.add(TextSpan(text: lineText, style: adjustedStyle));
+    }
+
     return spans;
   }
 
@@ -229,8 +243,8 @@ class FullShlokaCard extends StatelessWidget {
                               children: formatItalicText(
                                 shloka.shlok,
                                 TextStyle(
-                                  fontSize: config.useLargeFonts ? 24 : 20,
-                                  fontStyle: FontStyle.italic,
+                                fontSize: config.baseFontSize,
+                                fontStyle: FontStyle.normal,
                                   color: primaryTextColor,
                                   fontFamily: 'NotoSerif',
                                 ),
@@ -285,9 +299,9 @@ class FullShlokaCard extends StatelessWidget {
                         text: TextSpan(
                             children: formatItalicText(
                                 shloka.anvay,
-                                TextStyle(
-                                  fontSize: config.useLargeFonts ? 24 : 20,
-                                  fontStyle: FontStyle.normal,
+                                TextStyle( // The base style for Anvay
+                                  fontSize: config.baseFontSize, // Use the new property
+                                  fontStyle: FontStyle.italic, // Italic for Anvay
                                   color: secondaryTextColor,
                                   fontFamily: 'NotoSerif',
                                   height: 1.6,
@@ -308,7 +322,7 @@ class FullShlokaCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(shloka.bhavarth,
                       style: TextStyle(
-                        fontSize: config.useLargeFonts ? 20 : 16, // Similar to Anvay, but balanced for paragraphs
+                        fontSize: config.baseFontSize - 4, // Keep bhavarth slightly smaller
                         fontStyle: FontStyle.normal,
                         color: secondaryTextColor,
                         fontFamily: 'NotoSerif', // Consistent font family
@@ -465,7 +479,7 @@ class FullShlokaCardConfig {
   final bool showShlokIndex;
   final bool spacingCompact;
   final bool isLightTheme;
-  final bool useLargeFonts;
+  final double baseFontSize;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -477,7 +491,7 @@ class FullShlokaCardConfig {
     this.showShlokIndex = true,
     this.spacingCompact = false,
     this.isLightTheme = false,
-    this.useLargeFonts = false,
+    this.baseFontSize = 20.0,
   });
 
   static const minimal = FullShlokaCardConfig(
@@ -490,12 +504,12 @@ class FullShlokaCardConfig {
     showShlokIndex: true,
     spacingCompact: true,
     isLightTheme: false,
-    useLargeFonts: false,
+    baseFontSize: 20.0,
   );
 
   static const lightThemeDefault = FullShlokaCardConfig(
     isLightTheme: true,
-    useLargeFonts: false,
+    baseFontSize: 20.0,
   );
 
   static const minimalLight = FullShlokaCardConfig(
@@ -508,7 +522,7 @@ class FullShlokaCardConfig {
     showShlokIndex: true,
     spacingCompact: true,
     isLightTheme: true,
-    useLargeFonts: false,
+    baseFontSize: 20.0,
   );
 
   FullShlokaCardConfig copyWith({
@@ -521,7 +535,7 @@ class FullShlokaCardConfig {
     bool? showShlokIndex,
     bool? spacingCompact,
     bool? isLightTheme,
-    bool? useLargeFonts,
+    double? baseFontSize,
   }) {
     return FullShlokaCardConfig(
       showSpeaker: showSpeaker ?? this.showSpeaker,
@@ -533,7 +547,7 @@ class FullShlokaCardConfig {
       showShlokIndex: showShlokIndex ?? this.showShlokIndex,
       spacingCompact: spacingCompact ?? this.spacingCompact,
       isLightTheme: isLightTheme ?? this.isLightTheme,
-      useLargeFonts: useLargeFonts ?? this.useLargeFonts,
+      baseFontSize: baseFontSize ?? this.baseFontSize,
     );
   }
 }
