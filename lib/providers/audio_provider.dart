@@ -115,7 +115,7 @@ class AudioProvider extends ChangeNotifier {
     }
 
     // Stop the player but don't notify listeners yet to prevent a flicker state.
-    await _stop(notify: false);
+    await _stop(shlokaId, notify: false);
     _currentPlayingShlokaId = shlokaId;
     _setPlaybackState(PlaybackState.loading);
 
@@ -273,7 +273,7 @@ class AudioProvider extends ChangeNotifier {
           break;
         case ProcessingState.completed:
           // The track finished playing naturally. This is a definitive stop.
-          _stop();
+          _stop(_currentPlayingShlokaId);
           break;
         case ProcessingState.loading:
         case ProcessingState.buffering:
@@ -287,9 +287,17 @@ class AudioProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> _stop({bool notify = true}) async {
+  Future<void> _stop(String? completedShlokaId, {bool notify = true}) async {
+    // If the current playing ID is different from the one that just completed,
+    // it means a new shloka has already been requested (e.g., by continuous play).
+    // In this case, we should not stop the playback process.
+    if (_currentPlayingShlokaId != completedShlokaId) {
+      debugPrint("[AUDIO_PROVIDER] Stop called for $completedShlokaId, but new shloka $_currentPlayingShlokaId is already loading. Aborting stop.");
+      return;
+    }
+
     await _audioPlayer.stop();
-    _currentPlayingShlokaId = null;
+    // Only nullify if we are truly stopping the shloka that just finished.
     _setPlaybackState(PlaybackState.stopped, notify: notify);
   }
 
