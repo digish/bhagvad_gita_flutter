@@ -16,187 +16,244 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import '../../data/static_data.dart';
+import 'shloka_list_screen.dart';
 
-class ChaptersScreen extends StatelessWidget {
+class ChaptersScreen extends StatefulWidget {
   const ChaptersScreen({super.key});
+
+  @override
+  State<ChaptersScreen> createState() => _ChaptersScreenState();
+}
+
+class _ChaptersScreenState extends State<ChaptersScreen> {
+  int? _selectedChapter;
 
   @override
   Widget build(BuildContext context) {
     final chapters = StaticData.geetaAdhyay;
 
-    return Scaffold(
-      // Set a base background color, which is good practice
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // 1. --- This is the background widget ---
-          const SimpleGradientBackground(
-            startColor: Colors.white,
-          ), // White for the white lotus
-          // 2. --- Main Content ---
-          SafeArea(
-            child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideScreen = constraints.maxWidth > 800;
+
+        // If we are on a wide screen and no chapter is selected, select the first one by default.
+        if (isWideScreen && _selectedChapter == null) {
+          // We can't setState during build, so we just use a local variable or effect.
+          // Better to initialize it in initState, but we don't know screen size there.
+          // So we'll handle it in the logic below: if _selectedChapter is null, use 1.
+        }
+
+        final activeChapter = _selectedChapter ?? 1;
+
+        if (isWideScreen) {
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Row(
               children: [
-                // Header with Back Button and Lotus
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Back Button aligned to left
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 8.0),
-                        child: BackButton(color: Colors.black),
-                      ),
-                    ),
-                    // Centered Lotus
-                    GestureDetector(
-                      onTap: () {
-                        context.pop();
-                      },
-                      child: Hero(
-                        tag:
-                            'whiteLotusHero', // The unique tag for the animation
-                        flightShuttleBuilder:
-                            (
-                              flightContext,
-                              animation,
-                              flightDirection,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) {
-                              final rotationAnimation = animation.drive(
-                                Tween<double>(begin: 0.0, end: 1.0),
-                              );
-                              final scaleAnimation = animation.drive(
-                                TweenSequence([
-                                  TweenSequenceItem(
-                                    tween: Tween(begin: 1.0, end: 1.0),
-                                    weight: 50,
+                // MASTER PANE
+                SizedBox(
+                  width: 350,
+                  child: Stack(
+                    children: [
+                      const SimpleGradientBackground(startColor: Colors.white),
+                      Column(
+                        children: [
+                          // Header
+                          SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: BackButton(color: Colors.black),
                                   ),
-                                  TweenSequenceItem(
-                                    tween: Tween(begin: 1.0, end: 1.0),
-                                    weight: 50,
+                                  GestureDetector(
+                                    onTap: () {
+                                      context.pop();
+                                    },
+                                    child: Hero(
+                                      tag: 'whiteLotusHero',
+                                      child: Image.asset(
+                                        'assets/images/lotus_white22.png',
+                                        height: 100,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
                                   ),
-                                ]),
-                              );
-
-                              return RotationTransition(
-                                turns: rotationAnimation,
-                                child: ScaleTransition(
-                                  scale: scaleAnimation,
-                                  child: (toHeroContext.widget as Hero).child,
-                                ),
-                              );
-                            },
-                        child: Image.asset(
-                          'assets/images/lotus_white22.png',
-                          height: 120, // A good size for this screen
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // 3. Responsive List/Grid
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWideScreen = constraints.maxWidth > 600;
-
-                      if (isWideScreen) {
-                        return GridView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 16,
-                          ),
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 500,
-                                childAspectRatio: 2.5, // Adjust for card shape
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
+                                ],
                               ),
-                          itemCount: chapters.length,
-                          itemBuilder: (context, index) {
-                            final chapterName = chapters[index];
-                            final chapterNumber = index + 1;
-                            return _ChapterCard(
-                              chapterNumber: chapterNumber,
-                              chapterName: chapterName,
-                            );
-                          },
-                        );
-                      } else {
-                        return ListView.builder(
-                          padding: const EdgeInsets.only(top: 16, bottom: 8.0),
-                          itemCount: chapters.length,
-                          itemBuilder: (context, index) {
-                            final chapterName = chapters[index];
-                            final chapterNumber = index + 1;
-                            return _ChapterCard(
-                              chapterNumber: chapterNumber,
-                              chapterName: chapterName,
-                            );
-                          },
-                        );
-                      }
-                    },
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.only(
+                                top: 0,
+                                bottom: 16,
+                              ),
+                              itemCount: chapters.length,
+                              itemBuilder: (context, index) {
+                                final chapterName = chapters[index];
+                                final chapterNumber = index + 1;
+                                final isSelected =
+                                    chapterNumber == activeChapter;
+
+                                return _ChapterCard(
+                                  chapterNumber: chapterNumber,
+                                  chapterName: chapterName,
+                                  isSelected: isSelected,
+                                  isWideScreen: true,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedChapter = chapterNumber;
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // DIVIDER
+                const VerticalDivider(width: 1, thickness: 1),
+                // DETAIL PANE
+                Expanded(
+                  child: ClipRect(
+                    child: ShlokaListScreen(
+                      key: ValueKey(activeChapter), // Force rebuild on change
+                      searchQuery: activeChapter.toString(),
+                      showBackButton: false,
+                    ),
                   ),
                 ),
               ],
             ),
+          );
+        }
+
+        // MOBILE LAYOUT (Original)
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              const SimpleGradientBackground(startColor: Colors.white),
+              SafeArea(
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: BackButton(color: Colors.black),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            context.pop();
+                          },
+                          child: Hero(
+                            tag: 'whiteLotusHero',
+                            child: Image.asset(
+                              'assets/images/lotus_white22.png',
+                              height: 120,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(top: 16, bottom: 8.0),
+                        itemCount: chapters.length,
+                        itemBuilder: (context, index) {
+                          final chapterName = chapters[index];
+                          final chapterNumber = index + 1;
+                          return _ChapterCard(
+                            chapterNumber: chapterNumber,
+                            chapterName: chapterName,
+                            isSelected: false,
+                            isWideScreen: false,
+                            onTap: () {
+                              context.push('/shloka-list/$chapterNumber');
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-// ... _ChapterCard widget remains the same ...
 class _ChapterCard extends StatelessWidget {
   final int chapterNumber;
   final String chapterName;
+  final bool isSelected;
+  final bool isWideScreen;
+  final VoidCallback onTap;
 
-  const _ChapterCard({required this.chapterNumber, required this.chapterName});
+  const _ChapterCard({
+    required this.chapterNumber,
+    required this.chapterName,
+    required this.isSelected,
+    required this.isWideScreen,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // By applying the filter to each card, the background between cards remains clear.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
-        elevation: 2,
+        elevation: isSelected ? 8 : 2,
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(12.0),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12.0),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
+                color: isSelected
+                    ? Colors.amber.withOpacity(0.3)
+                    : Colors.white.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.7),
-                  width: 1,
+                  color: isSelected
+                      ? Colors.amber
+                      : Colors.white.withOpacity(0.7),
+                  width: isSelected ? 2 : 1,
                 ),
               ),
               child: InkWell(
-                onTap: () {
-                  context.push('/shloka-list/$chapterNumber');
-                },
+                onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // 🪷 Chapter emblem
                       Hero(
-                        tag: 'chapterEmblem_$chapterNumber',
+                        tag: isWideScreen
+                            ? 'chapterListEmblem_$chapterNumber'
+                            : 'chapterEmblem_$chapterNumber',
                         child: Container(
                           width: 56,
                           height: 56,
@@ -208,12 +265,10 @@ class _ChapterCard extends StatelessWidget {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                // Changed to a bright, golden glow
                                 color: Colors.amber.withOpacity(0.7),
                                 spreadRadius: 2,
                                 blurRadius: 12.0,
-                                offset: Offset
-                                    .zero, // Centered glow instead of a drop shadow
+                                offset: Offset.zero,
                               ),
                             ],
                           ),
@@ -246,18 +301,17 @@ class _ChapterCard extends StatelessWidget {
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: Colors.black.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
-                                fontSize:
-                                    20, // Explicitly setting size for prominence
+                                fontSize: 20,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ), // Row
-                ), // Padding
-              ), // InkWell
-            ), // Container
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

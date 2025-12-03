@@ -27,7 +27,14 @@ class DecorativeForeground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ringDimension = 140.0;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+
+    // Sizes based on device type
+    final double ringDimension = isTablet ? 200.0 : 140.0;
+    final double leaves1Size = isTablet ? 220.0 : 150.0;
+    final double leaves2Size = isTablet ? 150.0 : 100.0;
+    final double lotusSize = isTablet ? 150.0 : 100.0;
 
     return Opacity(
       opacity: opacity,
@@ -51,8 +58,8 @@ class DecorativeForeground extends StatelessWidget {
                       ),
                       child: Image.asset(
                         'assets/images/leaves_clustor12.png',
-                        width: 150,
-                        height: 150,
+                        width: leaves1Size,
+                        height: leaves1Size,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -61,8 +68,8 @@ class DecorativeForeground extends StatelessWidget {
                 // Original Image
                 Image.asset(
                   'assets/images/leaves_clustor12.png',
-                  width: 150,
-                  height: 150,
+                  width: leaves1Size,
+                  height: leaves1Size,
                   fit: BoxFit.contain,
                 ),
               ],
@@ -85,8 +92,8 @@ class DecorativeForeground extends StatelessWidget {
                       ),
                       child: Image.asset(
                         'assets/images/leaves_clustor11.png',
-                        width: 100,
-                        height: 100,
+                        width: leaves2Size,
+                        height: leaves2Size,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -95,8 +102,8 @@ class DecorativeForeground extends StatelessWidget {
                 // Original Image
                 Image.asset(
                   'assets/images/leaves_clustor11.png',
-                  width: 100,
-                  height: 100,
+                  width: leaves2Size,
+                  height: leaves2Size,
                   fit: BoxFit.contain,
                 ),
               ],
@@ -114,6 +121,7 @@ class DecorativeForeground extends StatelessWidget {
                 imageAsset: 'assets/images/lotus_white22.png',
                 heroTag: 'whiteLotusHero',
                 onTap: () => context.push(AppRoutes.chapters),
+                size: lotusSize,
               ),
               child: Image.asset(
                 'assets/images/adhyay_label.png',
@@ -135,6 +143,7 @@ class DecorativeForeground extends StatelessWidget {
                 imageAsset: 'assets/images/lotus_blue12.png',
                 heroTag: 'blueLotusHero',
                 onTap: () => context.push(AppRoutes.parayan),
+                size: lotusSize,
               ),
               child: Image.asset(
                 'assets/images/parayan_label.png',
@@ -155,6 +164,7 @@ class DecorativeForeground extends StatelessWidget {
                 imageAsset: 'assets/images/lotus_gold.png', // New asset
                 heroTag: 'creditsLotusHero', // New hero tag
                 onTap: () => context.push(AppRoutes.credits),
+                size: lotusSize,
               ),
               child: const SizedBox.shrink(),
             ),
@@ -169,10 +179,11 @@ class DecorativeForeground extends StatelessWidget {
     required String imageAsset,
     required String heroTag,
     required VoidCallback onTap,
+    required double size,
   }) {
     return SizedBox(
-      width: 100,
-      height: 100,
+      width: size,
+      height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -184,7 +195,7 @@ class DecorativeForeground extends StatelessWidget {
               child: ColorFiltered(
                 colorFilter: ColorFilter.mode(
                   heroTag == 'whiteLotusHero'
-                      ? Colors.white 
+                      ? Colors.white
                       : heroTag == 'creditsLotusHero'
                       ? Colors.amber
                       : const Color.fromARGB(255, 0, 150, 255),
