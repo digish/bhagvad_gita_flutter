@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:flutter/foundation.dart';
-import '../../data/database_helper.dart';
+
 import '../../navigation/app_router.dart';
 import '../../providers/search_provider.dart';
 import '../widgets/darkened_animated_background.dart';
@@ -48,14 +48,15 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
   Widget build(BuildContext context) {
     final provider = Provider.of<SearchProvider>(context);
     final isSearching = provider.searchQuery.isNotEmpty;
-    final ringDimension = 160.0;
 
     return Scaffold(
       backgroundColor: Colors.black,
 
       // ✨ RESTORED: The floating action button for navigation.
       // It's hidden when the keyboard is visible.
-      floatingActionButton: MediaQuery.of(context).viewInsets.bottom > 0
+      floatingActionButton:
+          (MediaQuery.of(context).viewInsets.bottom > 0 ||
+              MediaQuery.of(context).size.width > 600)
           ? null
           : _buildSpeedDial(context),
       body: Stack(

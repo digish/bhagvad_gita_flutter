@@ -24,7 +24,7 @@ class Lotus extends StatefulWidget {
   State<Lotus> createState() => _LotusState();
 }
 
-class _LotusState extends State<Lotus> with TickerProviderStateMixin  {
+class _LotusState extends State<Lotus> with TickerProviderStateMixin {
   late Ticker _ticker;
   late double rotationAngle;
   late double rotationSpeed;
@@ -82,6 +82,11 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin  {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    final double glowSize = isTablet ? 400 : 250;
+    final double imageSize = isTablet ? 360 : 230;
+
     return Transform.rotate(
       angle: rotationAngle,
       child: Stack(
@@ -101,8 +106,8 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin  {
                   imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                   child: Image.asset(
                     'assets/images/lotus_top.png',
-                    width: 250,
-                    height: 250,
+                    width: glowSize,
+                    height: glowSize,
                   ),
                 ),
               ),
@@ -112,8 +117,8 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin  {
           // Crisp lotus image
           Image.asset(
             'assets/images/lotus_top.png',
-            width: 230,
-            height: 230,
+            width: imageSize,
+            height: imageSize,
           ),
         ],
       ),

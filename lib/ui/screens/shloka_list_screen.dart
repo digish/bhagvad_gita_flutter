@@ -16,20 +16,27 @@ import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/shloka_result.dart';
+
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
 import '../../data/static_data.dart';
 import '../../data/database_helper_interface.dart';
+
 import '../widgets/responsive_wrapper.dart';
 
 enum PlaybackMode { single, continuous, repeatOne }
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
-  const ShlokaListScreen({super.key, required this.searchQuery});
+  final bool showBackButton; // ✨ NEW parameter
+
+  const ShlokaListScreen({
+    super.key,
+    required this.searchQuery,
+    this.showBackButton = true, // Default to true
+  });
 
   @override
   State<ShlokaListScreen> createState() => _ShlokaListScreenState();
@@ -307,6 +314,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                     backgroundColor: Colors.pink.shade900,
                     elevation: 0,
                     centerTitle: true,
+                    leading: widget.showBackButton
+                        ? const BackButton(color: Colors.white)
+                        : null, // ✨ Respect showBackButton
                     bottom: PreferredSize(
                       preferredSize: const Size.fromHeight(50.0),
                       child: Padding(
@@ -481,6 +491,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               // Further increase maxExtent to ensure title and switches are visible initially
                               maxExtent:
                                   MediaQuery.of(context).padding.top + 350,
+                              showBackButton:
+                                  widget.showBackButton, // ✨ Pass parameter
                             ),
                           ),
                         // Add some spacing between the header and the first card for chapter views
@@ -541,37 +553,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   );
 }
 
-/// A reusable widget for switches in the AppBar.
-class _AppBarSwitch extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _AppBarSwitch({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      // Each switch is a Row: Label + Switch
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall // Use a brighter white for better contrast on the new background
-              ?.copyWith(color: Colors.white),
-        ),
-        Switch(value: value, onChanged: onChanged),
-      ],
-    );
-  }
-}
-
 class _ChapterEmblemHeader extends StatelessWidget {
   final int chapterNumber;
   const _ChapterEmblemHeader({required this.chapterNumber});
@@ -617,11 +598,11 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double currentFontSize;
   final VoidCallback onFontSizeIncrement;
   final VoidCallback onFontSizeDecrement;
-  @override
   final VoidCallback onBackgroundToggle;
   final double minExtent;
   @override
   final double maxExtent;
+  final bool showBackButton; // ✨ NEW parameter
 
   _AnimatingHeaderDelegate({
     required this.chapterNumber,
@@ -634,6 +615,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.minExtent,
     required this.onBackgroundToggle,
     required this.maxExtent,
+    required this.showBackButton,
   });
 
   @override
@@ -645,184 +627,197 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     final paddingTop = MediaQuery.of(context).padding.top;
     final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
 
-    // Emblem properties
-    const double maxSize = 160.0;
-    const double minSize = 40.0;
-    final double currentSize = lerpDouble(maxSize, minSize, t)!;
-    final double currentRadius = lerpDouble(16.0, minSize / 2, t)!;
+    // ✨ Wrap in LayoutBuilder to get correct width for centering
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
 
-    // Emblem position
-    final double maxLeft = (MediaQuery.of(context).size.width - maxSize) / 2;
-    final double minLeft = 56.0; // Position next to back button
-    final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
+        // Emblem properties
+        const double maxSize = 160.0;
+        const double minSize = 40.0;
+        final double currentSize = lerpDouble(maxSize, minSize, t)!;
+        // final double currentRadius = lerpDouble(16.0, minSize / 2, t)!; // Unused
 
-    final double maxTop = paddingTop + 20; // Start near the top
-    final double minTop = paddingTop + (kToolbarHeight - minSize) / 2;
-    final double currentTop = lerpDouble(maxTop, minTop, t)!;
+        // Emblem position
+        final double maxLeft = (width - maxSize) / 2; // ✨ Use local width
+        final double minLeft = showBackButton
+            ? 56.0
+            : 16.0; // Adjust if back button is hidden
+        final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
 
-    // --- NEW: Title animation ---
-    // Position
-    final double titleMaxTop =
-        maxTop + maxSize + 8; // Positioned right below the large emblem
-    final double titleMinTop = paddingTop;
-    final double titleCurrentTop = lerpDouble(titleMaxTop, titleMinTop, t)!;
+        final double maxTop = paddingTop + 20; // Start near the top
+        final double minTop = paddingTop + (kToolbarHeight - minSize) / 2;
+        final double currentTop = lerpDouble(maxTop, minTop, t)!;
 
-    final double titleMaxHorizontalPadding = 16.0;
-    final double titleMinHorizontalPadding =
-        100.0; // To fit between back button and actions
-    final double titleCurrentHorizontalPadding = lerpDouble(
-      titleMaxHorizontalPadding,
-      titleMinHorizontalPadding,
-      t,
-    )!;
+        // --- NEW: Title animation ---
+        // Position
+        final double titleMaxTop =
+            maxTop + maxSize + 8; // Positioned right below the large emblem
+        final double titleMinTop = paddingTop;
+        final double titleCurrentTop = lerpDouble(titleMaxTop, titleMinTop, t)!;
 
-    // Font size
-    final double titleMaxFontSize =
-        Theme.of(context).textTheme.headlineSmall?.fontSize ?? 24.0;
-    final double titleMinFontSize =
-        Theme.of(context).textTheme.titleLarge?.fontSize ?? 20.0;
-    final double titleCurrentFontSize = lerpDouble(
-      titleMaxFontSize,
-      titleMinFontSize,
-      t,
-    )!;
+        final double titleMaxHorizontalPadding = 16.0;
+        final double titleMinHorizontalPadding = showBackButton
+            ? 100.0
+            : 60.0; // Adjust
+        final double titleCurrentHorizontalPadding = lerpDouble(
+          titleMaxHorizontalPadding,
+          titleMinHorizontalPadding,
+          t,
+        )!;
 
-    // Opacity for elements that appear when collapsed
-    // Let's make the controls visible from the start by changing the opacity logic
-    final double controlsOpacity = lerpDouble(0.0, 1.0, t.clamp(0.5, 1.0))!;
-    final double collapsedHeaderOpacity = t;
+        // Font size
+        final double titleMaxFontSize =
+            Theme.of(context).textTheme.headlineSmall?.fontSize ?? 24.0;
+        final double titleMinFontSize =
+            Theme.of(context).textTheme.titleLarge?.fontSize ?? 20.0;
+        final double titleCurrentFontSize = lerpDouble(
+          titleMaxFontSize,
+          titleMinFontSize,
+          t,
+        )!;
 
-    return Container(
-      // ✨ FIX: Animate the background color to become less transparent as it collapses.
-      color: Colors.white.withOpacity(lerpDouble(0.0, 0.85, t)!),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Back button (always visible)
-          Positioned(
-            top: paddingTop,
-            left: 4,
-            child: const BackButton(color: Colors.black87),
-          ),
+        // Opacity for elements that appear when collapsed
+        // Let's make the controls visible from the start by changing the opacity logic
 
-          // Title (fades in)
-          Positioned(
-            top: titleCurrentTop,
-            left: titleCurrentHorizontalPadding,
-            right: titleCurrentHorizontalPadding,
-            height: kToolbarHeight,
-            child: Opacity(
-              opacity: lerpDouble(
-                1.0,
-                0.0,
-                t.clamp(0.0, 0.5) * 2,
-              )!, // Fade out the large title
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.bold,
-                  fontSize: titleCurrentFontSize,
+        final double collapsedHeaderOpacity = t;
+
+        return Container(
+          // ✨ FIX: Animate the background color to become less transparent as it collapses.
+          color: Colors.white.withOpacity(lerpDouble(0.0, 0.85, t)!),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Back button (conditionally visible)
+              if (showBackButton)
+                Positioned(
+                  top: paddingTop,
+                  left: 4,
+                  child: const BackButton(color: Colors.black87),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
 
-          // A separate title that fades in when collapsed
-          Positioned(
-            top: paddingTop,
-            left: 100,
-            right: 100,
-            height: kToolbarHeight,
-            child: Opacity(
-              opacity: collapsedHeaderOpacity,
-              child: Center(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ),
-
-          // Actions (fades in)
-          Positioned(
-            top: paddingTop,
-            right: 0,
-            height: kToolbarHeight,
-            child:
-                Container(), // This space is now empty, actions are moved below
-          ),
-
-          // --- NEW: Positioned controls row ---
-          Positioned(
-            top:
-                paddingTop +
-                kToolbarHeight, // Positioned below the main app bar area
-            left: 0,
-            right: 0,
-            height: 50, // The height we added to minExtent
-            child: Opacity(
-              // Fades in with the rest of the collapsed header
-              opacity: collapsedHeaderOpacity,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _FontSizeControl(
-                    currentSize: currentFontSize,
-                    onDecrement: onFontSizeDecrement,
-                    onIncrement: onFontSizeIncrement,
-                    color: Colors.black54,
-                  ),
-                  _buildPlaybackModeButtonForHeader(),
-                  _buildBackgroundToggleButtonForHeader(),
-                ],
-              ),
-            ),
-          ),
-
-          // The animating emblem
-          Positioned(
-            top: currentTop,
-            left: currentLeft,
-            child: Hero(
-              tag: 'chapterEmblem_$chapterNumber',
-              child: Container(
-                width: currentSize,
-                height: currentSize,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(currentRadius),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.9),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      // Animate the glow properties
-                      color: Colors.amber.withOpacity(lerpDouble(0.8, 0.7, t)!),
-                      spreadRadius: lerpDouble(4, 2, t)!,
-                      blurRadius: lerpDouble(15, 12, t)!,
-                      offset: Offset.zero,
+              // Title (fades in)
+              Positioned(
+                top: titleCurrentTop,
+                left: titleCurrentHorizontalPadding,
+                right: titleCurrentHorizontalPadding,
+                height: kToolbarHeight,
+                child: Opacity(
+                  opacity: lerpDouble(
+                    1.0,
+                    0.0,
+                    t.clamp(0.0, 0.5) * 2,
+                  )!, // Fade out the large title
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleCurrentFontSize,
                     ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.asset(
-                  'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                  fit: BoxFit.cover,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-            ),
+
+              // A separate title that fades in when collapsed
+              Positioned(
+                top: paddingTop,
+                left: titleMinHorizontalPadding,
+                right: titleMinHorizontalPadding,
+                height: kToolbarHeight,
+                child: Opacity(
+                  opacity: collapsedHeaderOpacity,
+                  child: Center(
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Actions (fades in)
+              Positioned(
+                top: paddingTop,
+                right: 0,
+                height: kToolbarHeight,
+                child:
+                    Container(), // This space is now empty, actions are moved below
+              ),
+
+              // --- NEW: Positioned controls row ---
+              Positioned(
+                top:
+                    paddingTop +
+                    kToolbarHeight, // Positioned below the main app bar area
+                left: 0,
+                right: 0,
+                height: 50, // The height we added to minExtent
+                child: Opacity(
+                  // Fades in with the rest of the collapsed header
+                  opacity: collapsedHeaderOpacity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _FontSizeControl(
+                        currentSize: currentFontSize,
+                        onDecrement: onFontSizeDecrement,
+                        onIncrement: onFontSizeIncrement,
+                        color: Colors.black54,
+                      ),
+                      _buildPlaybackModeButtonForHeader(),
+                      _buildBackgroundToggleButtonForHeader(),
+                    ],
+                  ),
+                ),
+              ),
+
+              // The animating emblem
+              Positioned(
+                top: currentTop,
+                left: currentLeft,
+                child: Hero(
+                  tag: 'chapterEmblem_$chapterNumber',
+                  child: Container(
+                    width: currentSize,
+                    height: currentSize,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.9),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          // Animate the glow properties
+                          color: Colors.amber.withOpacity(
+                            lerpDouble(0.8, 0.7, t)!,
+                          ),
+                          spreadRadius: lerpDouble(4, 2, t)!,
+                          blurRadius: lerpDouble(15, 12, t)!,
+                          offset: Offset.zero,
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -896,34 +891,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 /// A reusable widget for switches in the collapsing header.
-class _HeaderSwitch extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _HeaderSwitch({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      // Each switch is a Row: Label + Switch
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.black54),
-        ),
-        Switch(value: value, onChanged: onChanged),
-      ],
-    );
-  }
-}
 
 // --- NEW: Font size control widget ---
 class _FontSizeControl extends StatelessWidget {

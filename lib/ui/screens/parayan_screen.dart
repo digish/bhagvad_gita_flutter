@@ -17,7 +17,7 @@ import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
 import 'dart:ui';
-import '../../models/shloka_result.dart';
+
 import '../../providers/parayan_provider.dart';
 import '../widgets/custom_scroll_indicator.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -91,9 +91,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
   @override
   Widget build(BuildContext context) {
     // --- NEW: Constants for font size control ---
-    const double minFontSize = 16.0;
-    const double maxFontSize = 32.0;
-    const double fontStep = 2.0;
+
     // Use a Consumer to rebuild when font size changes.
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
@@ -431,179 +429,202 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
         // The animation progress 't' is now driven by the AnimationController.
         final t = _animationController.value;
 
-        // All the lerp calculations remain the same.
-        const double maxLotusSize = 120.0;
-        const double minLotusSize = 40.0;
-        final double currentLotusSize = lerpDouble(
-          maxLotusSize,
-          minLotusSize,
-          t,
-        )!;
-        final double maxLotusTop = MediaQuery.of(context).padding.top + 20;
-        final double minLotusTop =
-            MediaQuery.of(context).padding.top +
-            (kToolbarHeight - minLotusSize) / 2;
-        final double currentLotusTop = lerpDouble(maxLotusTop, minLotusTop, t)!;
-        final double maxLotusLeft =
-            (MediaQuery.of(context).size.width - maxLotusSize) / 2;
-        final double minLotusLeft =
-            56.0; // Shifted to make room for back button
-        final double currentLotusLeft = lerpDouble(
-          maxLotusLeft,
-          minLotusLeft,
-          t,
-        )!;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            // All the lerp calculations remain the same.
+            const double maxLotusSize = 120.0;
+            const double minLotusSize = 40.0;
+            final double currentLotusSize = lerpDouble(
+              maxLotusSize,
+              minLotusSize,
+              t,
+            )!;
+            final double maxLotusTop = MediaQuery.of(context).padding.top + 20;
+            final double minLotusTop =
+                MediaQuery.of(context).padding.top +
+                (kToolbarHeight - minLotusSize) / 2;
+            final double currentLotusTop = lerpDouble(
+              maxLotusTop,
+              minLotusTop,
+              t,
+            )!;
+            final double maxLotusLeft =
+                (width - maxLotusSize) / 2; // ✨ Use local width
+            final double minLotusLeft =
+                56.0; // Shifted to make room for back button
+            final double currentLotusLeft = lerpDouble(
+              maxLotusLeft,
+              minLotusLeft,
+              t,
+            )!;
 
-        final double maxTextTop = currentLotusTop + maxLotusSize + 8;
-        final double minTextTop = minLotusTop;
-        final double currentTextTop = lerpDouble(maxTextTop, minTextTop, t)!;
-        final double maxTextLeft = 0;
-        final double minTextLeft = minLotusLeft + minLotusSize + 16;
-        final double currentTextLeft = lerpDouble(maxTextLeft, minTextLeft, t)!;
-        final double textOpacity = lerpDouble(1.0, 0.0, t.clamp(0.0, 0.5) * 2)!;
-        final double collapsedTextOpacity = t;
+            final double maxTextTop = currentLotusTop + maxLotusSize + 8;
+            final double minTextTop = minLotusTop;
+            final double currentTextTop = lerpDouble(
+              maxTextTop,
+              minTextTop,
+              t,
+            )!;
+            final double maxTextLeft = 0;
+            final double minTextLeft = minLotusLeft + minLotusSize + 16;
+            final double currentTextLeft = lerpDouble(
+              maxTextLeft,
+              minTextLeft,
+              t,
+            )!;
+            final double textOpacity = lerpDouble(
+              1.0,
+              0.0,
+              t.clamp(0.0, 0.5) * 2,
+            )!;
+            final double collapsedTextOpacity = t;
 
-        return Container(
-          height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
-          color: Colors.indigo.shade50.withOpacity(t * 0.95),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Back Button (always visible)
-              Positioned(
-                top: MediaQuery.of(context).padding.top,
-                left: 4,
-                child: const BackButton(color: Colors.black87),
-              ),
-
-              // Expanded Controls (unchanged)
-              // Collapsed Controls (unchanged)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + kToolbarHeight,
-                left: 0,
-                right: 0,
-                height: 50,
-                child: Opacity(
-                  opacity: collapsedTextOpacity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _FontSizeControl(
-                        currentSize: widget.settingsProvider.fontSize,
-                        onDecrement: () {
-                          if (widget.settingsProvider.fontSize > 16.0) {
-                            widget.settingsProvider.setFontSize(
-                              widget.settingsProvider.fontSize - 2.0,
-                            );
-                          }
-                        },
-                        onIncrement: () {
-                          if (widget.settingsProvider.fontSize < 32.0) {
-                            widget.settingsProvider.setFontSize(
-                              widget.settingsProvider.fontSize + 2.0,
-                            );
-                          }
-                        },
-                        color: Colors.black54,
-                      ),
-                      (context.findAncestorStateOfType<_ParayanScreenState>()!)
-                          ._buildDisplayModeButton(),
-                      // --- NEW: Background Toggle Button (Collapsed) ---
-                      Consumer<SettingsProvider>(
-                        builder: (context, settings, _) {
-                          return IconButton(
-                            icon: Icon(
-                              settings.showBackground
-                                  ? Icons.image
-                                  : Icons.image_not_supported,
-                              color: Colors.black54,
-                            ),
-                            tooltip: settings.showBackground
-                                ? 'Hide Background'
-                                : 'Show Background',
-                            onPressed: () => settings.setShowBackground(
-                              !settings.showBackground,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+            return Container(
+              height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
+              color: Colors.indigo.shade50.withOpacity(t * 0.95),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Back Button (always visible)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top,
+                    left: 4,
+                    child: const BackButton(color: Colors.black87),
                   ),
-                ),
-              ),
 
-              // Animating Lotus (unchanged)
-              Positioned(
-                top: currentLotusTop,
-                left: currentLotusLeft,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Hero(
-                    tag: 'blueLotusHero',
-                    flightShuttleBuilder:
-                        (
-                          flightContext,
-                          animation,
-                          flightDirection,
-                          fromHeroContext,
-                          toHeroContext,
-                        ) {
-                          final rotationAnimation = animation.drive(
-                            Tween<double>(begin: 0.0, end: 1.0),
-                          );
-                          return RotationTransition(
-                            turns: rotationAnimation,
-                            child: (toHeroContext.widget as Hero).child,
-                          );
-                        },
-                    child: Image.asset(
-                      'assets/images/lotus_blue12.png',
-                      height: currentLotusSize,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Animating Text Label (now uses state variable)
-              Positioned(
-                top: currentTextTop,
-                left: currentTextLeft,
-                right: 0,
-                height: kToolbarHeight,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Opacity(
-                      opacity: textOpacity,
-                      child: Text(
-                        _currentLabel,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Opacity(
+                  // Expanded Controls (unchanged)
+                  // Collapsed Controls (unchanged)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + kToolbarHeight,
+                    left: 0,
+                    right: 0,
+                    height: 50,
+                    child: Opacity(
                       opacity: collapsedTextOpacity,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _currentLabel,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                          overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _FontSizeControl(
+                            currentSize: widget.settingsProvider.fontSize,
+                            onDecrement: () {
+                              if (widget.settingsProvider.fontSize > 16.0) {
+                                widget.settingsProvider.setFontSize(
+                                  widget.settingsProvider.fontSize - 2.0,
+                                );
+                              }
+                            },
+                            onIncrement: () {
+                              if (widget.settingsProvider.fontSize < 32.0) {
+                                widget.settingsProvider.setFontSize(
+                                  widget.settingsProvider.fontSize + 2.0,
+                                );
+                              }
+                            },
+                            color: Colors.black54,
+                          ),
+                          (context
+                                  .findAncestorStateOfType<
+                                    _ParayanScreenState
+                                  >()!)
+                              ._buildDisplayModeButton(),
+                          // --- NEW: Background Toggle Button (Collapsed) ---
+                          Consumer<SettingsProvider>(
+                            builder: (context, settings, _) {
+                              return IconButton(
+                                icon: Icon(
+                                  settings.showBackground
+                                      ? Icons.image
+                                      : Icons.image_not_supported,
+                                  color: Colors.black54,
+                                ),
+                                tooltip: settings.showBackground
+                                    ? 'Hide Background'
+                                    : 'Show Background',
+                                onPressed: () => settings.setShowBackground(
+                                  !settings.showBackground,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Animating Lotus (unchanged)
+                  Positioned(
+                    top: currentLotusTop,
+                    left: currentLotusLeft,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Hero(
+                        tag: 'blueLotusHero',
+                        flightShuttleBuilder:
+                            (
+                              flightContext,
+                              animation,
+                              flightDirection,
+                              fromHeroContext,
+                              toHeroContext,
+                            ) {
+                              final rotationAnimation = animation.drive(
+                                Tween<double>(begin: 0.0, end: 1.0),
+                              );
+                              return RotationTransition(
+                                turns: rotationAnimation,
+                                child: (toHeroContext.widget as Hero).child,
+                              );
+                            },
+                        child: Image.asset(
+                          'assets/images/lotus_blue12.png',
+                          height: currentLotusSize,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  // Animating Text Label (now uses state variable)
+                  Positioned(
+                    top: currentTextTop,
+                    left: currentTextLeft,
+                    right: 0,
+                    height: kToolbarHeight,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Opacity(
+                          opacity: textOpacity,
+                          child: Text(
+                            _currentLabel,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Opacity(
+                          opacity: collapsedTextOpacity,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _currentLabel,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -739,40 +760,6 @@ class _SpeakerHeader extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ParayanShlokaCard extends StatelessWidget {
-  final ShlokaResult shloka;
-  const _ParayanShlokaCard({required this.shloka});
-
-  @override
-  Widget build(BuildContext context) {
-    final cleanShlok = shloka.shlok
-        .replaceAll(RegExp(r'<c>', caseSensitive: false), '')
-        .replaceAll('*', ' ');
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${shloka.chapterNo}.${shloka.shlokNo}',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              cleanShlok,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 22, height: 1.6),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -38,11 +38,14 @@ class FullShlokaCard extends StatelessWidget {
 
   // This is your existing text formatting logic, it remains unchanged.
   List<TextSpan> formatItalicText(
-      String rawText, TextStyle baseStyle, double maxWidth) {
+    String rawText,
+    TextStyle baseStyle,
+    double maxWidth,
+  ) {
     String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
     final isFourLine = processed.contains('<C>');
     final couplets = processed.split('*');
-    
+
     // --- ✨ NEW LOGIC: Step 1 - Find the single smallest font size needed for the whole block ---
     double uniformFontSize = baseStyle.fontSize ?? 20;
     final allLines = <String>[];
@@ -63,7 +66,10 @@ class FullShlokaCard extends StatelessWidget {
         TextPainter painter;
         do {
           painter = TextPainter(
-            text: TextSpan(text: line, style: baseStyle.copyWith(fontSize: uniformFontSize)),
+            text: TextSpan(
+              text: line,
+              style: baseStyle.copyWith(fontSize: uniformFontSize),
+            ),
             maxLines: 1,
             textDirection: TextDirection.ltr,
           )..layout(maxWidth: double.infinity);
@@ -141,7 +147,8 @@ class FullShlokaCard extends StatelessWidget {
     const String appLink =
         'https://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta';
 
-    final shareText = '''
+    final shareText =
+        '''
 $shlokaIdentifier
 
 ${shloka.speaker != null && shloka.speaker!.isNotEmpty ? '${shloka.speaker}:' : ''}
@@ -173,18 +180,23 @@ ${shloka.bhavarth}''';
   }) {
     final theme = Theme.of(context);
     final bool isLightTheme = config.isLightTheme;
-    final speakerColor =
-        getSpeakerColor(shloka.speaker, isLightTheme: isLightTheme);
+    final speakerColor = getSpeakerColor(
+      shloka.speaker,
+      isLightTheme: isLightTheme,
+    );
     final Color primaryTextColor = isLightTheme ? Colors.black87 : Colors.white;
-    final Color secondaryTextColor =
-        isLightTheme ? Colors.black54 : Colors.white.withOpacity(0.85);
-    final Color accentColor =
-        isLightTheme ? const Color(0xFFD84315) : const Color(0xFFFFD700);
+    final Color secondaryTextColor = isLightTheme
+        ? Colors.black54
+        : Colors.white.withOpacity(0.85);
+    final Color accentColor = isLightTheme
+        ? const Color(0xFFD84315)
+        : const Color(0xFFFFD700);
     final Color cardBackgroundColor = isLightTheme
         ? Colors.white.withOpacity(0.6)
         : Colors.white.withOpacity(0.07);
-    final Color mainBorderColor =
-        isLightTheme ? Colors.grey.shade400 : const Color(0xFFFFD700);
+    final Color mainBorderColor = isLightTheme
+        ? Colors.grey.shade400
+        : const Color(0xFFFFD700);
     final Color innerCardBorderColor = isLightTheme
         ? Colors.black.withOpacity(0.1)
         : Colors.white.withOpacity(0.2);
@@ -199,10 +211,12 @@ ${shloka.bhavarth}''';
             borderRadius: BorderRadius.circular(20.0),
             // --- MODIFICATION: Border highlighting for playing shloka ---
             border: Border.all(
-              color: isPlayingThisShloka && playbackState == PlaybackState.playing
+              color:
+                  isPlayingThisShloka && playbackState == PlaybackState.playing
                   ? theme.colorScheme.primary
                   : mainBorderColor,
-              width: isPlayingThisShloka && playbackState == PlaybackState.playing
+              width:
+                  isPlayingThisShloka && playbackState == PlaybackState.playing
                   ? 2.0
                   : 1.5,
             ),
@@ -240,8 +254,7 @@ ${shloka.bhavarth}''';
                                   shloka.speaker!.isNotEmpty)
                                 Text(
                                   '${shloka.speaker!}:',
-                                  style:
-                                      theme.textTheme.labelLarge?.copyWith(
+                                  style: theme.textTheme.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: primaryTextColor.withOpacity(0.9),
                                     letterSpacing: 0.5,
@@ -252,8 +265,7 @@ ${shloka.bhavarth}''';
                                   config.spacingCompact
                                       ? '  श्लोक: ${shloka.chapterNo}:${shloka.shlokNo}'
                                       : '  अध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}',
-                                  style:
-                                      theme.textTheme.labelLarge?.copyWith(
+                                  style: theme.textTheme.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: accentColor,
                                     letterSpacing: 0.6,
@@ -286,8 +298,8 @@ ${shloka.bhavarth}''';
                               children: formatItalicText(
                                 shloka.shlok,
                                 TextStyle(
-                                fontSize: config.baseFontSize,
-                                fontStyle: FontStyle.normal,
+                                  fontSize: config.baseFontSize,
+                                  fontStyle: FontStyle.normal,
                                   color: primaryTextColor,
                                   fontFamily: 'NotoSerif',
                                 ),
@@ -313,64 +325,85 @@ ${shloka.bhavarth}''';
                       child: isLightTheme
                           ? ColorFiltered(
                               colorFilter: ColorFilter.mode(
-                                  Colors.grey[700]!, BlendMode.srcIn),
+                                Colors.grey[700]!,
+                                BlendMode.srcIn,
+                              ),
                               child: Image.asset(
                                 'assets/images/line_seperator.png',
                               ),
                             )
                           : Image.asset('assets/images/line_seperator.png'),
-                            ),
                     ),
+                  ),
 
                 if (config.showSeparator)
                   config.spacingCompact
                       ? const SizedBox(height: 5)
                       : const SizedBox(height: 10),
                 if (config.showAnvay && shloka.anvay.isNotEmpty) ...[
-                  Text('अन्वय',
+                  Center(
+                    child: Text(
+                      'अन्वय',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: accentColor,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
-                      )),
+                      ),
+                    ),
+                  ),
                   config.spacingCompact
                       ? const SizedBox(height: 4)
                       : const SizedBox(height: 8),
-                  LayoutBuilder(builder: (context, constraints) {
-                    return RichText(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
-                            children: formatItalicText(
-                                shloka.anvay,
-                                TextStyle( // The base style for Anvay
-                                  fontSize: config.baseFontSize, // Use the new property
-                                  fontStyle: FontStyle.italic, // Italic for Anvay
-                                  color: secondaryTextColor,
-                                  fontFamily: 'NotoSerif',
-                                  height: 1.6,
-                                ),
-                                constraints.maxWidth)));
-                  }),
+                          children: formatItalicText(
+                            shloka.anvay,
+                            TextStyle(
+                              // The base style for Anvay
+                              fontSize:
+                                  config.baseFontSize, // Use the new property
+                              fontStyle: FontStyle.italic, // Italic for Anvay
+                              color: secondaryTextColor,
+                              fontFamily: 'NotoSerif',
+                              height: 1.6,
+                            ),
+                            constraints.maxWidth,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   config.spacingCompact
                       ? const SizedBox(height: 5)
                       : const SizedBox(height: 10),
                 ],
                 if (config.showBhavarth && shloka.bhavarth.isNotEmpty) ...[
-                  Text('टिका',
+                  Center(
+                    child: Text(
+                      'टिका',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: accentColor,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
-                      )),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(shloka.bhavarth,
-                      style: TextStyle(
-                        fontSize: config.baseFontSize - 4, // Keep bhavarth slightly smaller
-                        fontStyle: FontStyle.normal,
-                        color: secondaryTextColor,
-                        fontFamily: 'NotoSerif', // Consistent font family
-                        height: 1.5, // Improved line spacing for readability
-                      )),
+                  Text(
+                    shloka.bhavarth,
+                    style: TextStyle(
+                      fontSize:
+                          config.baseFontSize -
+                          4, // Keep bhavarth slightly smaller
+                      fontStyle: FontStyle.normal,
+                      color: secondaryTextColor,
+                      fontFamily: 'NotoSerif', // Consistent font family
+                      height: 1.5, // Improved line spacing for readability
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -390,22 +423,26 @@ ${shloka.bhavarth}''';
     required AudioProvider audioProvider,
   }) {
     // --- FIX: Show download icon for both 'notDownloaded' and 'unknown' states ---
-    if (downloadStatus == AssetPackStatus.notDownloaded || downloadStatus == AssetPackStatus.unknown) {
+    if (downloadStatus == AssetPackStatus.notDownloaded ||
+        downloadStatus == AssetPackStatus.unknown) {
       return _ActionButton(
         icon: Icons.download_for_offline_outlined,
         onPressed: () {
-          debugPrint("[UI] Download button pressed for shloka ${shloka.chapterNo}.${shloka.shlokNo}");
+          debugPrint(
+            "[UI] Download button pressed for shloka ${shloka.chapterNo}.${shloka.shlokNo}",
+          );
           audioProvider
-              // We can safely parse here as chapterNo is always a valid integer string.
-              .initiateChapterAudioDownload(int.parse(shloka.chapterNo));
+          // We can safely parse here as chapterNo is always a valid integer string.
+          .initiateChapterAudioDownload(int.parse(shloka.chapterNo));
         },
       );
     }
     if (downloadStatus == AssetPackStatus.pending) {
       return _ActionButton(
         icon: Icons.download_for_offline_outlined,
-        onPressed: () =>
-            audioProvider.initiateChapterAudioDownload(int.parse(shloka.chapterNo)),
+        onPressed: () => audioProvider.initiateChapterAudioDownload(
+          int.parse(shloka.chapterNo),
+        ),
       );
     }
     if (downloadStatus == AssetPackStatus.downloading) {
@@ -414,8 +451,9 @@ ${shloka.bhavarth}''';
         height: 28,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
-          value: audioProvider
-              .getChapterDownloadProgress(int.parse(shloka.chapterNo)),
+          value: audioProvider.getChapterDownloadProgress(
+            int.parse(shloka.chapterNo),
+          ),
         ),
       );
     }
@@ -454,16 +492,18 @@ ${shloka.bhavarth}''';
       builder: (context, audioProvider, child) {
         final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
         // Use the reliable ID passed from the parent for UI logic
-        final isPlayingThisShloka =
-            currentlyPlayingId == shlokaId;
+        final isPlayingThisShloka = currentlyPlayingId == shlokaId;
         final playbackState = audioProvider.playbackState;
         final chapterNumber = int.tryParse(shloka.chapterNo) ?? 0;
-        final downloadStatus =
-            audioProvider.getChapterPackStatus(chapterNumber);
+        final downloadStatus = audioProvider.getChapterPackStatus(
+          chapterNumber,
+        );
 
         // --- LOGGING FOR HIGHLIGHT ---
         if (isPlayingThisShloka && playbackState == PlaybackState.playing) {
-          debugPrint("[HIGHLIGHT] Card $shlokaId is being built with highlight ON.");
+          debugPrint(
+            "[HIGHLIGHT] Card $shlokaId is being built with highlight ON.",
+          );
         }
 
         return Stack(
