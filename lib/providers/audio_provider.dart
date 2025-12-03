@@ -24,13 +24,28 @@ import '../data/static_data.dart'; // ADDED for chapter titles in MediaItem
 
 // A simple utility to get shloka counts per chapter.
 const Map<int, int> _shlokaCounts = {
-  1: 47, 2: 72, 3: 43, 4: 42, 5: 29, 6: 47, 7: 30, 8: 28, 9: 34,
-  10: 42, 11: 55, 12: 20, 13: 35, 14: 27, 15: 20, 16: 24, 17: 28, 18: 78
+  1: 47,
+  2: 72,
+  3: 43,
+  4: 42,
+  5: 29,
+  6: 47,
+  7: 30,
+  8: 28,
+  9: 34,
+  10: 42,
+  11: 55,
+  12: 20,
+  13: 35,
+  14: 27,
+  15: 20,
+  16: 24,
+  17: 28,
+  18: 78,
 };
 
 // --- DEVELOPMENT SWITCH ---
 const bool _useLocalAssets = false;
-
 
 // Enum to represent the state of the audio player for a specific shloka
 enum PlaybackState { stopped, loading, playing, paused, error }
@@ -42,7 +57,7 @@ enum AssetPackStatus {
   pending,
   downloading,
   downloaded,
-  failed
+  failed,
 }
 
 class AudioProvider extends ChangeNotifier {
@@ -73,14 +88,20 @@ class AudioProvider extends ChangeNotifier {
     // 2. Initialize asset delivery listeners if required
     if (!_useLocalAssets && !Platform.isIOS) {
       await _initializeAssetDeliveryListeners();
-    } else { debugPrint("[AUDIO_PROVIDER] Using local/bundled assets. Skipping asset delivery initialization."); }
-    
+    } else {
+      debugPrint(
+        "[AUDIO_PROVIDER] Using local/bundled assets. Skipping asset delivery initialization.",
+      );
+    }
+
     // 3. Set up player state and error listeners
     _listenToPlayerState();
-    _audioPlayer.playbackEventStream.listen((event) {},
-        onError: (Object e, StackTrace stackTrace) {
-      debugPrint('A stream error occurred: $e');
-    });
+    _audioPlayer.playbackEventStream.listen(
+      (event) {},
+      onError: (Object e, StackTrace stackTrace) {
+        debugPrint('A stream error occurred: $e');
+      },
+    );
   }
 
   @override
@@ -92,6 +113,10 @@ class AudioProvider extends ChangeNotifier {
   // --- PUBLIC METHODS ---
 
   AssetPackStatus getChapterPackStatus(int chapterNumber) {
+    // MODIFIED: On iOS or when using local assets, we treat everything as downloaded.
+    if (_useLocalAssets || Platform.isIOS) {
+      return AssetPackStatus.downloaded;
+    }
     final packName = _getPackName(chapterNumber);
     return _packStatus[packName] ?? AssetPackStatus.unknown;
   }
@@ -124,22 +149,27 @@ class AudioProvider extends ChangeNotifier {
       // If the asset path is null (e.g., download failed or not yet complete),
       // set an error state and stop.
       if (assetPath == null) {
-        debugPrint("Could not get asset path for shloka $shlokaId. Asset might not be ready.");
+        debugPrint(
+          "Could not get asset path for shloka $shlokaId. Asset might not be ready.",
+        );
         _setPlaybackState(PlaybackState.error);
         return;
       }
-      
+
       // Create the MediaItem tag required by just_audio_background
       final mediaItem = MediaItem(
         id: shlokaId,
-        album: "Chapter ${shloka.chapterNo}: ${StaticData.geetaAdhyay[int.parse(shloka.chapterNo) - 1]}",
+        album:
+            "Chapter ${shloka.chapterNo}: ${StaticData.geetaAdhyay[int.parse(shloka.chapterNo) - 1]}",
         title: "Shloka ${shloka.chapterNo}.${shloka.shlokNo}",
         artist: shloka.speaker ?? "Gita Recitation",
       );
 
       // Determine if it's a local asset or a file path from asset_delivery
-      final uri = (_useLocalAssets || Platform.isIOS) ? Uri.parse('asset:///$assetPath') : Uri.file(assetPath);
-      
+      final uri = (_useLocalAssets || Platform.isIOS)
+          ? Uri.parse('asset:///$assetPath')
+          : Uri.file(assetPath);
+
       // Use setAudioSource with the tagged URI
       final source = AudioSource.uri(uri, tag: mediaItem);
       await _audioPlayer.setAudioSource(source);
@@ -156,25 +186,34 @@ class AudioProvider extends ChangeNotifier {
     final packName = _getPackName(chapterNumber);
     final currentStatus = getChapterPackStatus(chapterNumber);
 
-    debugPrint("[ASSET_DELIVERY] User initiated download for chapter $chapterNumber (pack: $packName). Current status: $currentStatus");
+    debugPrint(
+      "[ASSET_DELIVERY] User initiated download for chapter $chapterNumber (pack: $packName). Current status: $currentStatus",
+    );
 
     // Don't re-initiate if already pending or downloading
-    if (currentStatus == AssetPackStatus.downloading || currentStatus == AssetPackStatus.pending) {
-      debugPrint("[ASSET_DELIVERY] Download for $packName is already in progress. Ignoring request.");
+    if (currentStatus == AssetPackStatus.downloading ||
+        currentStatus == AssetPackStatus.pending) {
+      debugPrint(
+        "[ASSET_DELIVERY] Download for $packName is already in progress. Ignoring request.",
+      );
       return;
     }
 
     // Set status to pending immediately for instant UI feedback
     _packStatus[packName] = AssetPackStatus.pending;
     notifyListeners();
-    debugPrint("[ASSET_DELIVERY] Set $packName status to PENDING for UI feedback.");
+    debugPrint(
+      "[ASSET_DELIVERY] Set $packName status to PENDING for UI feedback.",
+    );
 
     try {
       // Use fetch() to initiate the download, as per the plugin example.
       // This is a "fire-and-forget" call. The listener will handle status updates.
-      await AssetDelivery.fetch(packName); 
+      await AssetDelivery.fetch(packName);
     } catch (e, s) {
-      debugPrint("[ASSET_DELIVERY] CRITICAL ERROR initiating download for chapter $chapterNumber: $e");
+      debugPrint(
+        "[ASSET_DELIVERY] CRITICAL ERROR initiating download for chapter $chapterNumber: $e",
+      );
       debugPrint("[ASSET_DELIVERY] Stack trace: $s");
       _packStatus[packName] = AssetPackStatus.failed;
       notifyListeners();
@@ -200,7 +239,9 @@ class AudioProvider extends ChangeNotifier {
       try {
         // Try to get the path. If it succeeds, the pack is downloaded.
         final path = await _getShlokaAssetPathForChapter(chapter);
-        _packStatus[packName] = (path != null) ? AssetPackStatus.downloaded : AssetPackStatus.notDownloaded;
+        _packStatus[packName] = (path != null)
+            ? AssetPackStatus.downloaded
+            : AssetPackStatus.notDownloaded;
       } catch (e) {
         // This is expected if the pack is not downloaded.
         _packStatus[packName] = AssetPackStatus.notDownloaded;
@@ -214,7 +255,11 @@ class AudioProvider extends ChangeNotifier {
   }
 
   // NEW: Extracted the status update logic into a reusable helper method.
-  void _applyStatusUpdate(String packName, String? statusString, double? progress) {
+  void _applyStatusUpdate(
+    String packName,
+    String? statusString,
+    double? progress,
+  ) {
     switch (statusString) {
       case 'PENDING':
         _packStatus[packName] = AssetPackStatus.pending;
@@ -254,12 +299,16 @@ class AudioProvider extends ChangeNotifier {
     // If this happens, we'll find the pack that is currently in a transient state
     // (pending or downloading) and apply the update to it. This assumes only
     // one download happens at a time, which is true for the current UI.
-    debugPrint("[ASSET_DELIVERY_LISTENER] Received status update with null packName. Applying workaround...");
+    debugPrint(
+      "[ASSET_DELIVERY_LISTENER] Received status update with null packName. Applying workaround...",
+    );
     String? activeDownloadPackName;
     try {
       activeDownloadPackName = _packStatus.entries
           .firstWhere(
-            (entry) => entry.value == AssetPackStatus.pending || entry.value == AssetPackStatus.downloading,
+            (entry) =>
+                entry.value == AssetPackStatus.pending ||
+                entry.value == AssetPackStatus.downloading,
           )
           .key;
     } on StateError {
@@ -268,10 +317,14 @@ class AudioProvider extends ChangeNotifier {
     }
 
     if (activeDownloadPackName != null) {
-      debugPrint("[ASSET_DELIVERY_LISTENER] Workaround: Found active pack '$activeDownloadPackName'. Applying status update.");
+      debugPrint(
+        "[ASSET_DELIVERY_LISTENER] Workaround: Found active pack '$activeDownloadPackName'. Applying status update.",
+      );
       _applyStatusUpdate(activeDownloadPackName, statusString, progress);
     } else {
-      debugPrint("[ASSET_DELIVERY_LISTENER] Workaround failed: Could not find an active download to apply the status to.");
+      debugPrint(
+        "[ASSET_DELIVERY_LISTENER] Workaround failed: Could not find an active download to apply the status to.",
+      );
     }
   }
 
@@ -295,7 +348,9 @@ class AudioProvider extends ChangeNotifier {
           break;
         case ProcessingState.ready:
           // The player is ready. The 'isPlaying' boolean determines the final state.
-          _setPlaybackState(isPlaying ? PlaybackState.playing : PlaybackState.paused);
+          _setPlaybackState(
+            isPlaying ? PlaybackState.playing : PlaybackState.paused,
+          );
           break;
       }
     });
@@ -306,7 +361,9 @@ class AudioProvider extends ChangeNotifier {
     // it means a new shloka has already been requested (e.g., by continuous play).
     // In this case, we should not stop the playback process.
     if (_currentPlayingShlokaId != completedShlokaId) {
-      debugPrint("[AUDIO_PROVIDER] Stop called for $completedShlokaId, but new shloka $_currentPlayingShlokaId is already loading. Aborting stop.");
+      debugPrint(
+        "[AUDIO_PROVIDER] Stop called for $completedShlokaId, but new shloka $_currentPlayingShlokaId is already loading. Aborting stop.",
+      );
       return;
     }
 
@@ -317,7 +374,9 @@ class AudioProvider extends ChangeNotifier {
 
   void _setPlaybackState(PlaybackState state, {bool notify = true}) {
     if (_playbackState != state) {
-      debugPrint("[AUDIO_PROVIDER] State changing from $_playbackState to $state for ID $_currentPlayingShlokaId");
+      debugPrint(
+        "[AUDIO_PROVIDER] State changing from $_playbackState to $state for ID $_currentPlayingShlokaId",
+      );
       _playbackState = state;
       if (notify) notifyListeners();
     }
@@ -343,14 +402,20 @@ class AudioProvider extends ChangeNotifier {
         namingPattern: 'ch${chapterPadded}_sh%02d',
         fileExtension: 'opus',
       );
-      debugPrint("[ASSET_DELIVERY] Successfully got asset pack path for $packName: $assetPackPath");
+      debugPrint(
+        "[ASSET_DELIVERY] Successfully got asset pack path for $packName: $assetPackPath",
+      );
       if (assetPackPath == null) {
-        throw Exception('AssetDelivery.getAssetPackPath returned null. The pack is not available on the device.');
+        throw Exception(
+          'AssetDelivery.getAssetPackPath returned null. The pack is not available on the device.',
+        );
       }
       return assetPackPath;
     } catch (e, s) {
       // This is an expected failure if the pack is not on the device.
-      debugPrint("[ASSET_DELIVERY] Could not get asset pack path for $packName (likely not downloaded). Error: $e");
+      debugPrint(
+        "[ASSET_DELIVERY] Could not get asset pack path for $packName (likely not downloaded). Error: $e",
+      );
       return null;
     }
   }
@@ -373,12 +438,17 @@ class AudioProvider extends ChangeNotifier {
         // Use the new helper to get the base path for the chapter.
         final assetPackPath = await _getShlokaAssetPathForChapter(chapter);
         if (assetPackPath == null) {
-          debugPrint("[ASSET_DELIVERY] Base asset pack path for chapter $chapter is null. Cannot construct shloka path.");
+          debugPrint(
+            "[ASSET_DELIVERY] Base asset pack path for chapter $chapter is null. Cannot construct shloka path.",
+          );
           return null;
         }
         // IMPORTANT: The filename here must exactly match the file in your asset pack's assets folder.
-        final finalPath = '$assetPackPath/ch${chapterPadded}_sh$shlokPadded.opus';
-        debugPrint("[ASSET_DELIVERY] Constructed final path for playback: $finalPath");
+        final finalPath =
+            '$assetPackPath/ch${chapterPadded}_sh$shlokPadded.opus';
+        debugPrint(
+          "[ASSET_DELIVERY] Constructed final path for playback: $finalPath",
+        );
         return finalPath;
       }
     } catch (e, s) {
