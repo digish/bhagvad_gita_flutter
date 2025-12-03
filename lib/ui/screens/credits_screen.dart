@@ -57,17 +57,17 @@ final List<CreditItem> creditsData = [
 
   const CreditItem(
     category: 'Geeta Text',
-    source: 'https://sanskritdocuments.org/doc_giitaa/gitAanvayasandhivigraha.html?lang=sa',
-    description: 'shloka-anvay and sandhi-vigrah is a derived work from this work done by Sunder Hattangadi',
+    source:
+        'https://sanskritdocuments.org/doc_giitaa/gitAanvayasandhivigraha.html?lang=sa',
+    description:
+        'shloka-anvay and sandhi-vigrah is a derived work from this work done by Sunder Hattangadi',
   ),
-
 
   const CreditItem(
     category: 'Transliteration Tool',
     source: 'http://www.learnsanskrit.org/tools/sanscript',
     description: 'Transliteration tool used.',
   ),
-
 
   const CreditItem(
     category: 'Lotus mandala Image',
@@ -77,7 +77,8 @@ final List<CreditItem> creditsData = [
   const CreditItem(
     category: 'Emblems',
     source: 'Internal Design',
-    description: 'All chapter emblems, speaker icons, and app logos were created by the developer with help from AI.',
+    description:
+        'All chapter emblems, speaker icons, and app logos were created by the developer with help from AI.',
   ),
   const CreditItem(
     category: 'Lotus Image',
@@ -88,19 +89,19 @@ final List<CreditItem> creditsData = [
   const CreditItem(
     category: 'Source Code',
     source: 'https://github.com/digish/bhagvad_gita_flutter',
-    description: 'Source code is open source and available on GitHub under the MIT License.',
+    description:
+        'Source code is open source and available on GitHub under the MIT License.',
   ),
 ];
 
 final List<AuthorProfile> authorProfilesData = [
-
   const AuthorProfile(
     author: 'Pandurang Shastri Athavale',
     domain: 'Spiritual Reformer & Founder of Swadhyay',
     emblemAsset: 'assets/emblems/authors/dadaji.png',
     quotes: [
       'Bhakti is a social force. The Gita is a call to awaken divinity in society.',
-      'The Gita is not just a religious scripture but a scripture for life, in which, a step ahead of even selfless service to humanity, the message of  सर्वभूतहिते रताः is given.'
+      'The Gita is not just a religious scripture but a scripture for life, in which, a step ahead of even selfless service to humanity, the message of  सर्वभूतहिते रताः is given.',
     ],
     favoriteShlokas: ['6,30', '9,22', '5,25'],
   ),
@@ -130,7 +131,6 @@ final List<AuthorProfile> authorProfilesData = [
     quotes: [
       'If devotees do not progress, it is because they discard their weapons of self-control',
       'within the soul is a source of infinite',
-
     ],
     favoriteShlokas: ['6,5', '2,24'],
   ),
@@ -140,7 +140,7 @@ final List<AuthorProfile> authorProfilesData = [
     domain: 'Naturalist & Philosopher',
     emblemAsset: 'assets/emblems/authors/hdt.png',
     quotes: [
-      'In the morning I bathe my intellect in the stupendous and cosmogonal philosophy of the Bhagavad-Gita, in comparison with which our modern world and its literature seem puny and trivial.'
+      'In the morning I bathe my intellect in the stupendous and cosmogonal philosophy of the Bhagavad-Gita, in comparison with which our modern world and its literature seem puny and trivial.',
     ],
     favoriteShlokas: ['4,38'],
   ),
@@ -150,7 +150,7 @@ final List<AuthorProfile> authorProfilesData = [
     domain: 'Writer & Philosopher',
     emblemAsset: 'assets/emblems/authors/ah.png',
     quotes: [
-      'The Bhagavad-Gita is the most systematic statement of spiritual evolution of endowing value to mankind. It is one of the most clear and comprehensive summaries of perennial philosophy ever revealed.'
+      'The Bhagavad-Gita is the most systematic statement of spiritual evolution of endowing value to mankind. It is one of the most clear and comprehensive summaries of perennial philosophy ever revealed.',
     ],
     favoriteShlokas: ['3,35', '18,66'],
   ),
@@ -158,18 +158,14 @@ final List<AuthorProfile> authorProfilesData = [
     author: 'Swami Chinmayananda',
     domain: 'Vedantic Scholar',
     emblemAsset: 'assets/emblems/authors/sc.png',
-    quotes: [
-      'The Gita is a bouquet of spiritual truths from the Upanishads.',
-    ],
+    quotes: ['The Gita is a bouquet of spiritual truths from the Upanishads.'],
     favoriteShlokas: ['2,13', '15,1'],
   ),
   const AuthorProfile(
     author: 'Dr. A.P.J. Abdul Kalam',
     domain: 'Scientist & Former President',
     emblemAsset: 'assets/emblems/authors/apj.png',
-    quotes: [
-      'The Bhagavad Gita has always been my companion and guide.',
-    ],
+    quotes: ['The Bhagavad Gita has always been my companion and guide.'],
     favoriteShlokas: ['18,58'],
   ),
   const AuthorProfile(
@@ -196,9 +192,7 @@ final List<AuthorProfile> authorProfilesData = [
     author: 'Swami Dayananda Saraswati',
     domain: 'Vedantic Teacher',
     emblemAsset: 'assets/emblems/authors/ds.png',
-    quotes: [
-      'The Gita liberates you from confusion and awakens clarity.',
-    ],
+    quotes: ['The Gita liberates you from confusion and awakens clarity.'],
     favoriteShlokas: ['18,73'],
   ),
   const AuthorProfile(
@@ -211,7 +205,6 @@ final List<AuthorProfile> authorProfilesData = [
     favoriteShlokas: ['9,22', '18,71'],
   ),
 ];
-
 
 class CreditsScreen extends StatelessWidget {
   const CreditsScreen({super.key});
@@ -232,8 +225,9 @@ class CreditsScreen extends StatelessWidget {
     Share.share(
       'Check out this beautiful Bhagavad Gita app!\n\n$appLink',
       subject: 'Bhagavad Gita App',
-      sharePositionOrigin:
-          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
     );
   }
 
@@ -244,14 +238,17 @@ class CreditsScreen extends StatelessWidget {
       body: Stack(
         children: [
           SimpleGradientBackground(
-              startColor: const Color.fromARGB(255, 240, 255, 126)), // Golden-brown for credits
+            startColor: const Color.fromARGB(255, 240, 255, 126),
+          ), // Golden-brown for credits
           SafeArea(
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
                   child: Column(
                     children: [
-                      const SizedBox(height: 24), // Adjusted padding after SafeArea
+                      const SizedBox(
+                        height: 24,
+                      ), // Adjusted padding after SafeArea
                       GestureDetector(
                         onTap: () => context.pop(),
                         child: Hero(
@@ -266,10 +263,11 @@ class CreditsScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         'Credits & Acknowledgements',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.brown.shade800,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Colors.brown.shade800,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(height: 24),
                       Padding(
@@ -282,7 +280,8 @@ class CreditsScreen extends StatelessWidget {
                             ElevatedButton.icon(
                               onPressed: () {
                                 _launchUrl(
-                                    'https://play.google.com/store/apps/developer?id=Komal+Pandya');
+                                  'https://play.google.com/store/apps/developer?id=Komal+Pandya',
+                                );
                               },
                               icon: const Icon(Icons.shop_2_outlined),
                               label: const Text('More Apps'),
@@ -308,30 +307,53 @@ class CreditsScreen extends StatelessWidget {
                   ),
                 ),
                 SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index < creditsData.length) {
-                        return _CreditCard(item: creditsData[index]);
-                      }
-                      // Add a header for quotes section
-                      if (index == creditsData.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 40.0, bottom: 16.0),
-                          child: Text(
-                            'Words of Wisdom',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: Colors.brown.shade800,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    return _CreditCard(item: creditsData[index]);
+                  }, childCount: creditsData.length),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 40.0, bottom: 16.0),
+                    child: Text(
+                      'Words of Wisdom',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: Colors.brown.shade800,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      }
-                      final profileIndex = index - creditsData.length - 1;
-                      return _AuthorCard(profile: authorProfilesData[profileIndex]);
-                    },
-                    childCount: creditsData.length + authorProfilesData.length + 1,
+                    ),
                   ),
+                ),
+                SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.crossAxisExtent > 600;
+                    if (isWide) {
+                      return SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 400,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
+                              childAspectRatio:
+                                  0.8, // Adjust based on card content
+                            ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          return _AuthorCard(
+                            profile: authorProfilesData[index],
+                          );
+                        }, childCount: authorProfilesData.length),
+                      );
+                    } else {
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          return _AuthorCard(
+                            profile: authorProfilesData[index],
+                          );
+                        }, childCount: authorProfilesData.length),
+                      );
+                    }
+                  },
                 ),
                 const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
               ],
@@ -362,7 +384,10 @@ class _CreditCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.6),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: Colors.black.withOpacity(0.1), width: 1),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.1),
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,26 +447,36 @@ class _AuthorCard extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
               child: Container(
                 // Add padding inside to push content below the emblem
-                padding: const EdgeInsets.fromLTRB(16.0, emblemRadius + 16.0, 16.0, 16.0),
+                padding: const EdgeInsets.fromLTRB(
+                  16.0,
+                  emblemRadius + 16.0,
+                  16.0,
+                  16.0,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.brown.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
+                  border: Border.all(
+                    color: Colors.black.withOpacity(0.08),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ...profile.quotes.map((quote) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Text(
-                            '"$quote"',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: Colors.black.withOpacity(0.8),
-                              fontStyle: FontStyle.italic,
-                              height: 1.4,
-                            ),
+                    ...profile.quotes.map(
+                      (quote) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Text(
+                          '"$quote"',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: Colors.black.withOpacity(0.8),
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -452,7 +487,11 @@ class _AuthorCard extends StatelessWidget {
                             runSpacing: 8.0,
                             children: profile.favoriteShlokas.map((shloka) {
                               return TextButton.icon(
-                                icon: Icon(Icons.menu_book, size: 18, color: Colors.brown.shade600),
+                                icon: Icon(
+                                  Icons.menu_book,
+                                  size: 18,
+                                  color: Colors.brown.shade600,
+                                ),
                                 label: Text(
                                   'Shloka $shloka',
                                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -464,8 +503,13 @@ class _AuthorCard extends StatelessWidget {
                                   context.push('/shloka-list/$shloka');
                                 },
                                 style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  backgroundColor: Colors.brown.withOpacity(0.1),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  backgroundColor: Colors.brown.withOpacity(
+                                    0.1,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20),
                                   ),
@@ -473,7 +517,8 @@ class _AuthorCard extends StatelessWidget {
                               );
                             }).toList(),
                           ),
-                        if (profile.favoriteShlokas.isNotEmpty) const SizedBox(height: 16),
+                        if (profile.favoriteShlokas.isNotEmpty)
+                          const SizedBox(height: 16),
                         Align(
                           alignment: Alignment.centerRight,
                           child: Column(
@@ -498,7 +543,7 @@ class _AuthorCard extends StatelessWidget {
                               ],
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ],
@@ -514,9 +559,13 @@ class _AuthorCard extends StatelessWidget {
               backgroundColor: const Color(0xFFFDFCFB).withOpacity(0.9),
               child: CircleAvatar(
                 radius: emblemRadius,
-                backgroundImage: profile.emblemAsset != null ? AssetImage(profile.emblemAsset!) : null,
+                backgroundImage: profile.emblemAsset != null
+                    ? AssetImage(profile.emblemAsset!)
+                    : null,
                 backgroundColor: Colors.grey.shade200,
-                child: profile.emblemAsset == null ? const Icon(Icons.person, size: 40, color: Colors.grey) : null,
+                child: profile.emblemAsset == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                    : null,
               ),
             ),
           ),

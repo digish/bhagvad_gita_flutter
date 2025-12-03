@@ -15,7 +15,7 @@ import '../widgets/shloka_result_card.dart';
 import '../widgets/word_result_card.dart';
 import '../widgets/decorative_foreground.dart';
 import '../../data/database_helper_interface.dart';
-
+import '../widgets/responsive_wrapper.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -23,8 +23,11 @@ class SearchScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Read the globally provided database helper
-    final dbHelper = Provider.of<DatabaseHelperInterface>(context, listen: false);
-    
+    final dbHelper = Provider.of<DatabaseHelperInterface>(
+      context,
+      listen: false,
+    );
+
     // Pass the helper to the SearchProvider
     return ChangeNotifierProvider(
       create: (_) => SearchProvider(dbHelper),
@@ -52,14 +55,13 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
 
       // ✨ RESTORED: The floating action button for navigation.
       // It's hidden when the keyboard is visible.
-      
       floatingActionButton: MediaQuery.of(context).viewInsets.bottom > 0
           ? null
           : _buildSpeedDial(context),
       body: Stack(
         children: [
           DarkenedAnimatedBackground(
-            opacity: MediaQuery.of(context).viewInsets.bottom > 0 ? 1.0: 0.2,
+            opacity: MediaQuery.of(context).viewInsets.bottom > 0 ? 1.0 : 0.2,
           ),
           AnimatedOpacity(
             opacity: isSearching ? 0.0 : 1.0,
@@ -77,7 +79,9 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
             child: Stack(
               children: [
                 AnimatedAlign(
-                  alignment: isSearching ? Alignment.topCenter : Alignment.center,
+                  alignment: isSearching
+                      ? Alignment.topCenter
+                      : Alignment.center,
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeInOut,
                   child: Padding(
@@ -88,28 +92,40 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
                       right: 16.0,
                     ),
                     child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: !isSearching
-                                ? AnimatedScale(
-                                    scale: MediaQuery.of(context).viewInsets.bottom > 0
-                                        ? 0.7
-                                        : 1.0,
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                    child: const Lotus(),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            height: MediaQuery.of(context).viewInsets.bottom > 16 ? 0 : 10,
-                          ),
-                          _buildSearchBar(provider),
-                        ],
+                      child: ResponsiveWrapper(
+                        maxWidth: 600,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              child: !isSearching
+                                  ? AnimatedScale(
+                                      scale:
+                                          MediaQuery.of(
+                                                context,
+                                              ).viewInsets.bottom >
+                                              0
+                                          ? 0.7
+                                          : 1.0,
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                      child: const Lotus(),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height:
+                                  MediaQuery.of(context).viewInsets.bottom > 16
+                                  ? 0
+                                  : 10,
+                            ),
+                            _buildSearchBar(provider),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -118,18 +134,21 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
                   Padding(
                     // Adjusted padding to position the list below the search bar area.
                     padding: const EdgeInsets.only(top: 100.0),
-                    child: ListView.builder(
-                      itemCount: provider.searchResults.length,
-                      itemBuilder: (context, index) {
-                        final item = provider.searchResults[index];
-                        if (item is ShlokaItem) {
-                          return ShlokaResultCard(shloka: item.shloka);
-                        }
-                        if (item is WordItem) {
-                          return WordResultCard(word: item.word);
-                        }
-                        return const SizedBox.shrink();
-                      },
+                    child: ResponsiveWrapper(
+                      maxWidth: 600,
+                      child: ListView.builder(
+                        itemCount: provider.searchResults.length,
+                        itemBuilder: (context, index) {
+                          final item = provider.searchResults[index];
+                          if (item is ShlokaItem) {
+                            return ShlokaResultCard(shloka: item.shloka);
+                          }
+                          if (item is WordItem) {
+                            return WordResultCard(word: item.word);
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ),
                   ),
               ],

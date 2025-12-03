@@ -30,79 +30,122 @@ class ChaptersScreen extends StatelessWidget {
       body: Stack(
         children: [
           // 1. --- This is the background widget ---
-          // It's the first child, so it's at the bottom of the stack.
           const SimpleGradientBackground(
-              startColor: Colors.white), // White for the white lotus
-
-          // 2. --- This is your original content ---
-          // This Column is placed on top of the background.
+            startColor: Colors.white,
+          ), // White for the white lotus
+          // 2. --- Main Content ---
           SafeArea(
             child: Column(
               children: [
-              // 1. --- This is the starting Hero widget ---
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: () {
-                  context.pop();
-                },
-                child: Hero(
-                  tag: 'whiteLotusHero', // The unique tag for the animation
-                  flightShuttleBuilder:
-                      (
-                        flightContext,
-                        animation,
-                        flightDirection,
-                        fromHeroContext,
-                        toHeroContext,
-                      ) {
-                        final rotationAnimation = animation.drive(
-                          Tween<double>(begin: 0.0, end: 1.0),
-                        );
-                        final scaleAnimation = animation.drive(
-                          TweenSequence([
-                            TweenSequenceItem(
-                              tween: Tween(begin: 1.0, end: 1.0),
-                              weight: 50,
-                            ),
-                            TweenSequenceItem(
-                              tween: Tween(begin: 1.0, end: 1.0),
-                              weight: 50,
-                            ),
-                          ]),
-                        );
-
-                        return RotationTransition(
-                          turns: rotationAnimation,
-                          child: ScaleTransition(
-                            scale: scaleAnimation,
-                            child: (toHeroContext.widget as Hero).child,
-                          ),
-                        );
+                // Header with Back Button and Lotus
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Back Button aligned to left
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 8.0),
+                        child: BackButton(color: Colors.black),
+                      ),
+                    ),
+                    // Centered Lotus
+                    GestureDetector(
+                      onTap: () {
+                        context.pop();
                       },
-                  child: Image.asset(
-                    'assets/images/lotus_white22.png',
-                    height: 120, // A good size for this screen
-                    fit: BoxFit.contain,
+                      child: Hero(
+                        tag:
+                            'whiteLotusHero', // The unique tag for the animation
+                        flightShuttleBuilder:
+                            (
+                              flightContext,
+                              animation,
+                              flightDirection,
+                              fromHeroContext,
+                              toHeroContext,
+                            ) {
+                              final rotationAnimation = animation.drive(
+                                Tween<double>(begin: 0.0, end: 1.0),
+                              );
+                              final scaleAnimation = animation.drive(
+                                TweenSequence([
+                                  TweenSequenceItem(
+                                    tween: Tween(begin: 1.0, end: 1.0),
+                                    weight: 50,
+                                  ),
+                                  TweenSequenceItem(
+                                    tween: Tween(begin: 1.0, end: 1.0),
+                                    weight: 50,
+                                  ),
+                                ]),
+                              );
+
+                              return RotationTransition(
+                                turns: rotationAnimation,
+                                child: ScaleTransition(
+                                  scale: scaleAnimation,
+                                  child: (toHeroContext.widget as Hero).child,
+                                ),
+                              );
+                            },
+                        child: Image.asset(
+                          'assets/images/lotus_white22.png',
+                          height: 120, // A good size for this screen
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // 3. Responsive List/Grid
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWideScreen = constraints.maxWidth > 600;
+
+                      if (isWideScreen) {
+                        return GridView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 500,
+                                childAspectRatio: 2.5, // Adjust for card shape
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                              ),
+                          itemCount: chapters.length,
+                          itemBuilder: (context, index) {
+                            final chapterName = chapters[index];
+                            final chapterNumber = index + 1;
+                            return _ChapterCard(
+                              chapterNumber: chapterNumber,
+                              chapterName: chapterName,
+                            );
+                          },
+                        );
+                      } else {
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(top: 16, bottom: 8.0),
+                          itemCount: chapters.length,
+                          itemBuilder: (context, index) {
+                            final chapterName = chapters[index];
+                            final chapterNumber = index + 1;
+                            return _ChapterCard(
+                              chapterNumber: chapterNumber,
+                              chapterName: chapterName,
+                            );
+                          },
+                        );
+                      }
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              // --- End of Hero widget ---
-
-              // 2. The ListView is now wrapped in an Expanded widget
-              // This makes it take up the remaining screen space.
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(top: 16, bottom: 8.0),
-                  itemCount: chapters.length,
-                  itemBuilder: (context, index) {
-                    final chapterName = chapters[index];
-                    final chapterNumber = index + 1;
-                    return _ChapterCard(
-                        chapterNumber: chapterNumber, chapterName: chapterName);
-                  },
-                ),
-              ),
               ],
             ),
           ),
@@ -122,7 +165,7 @@ class _ChapterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-  // By applying the filter to each card, the background between cards remains clear.
+    // By applying the filter to each card, the background between cards remains clear.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
@@ -137,7 +180,10 @@ class _ChapterCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: Colors.white.withOpacity(0.7), width: 1),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.7),
+                  width: 1,
+                ),
               ),
               child: InkWell(
                 onTap: () {
@@ -161,7 +207,8 @@ class _ChapterCard extends StatelessWidget {
                               width: 2,
                             ),
                             boxShadow: [
-                              BoxShadow( // Changed to a bright, golden glow
+                              BoxShadow(
+                                // Changed to a bright, golden glow
                                 color: Colors.amber.withOpacity(0.7),
                                 spreadRadius: 2,
                                 blurRadius: 12.0,
@@ -187,7 +234,9 @@ class _ChapterCard extends StatelessWidget {
                             Text(
                               'अध्याय $chapterNumber',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.primary.withOpacity(0.9),
+                                color: theme.colorScheme.primary.withOpacity(
+                                  0.9,
+                                ),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -197,7 +246,8 @@ class _ChapterCard extends StatelessWidget {
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: Colors.black.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
-                                fontSize: 20, // Explicitly setting size for prominence
+                                fontSize:
+                                    20, // Explicitly setting size for prominence
                               ),
                             ),
                           ],

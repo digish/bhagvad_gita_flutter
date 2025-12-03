@@ -23,6 +23,7 @@ import '../widgets/custom_scroll_indicator.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
+import '../widgets/responsive_wrapper.dart';
 
 // --- NEW: Enum to manage the content display modes ---
 enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
@@ -37,11 +38,13 @@ class ParayanScreen extends StatefulWidget {
 class _ParayanScreenState extends State<ParayanScreen> {
   // ✨ FIX: Revert to ItemScrollController and ItemPositionsListener for accuracy.
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
 
   ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
 
-  final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier( // This is not used anymore but kept for potential future use.
+  final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
+    // This is not used anymore but kept for potential future use.
     'अध्याय 1, श्लोक 1',
   );
 
@@ -51,19 +54,17 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
-
   @override
   void initState() {
     super.initState();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_audioListener);
-
-
   }
 
   // --- NEW: Listener to update the playing ID ---
   void _audioListener() {
-    if (mounted && _currentlyPlayingId != _audioProvider?.currentPlayingShlokaId) {
+    if (mounted &&
+        _currentlyPlayingId != _audioProvider?.currentPlayingShlokaId) {
       setState(() {
         _currentlyPlayingId = _audioProvider?.currentPlayingShlokaId;
       });
@@ -104,82 +105,121 @@ class _ParayanScreenState extends State<ParayanScreen> {
         ), */
       // ✨ FIX: Set background color based on settings.
       backgroundColor: settingsProvider.showBackground
-          ? Colors.black // Original dark background for gradient
+          ? Colors
+                .black // Original dark background for gradient
           : Colors.grey.shade200, // Solid light background for readability
       body: Stack(
         children: [
           if (settingsProvider.showBackground)
-            SimpleGradientBackground(startColor: const Color.fromARGB(255, 103, 108, 255)),
+            SimpleGradientBackground(
+              startColor: const Color.fromARGB(255, 103, 108, 255),
+            ),
           Consumer<ParayanProvider>(
             builder: (context, provider, child) {
               if (provider.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
-          
+
               // --- NEW: Determine card configuration based on display mode ---
               final FullShlokaCardConfig cardConfig;
               switch (_displayMode) {
                 case ParayanDisplayMode.shlokOnly:
-                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: false, showBhavarth: false, showSeparator: false);
+                  cardConfig = FullShlokaCardConfig(
+                    baseFontSize: settingsProvider.fontSize,
+                    showAnvay: false,
+                    showBhavarth: false,
+                    showSeparator: false,
+                  );
                   break;
                 case ParayanDisplayMode.shlokAndAnvay:
-                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: false, showSeparator: true);
+                  cardConfig = FullShlokaCardConfig(
+                    baseFontSize: settingsProvider.fontSize,
+                    showAnvay: true,
+                    showBhavarth: false,
+                    showSeparator: true,
+                  );
                   break;
                 case ParayanDisplayMode.all:
-                  cardConfig = FullShlokaCardConfig(baseFontSize: settingsProvider.fontSize, showAnvay: true, showBhavarth: true, showSeparator: true);
+                  cardConfig = FullShlokaCardConfig(
+                    baseFontSize: settingsProvider.fontSize,
+                    showAnvay: true,
+                    showBhavarth: true,
+                    showSeparator: true,
+                  );
                   break;
               }
-          
+
               final shlokas = provider.shlokas;
 
               // ✨ FIX: Revert to ScrollablePositionedList
-              return ScrollablePositionedList.builder(
-                itemScrollController: _itemScrollController,
-                itemPositionsListener: _itemPositionsListener,
-                itemCount: shlokas.length,
-                // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
-                // without interfering with the item position listener.
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 240,
-                  right: 50,
-                  bottom: 8.0,
+              return ResponsiveWrapper(
+                child: ScrollablePositionedList.builder(
+                  itemScrollController: _itemScrollController,
+                  itemPositionsListener: _itemPositionsListener,
+                  itemCount: shlokas.length,
+                  // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
+                  // without interfering with the item position listener.
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 240,
+                    right: 50,
+                    bottom: 8.0,
+                  ),
+                  itemBuilder: (context, index) {
+                    final shloka = shlokas[index];
+                    final previousShloka = (index > 0)
+                        ? shlokas[index - 1]
+                        : null;
+
+                    final isChapterStart =
+                        previousShloka == null ||
+                        shloka.chapterNo != previousShloka.chapterNo;
+                    final isChapterEnd =
+                        (index == shlokas.length - 1) ||
+                        shloka.chapterNo != shlokas[index + 1].chapterNo;
+                    final speakerChanged =
+                        previousShloka != null &&
+                        previousShloka.speaker != shloka.speaker;
+
+                    return Column(
+                      children: [
+                        if (isChapterStart)
+                          _ChapterStartHeader(
+                            chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                          ),
+                        if (speakerChanged || isChapterStart)
+                          _SpeakerHeader(speaker: shloka.speaker ?? "Uvacha"),
+                        FullShlokaCard(
+                          shloka: shloka,
+                          currentlyPlayingId: _currentlyPlayingId,
+                          onPlayPause: () {
+                            setState(() {
+                              _currentlyPlayingId =
+                                  '${shloka.chapterNo}.${shloka.shlokNo}';
+                            });
+                          },
+                          config: cardConfig.copyWith(
+                            showSpeaker: false,
+                            showColoredCard: false,
+                            showEmblem: false,
+                            showShlokIndex: true,
+                            spacingCompact: true,
+                            isLightTheme: true,
+                          ),
+                        ),
+                        if (isChapterEnd)
+                          _ChapterEndFooter(
+                            chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                            chapterName:
+                                StaticData.geetaAdhyay[(int.tryParse(
+                                          shloka.chapterNo,
+                                        ) ??
+                                        1) -
+                                    1],
+                          ),
+                      ],
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) {
-                  final shloka = shlokas[index];
-                  final previousShloka = (index > 0) ? shlokas[index - 1] : null;
-
-                  final isChapterStart = previousShloka == null || shloka.chapterNo != previousShloka.chapterNo;
-                  final isChapterEnd = (index == shlokas.length - 1) || shloka.chapterNo != shlokas[index + 1].chapterNo;
-                  final speakerChanged = previousShloka != null && previousShloka.speaker != shloka.speaker;
-
-                  return Column(
-                    children: [
-                      if (isChapterStart)
-                        _ChapterStartHeader(
-                          chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
-                        ),
-                      if (speakerChanged || isChapterStart)
-                        _SpeakerHeader(
-                          speaker: shloka.speaker ?? "Uvacha",
-                        ),
-                      FullShlokaCard(
-                        shloka: shloka,
-                        currentlyPlayingId: _currentlyPlayingId,
-                        onPlayPause: () {
-                          setState(() {
-                            _currentlyPlayingId = '${shloka.chapterNo}.${shloka.shlokNo}';
-                          });
-                        },
-                        config: cardConfig.copyWith(showSpeaker: false, showColoredCard: false, showEmblem: false, showShlokIndex: true, spacingCompact: true, isLightTheme: true),
-                      ),
-                      if (isChapterEnd)
-                        _ChapterEndFooter(
-                          chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
-                          chapterName: StaticData.geetaAdhyay[(int.tryParse(shloka.chapterNo) ?? 1) - 1],
-                        ),
-                    ],
-                  );
-                },
               );
             },
           ),
@@ -193,32 +233,39 @@ class _ParayanScreenState extends State<ParayanScreen> {
               // animation controller here. However, we can listen to the same scroll
               // positions to derive the animation state.
               return ValueListenableBuilder<Iterable<ItemPosition>>(
-                  valueListenable: _itemPositionsListener.itemPositions,
-                  builder: (context, positions, _) {
-                bool isAtTop = positions.isEmpty ||
-                    (positions.first.index == 0 && positions.first.itemLeadingEdge >= 0);
-                final double topPadding = isAtTop
-                    ? 240.0 // Expanded header height
-                    : MediaQuery.of(context).padding.top + kToolbarHeight + 50; // Collapsed header height
-              return Positioned(
-                right: 0,
-                top: topPadding,
-                bottom: 0,
-                child: CustomScrollIndicator(
-                  itemPositionsListener: _itemPositionsListener, // ✨ FIX: Pass the listener
-                  itemCount: provider.shlokas.length,
-                  chapterMarkers: provider.chapterStartIndices,
-                  chapterLabels: provider.chapterStartIndices.map((i) {
-                    final chapterNo = provider.shlokas[i].chapterNo;
-                    return chapterNo;
-                  }).toList(),
-                  onLotusTap: (index) {
-                    final chapterIndex = provider.chapterStartIndices[index];
-                    _scrollToIndex(chapterIndex);
-                  },
-                ),
+                valueListenable: _itemPositionsListener.itemPositions,
+                builder: (context, positions, _) {
+                  bool isAtTop =
+                      positions.isEmpty ||
+                      (positions.first.index == 0 &&
+                          positions.first.itemLeadingEdge >= 0);
+                  final double topPadding = isAtTop
+                      ? 240.0 // Expanded header height
+                      : MediaQuery.of(context).padding.top +
+                            kToolbarHeight +
+                            50; // Collapsed header height
+                  return Positioned(
+                    right: 0,
+                    top: topPadding,
+                    bottom: 0,
+                    child: CustomScrollIndicator(
+                      itemPositionsListener:
+                          _itemPositionsListener, // ✨ FIX: Pass the listener
+                      itemCount: provider.shlokas.length,
+                      chapterMarkers: provider.chapterStartIndices,
+                      chapterLabels: provider.chapterStartIndices.map((i) {
+                        final chapterNo = provider.shlokas[i].chapterNo;
+                        return chapterNo;
+                      }).toList(),
+                      onLotusTap: (index) {
+                        final chapterIndex =
+                            provider.chapterStartIndices[index];
+                        _scrollToIndex(chapterIndex);
+                      },
+                    ),
+                  );
+                },
               );
-              });
             },
           ),
           // --- Animating Header Layer ---
@@ -234,7 +281,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- NEW: Cycle button for display mode ---
   void _cycleDisplayMode() {
     setState(() {
-      final nextIndex = (_displayMode.index + 1) % ParayanDisplayMode.values.length;
+      final nextIndex =
+          (_displayMode.index + 1) % ParayanDisplayMode.values.length;
       _displayMode = ParayanDisplayMode.values[nextIndex];
     });
   }
@@ -320,35 +368,47 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
     // --- Trigger Logic ---
     // Find the item with the smallest index to determine scroll direction for the animation.
-    final absoluteTopItem = positions.reduce((min, p) => p.index < min.index ? p : min);
+    final absoluteTopItem = positions.reduce(
+      (min, p) => p.index < min.index ? p : min,
+    );
 
     // If the top item is index 0 and it's at the top of the list, reverse the animation.
     if (absoluteTopItem.index == 0 && absoluteTopItem.itemLeadingEdge >= 0) {
-      if (_animationController.status != AnimationStatus.dismissed) {        
+      if (_animationController.status != AnimationStatus.dismissed) {
         _animationController.reverse();
       }
     } else {
       // Otherwise, if the animation isn't already completed, play it forward.
-      if (_animationController.status != AnimationStatus.completed) {        
+      if (_animationController.status != AnimationStatus.completed) {
         _animationController.forward();
       }
     }
 
-
-
     // --- Shloka Count Logic ---
     // ✨ FIX: Find the first item that is visible *below* the header.
-    final double headerHeight = lerpDouble(240.0, MediaQuery.of(context).padding.top + kToolbarHeight + 50, _animationController.value)!;    
-    final visibleBelowHeader = positions.where((p) => p.itemTrailingEdge > headerHeight);
+    final double headerHeight = lerpDouble(
+      240.0,
+      MediaQuery.of(context).padding.top + kToolbarHeight + 50,
+      _animationController.value,
+    )!;
+    final visibleBelowHeader = positions.where(
+      (p) => p.itemTrailingEdge > headerHeight,
+    );
 
     // ✨ FIX: Check if any items are visible below the header before reducing.
     final ItemPosition topVisibleItem = visibleBelowHeader.isNotEmpty
-        ? visibleBelowHeader.reduce((min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min)
+        ? visibleBelowHeader.reduce(
+            (min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min,
+          )
         : absoluteTopItem; // Fallback to the absolute top item if none are fully visible yet.
 
     if (topVisibleItem.index != _lastTopIndex) {
-      final parayanProvider = Provider.of<ParayanProvider>(context, listen: false);
-      if (parayanProvider.shlokas.isNotEmpty && topVisibleItem.index < parayanProvider.shlokas.length) {
+      final parayanProvider = Provider.of<ParayanProvider>(
+        context,
+        listen: false,
+      );
+      if (parayanProvider.shlokas.isNotEmpty &&
+          topVisibleItem.index < parayanProvider.shlokas.length) {
         final shloka = parayanProvider.shlokas[topVisibleItem.index];
         setState(() {
           _currentLabel = 'अध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
@@ -362,7 +422,8 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
   Widget build(BuildContext context) {
     // These values are now static within the build method.
     const double maxHeaderHeight = 240;
-    final double minHeaderHeight = MediaQuery.of(context).padding.top + kToolbarHeight + 50;
+    final double minHeaderHeight =
+        MediaQuery.of(context).padding.top + kToolbarHeight + 50;
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -373,13 +434,25 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
         // All the lerp calculations remain the same.
         const double maxLotusSize = 120.0;
         const double minLotusSize = 40.0;
-        final double currentLotusSize = lerpDouble(maxLotusSize, minLotusSize, t)!;
+        final double currentLotusSize = lerpDouble(
+          maxLotusSize,
+          minLotusSize,
+          t,
+        )!;
         final double maxLotusTop = MediaQuery.of(context).padding.top + 20;
-        final double minLotusTop = MediaQuery.of(context).padding.top + (kToolbarHeight - minLotusSize) / 2;
+        final double minLotusTop =
+            MediaQuery.of(context).padding.top +
+            (kToolbarHeight - minLotusSize) / 2;
         final double currentLotusTop = lerpDouble(maxLotusTop, minLotusTop, t)!;
-        final double maxLotusLeft = (MediaQuery.of(context).size.width - maxLotusSize) / 2;
-        final double minLotusLeft = 16.0;
-        final double currentLotusLeft = lerpDouble(maxLotusLeft, minLotusLeft, t)!;
+        final double maxLotusLeft =
+            (MediaQuery.of(context).size.width - maxLotusSize) / 2;
+        final double minLotusLeft =
+            56.0; // Shifted to make room for back button
+        final double currentLotusLeft = lerpDouble(
+          maxLotusLeft,
+          minLotusLeft,
+          t,
+        )!;
 
         final double maxTextTop = currentLotusTop + maxLotusSize + 8;
         final double minTextTop = minLotusTop;
@@ -396,6 +469,13 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Back Button (always visible)
+              Positioned(
+                top: MediaQuery.of(context).padding.top,
+                left: 4,
+                child: const BackButton(color: Colors.black87),
+              ),
+
               // Expanded Controls (unchanged)
               // Collapsed Controls (unchanged)
               Positioned(
@@ -412,27 +492,38 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                         currentSize: widget.settingsProvider.fontSize,
                         onDecrement: () {
                           if (widget.settingsProvider.fontSize > 16.0) {
-                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize - 2.0);
+                            widget.settingsProvider.setFontSize(
+                              widget.settingsProvider.fontSize - 2.0,
+                            );
                           }
                         },
                         onIncrement: () {
                           if (widget.settingsProvider.fontSize < 32.0) {
-                            widget.settingsProvider.setFontSize(widget.settingsProvider.fontSize + 2.0);
+                            widget.settingsProvider.setFontSize(
+                              widget.settingsProvider.fontSize + 2.0,
+                            );
                           }
                         },
                         color: Colors.black54,
                       ),
-                      (context.findAncestorStateOfType<_ParayanScreenState>()!)._buildDisplayModeButton(),
+                      (context.findAncestorStateOfType<_ParayanScreenState>()!)
+                          ._buildDisplayModeButton(),
                       // --- NEW: Background Toggle Button (Collapsed) ---
                       Consumer<SettingsProvider>(
                         builder: (context, settings, _) {
                           return IconButton(
                             icon: Icon(
-                              settings.showBackground ? Icons.image : Icons.image_not_supported,
+                              settings.showBackground
+                                  ? Icons.image
+                                  : Icons.image_not_supported,
                               color: Colors.black54,
                             ),
-                            tooltip: settings.showBackground ? 'Hide Background' : 'Show Background',
-                            onPressed: () => settings.setShowBackground(!settings.showBackground),
+                            tooltip: settings.showBackground
+                                ? 'Hide Background'
+                                : 'Show Background',
+                            onPressed: () => settings.setShowBackground(
+                              !settings.showBackground,
+                            ),
                           );
                         },
                       ),
@@ -449,11 +540,27 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                   onTap: () => Navigator.of(context).pop(),
                   child: Hero(
                     tag: 'blueLotusHero',
-                    flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                      final rotationAnimation = animation.drive(Tween<double>(begin: 0.0, end: 1.0));
-                      return RotationTransition(turns: rotationAnimation, child: (toHeroContext.widget as Hero).child);
-                    },
-                    child: Image.asset('assets/images/lotus_blue12.png', height: currentLotusSize, fit: BoxFit.contain),
+                    flightShuttleBuilder:
+                        (
+                          flightContext,
+                          animation,
+                          flightDirection,
+                          fromHeroContext,
+                          toHeroContext,
+                        ) {
+                          final rotationAnimation = animation.drive(
+                            Tween<double>(begin: 0.0, end: 1.0),
+                          );
+                          return RotationTransition(
+                            turns: rotationAnimation,
+                            child: (toHeroContext.widget as Hero).child,
+                          );
+                        },
+                    child: Image.asset(
+                      'assets/images/lotus_blue12.png',
+                      height: currentLotusSize,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -472,7 +579,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                       child: Text(
                         _currentLabel,
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     Opacity(
@@ -481,7 +590,11 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           _currentLabel,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.black87),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -511,7 +624,8 @@ class _ChapterStartHeader extends StatelessWidget {
     // Using `geetaAdhyay` list directly with correct 0-based indexing is safer
     // and consistent with other parts of the app (e.g., _ChapterEndFooter).
     // We clamp the chapter number to be at least 1 to prevent negative indices.
-    String chapterName = StaticData.geetaAdhyay[(chapterNumber > 0 ? chapterNumber : 1) - 1];
+    String chapterName =
+        StaticData.geetaAdhyay[(chapterNumber > 0 ? chapterNumber : 1) - 1];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32.0),
       child: Text(
@@ -556,7 +670,11 @@ class _FontSizeControl extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
           child: Text(
             '${currentSize.toInt()}',
-            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         IconButton(
