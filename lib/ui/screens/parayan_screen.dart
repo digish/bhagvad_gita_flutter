@@ -365,21 +365,35 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
     if (positions.isEmpty || !mounted) return;
 
     // --- Trigger Logic ---
-    // Find the item with the smallest index to determine scroll direction for the animation.
+    // Find the item with the smallest index.
     final absoluteTopItem = positions.reduce(
       (min, p) => p.index < min.index ? p : min,
     );
 
-    // If the top item is index 0 and it's at the top of the list, reverse the animation.
-    if (absoluteTopItem.index == 0 && absoluteTopItem.itemLeadingEdge >= 0) {
-      if (_animationController.status != AnimationStatus.dismissed) {
-        _animationController.reverse();
-      }
+    // Calculate animation value based on scroll position
+    if (absoluteTopItem.index == 0) {
+      final viewportHeight = MediaQuery.of(context).size.height;
+      final paddingTop = MediaQuery.of(context).padding.top;
+
+      // The Y position of the first item's top edge
+      final itemY = absoluteTopItem.itemLeadingEdge * viewportHeight;
+
+      // Define the scroll range for the animation
+      // Start: Item is at its initial padded position (Expanded Header)
+      final startY = paddingTop + 240.0;
+
+      // End: Item is at the bottom of the collapsed header (Collapsed Header)
+      final endY = paddingTop + kToolbarHeight + 50;
+
+      // Calculate progress t: 0.0 at startY, 1.0 at endY
+      // As itemY goes down (scrolling up), t should go to 0? No, itemY goes UP when scrolling DOWN.
+      // Scrolling DOWN (content moves UP): itemY decreases.
+      // We want t to go 0 -> 1 as itemY goes startY -> endY.
+      final t = (startY - itemY) / (startY - endY);
+      _animationController.value = t.clamp(0.0, 1.0);
     } else {
-      // Otherwise, if the animation isn't already completed, play it forward.
-      if (_animationController.status != AnimationStatus.completed) {
-        _animationController.forward();
-      }
+      // If the first item is scrolled out of view, we are fully collapsed
+      _animationController.value = 1.0;
     }
 
     // --- Shloka Count Logic ---
