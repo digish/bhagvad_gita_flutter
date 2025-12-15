@@ -46,7 +46,18 @@ final GoRouter router = GoRouter(
       routes: [
         GoRoute(
           path: AppRoutes.search,
-          builder: (context, state) => const SearchScreen(),
+          pageBuilder: (context, state) {
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: const SearchScreen(),
+              transitionDuration: const Duration(milliseconds: 700),
+              reverseTransitionDuration: const Duration(milliseconds: 700),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+            );
+          },
         ),
         GoRoute(
           path: AppRoutes.chapters,

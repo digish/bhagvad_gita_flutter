@@ -252,15 +252,18 @@ class CreditsScreen extends StatelessWidget {
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: BackButton(color: Colors.brown.shade800),
+                          if (MediaQuery.of(context).size.width <= 600)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 16.0),
+                                child: BackButton(color: Colors.brown.shade800),
+                              ),
                             ),
-                          ),
                           GestureDetector(
-                            onTap: () => context.pop(),
+                            onTap: MediaQuery.of(context).size.width > 600
+                                ? null
+                                : () => context.pop(),
                             child: Hero(
                               tag: 'creditsLotusHero', // A new unique tag
                               child: Image.asset(

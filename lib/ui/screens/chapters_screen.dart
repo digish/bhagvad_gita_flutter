@@ -34,7 +34,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWideScreen = constraints.maxWidth > 800;
+        final isWideScreen = constraints.maxWidth > 600;
 
         // If we are on a wide screen and no chapter is selected, select the first one by default.
         if (isWideScreen && _selectedChapter == null) {
@@ -66,21 +66,16 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  const Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: BackButton(color: Colors.black),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      context.pop();
-                                    },
-                                    child: Hero(
-                                      tag: 'whiteLotusHero',
-                                      child: Image.asset(
-                                        'assets/images/lotus_white22.png',
-                                        height: 100,
-                                        fit: BoxFit.contain,
-                                      ),
+                                  // const Align(
+                                  //   alignment: Alignment.centerLeft,
+                                  //   child: BackButton(color: Colors.black),
+                                  // ),
+                                  Hero(
+                                    tag: 'whiteLotusHero',
+                                    child: Image.asset(
+                                      'assets/images/lotus_white22.png',
+                                      height: 100,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
                                 ],

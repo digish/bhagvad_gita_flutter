@@ -501,11 +501,13 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                 fit: StackFit.expand,
                 children: [
                   // Back Button (always visible)
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top,
-                    left: 4,
-                    child: const BackButton(color: Colors.black87),
-                  ),
+                  // Back Button (only visible on mobile)
+                  if (MediaQuery.of(context).size.width <= 600)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top,
+                      left: 4,
+                      child: const BackButton(color: Colors.black87),
+                    ),
 
                   // Expanded Controls (unchanged)
                   // Collapsed Controls (unchanged)
@@ -571,7 +573,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                     top: currentLotusTop,
                     left: currentLotusLeft,
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: MediaQuery.of(context).size.width > 600
+                          ? null
+                          : () => Navigator.of(context).pop(),
                       child: Hero(
                         tag: 'blueLotusHero',
                         flightShuttleBuilder:

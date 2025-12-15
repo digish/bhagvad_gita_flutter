@@ -28,9 +28,9 @@ class MainScaffold extends StatelessWidget {
               labelType: NavigationRailLabelType.all,
               destinations: const <NavigationRailDestination>[
                 NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: Text('Home'),
+                  icon: Icon(Icons.search_outlined),
+                  selectedIcon: Icon(Icons.search),
+                  label: Text('Search'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.menu_book_outlined),
