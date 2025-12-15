@@ -70,6 +70,7 @@ lib/generated_plugin_registrant.dart
 
 # IDE files
 *.vscode/
+!/.vscode/launch.json
 .idea/
 
 # Local configuration files
