@@ -35,7 +35,9 @@ class GlassNavigationRail extends StatelessWidget {
             labelType: NavigationRailLabelType.all,
             indicatorColor: Colors.transparent,
             groupAlignment: -1.0, // Top align
-            leading: const SizedBox(height: 80), // Spacing for iPad OS buttons
+            leading: SizedBox(
+              height: MediaQuery.of(context).size.height < 600 ? 20 : 80,
+            ), // Responsive spacing
             selectedIconTheme: const IconThemeData(
               color: Color(0xFFFFD700), // Gold/Amber color
               size: 32,
