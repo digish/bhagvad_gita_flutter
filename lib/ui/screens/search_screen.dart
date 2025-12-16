@@ -61,6 +61,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
               MediaQuery.of(context).size.width > 600)
           ? null
           : _buildSpeedDial(context),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
           return Stack(
@@ -160,6 +161,34 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
                               }
                               return const SizedBox.shrink();
                             },
+                          ),
+                        ),
+                      ),
+
+                    // Simple Theme Toggle Button (Bottom Left)
+                    if (MediaQuery.of(context).viewInsets.bottom == 0 &&
+                        MediaQuery.of(context).size.width <= 600)
+                      Positioned(
+                        left: 16,
+                        bottom: 16,
+                        child: FloatingActionButton(
+                          heroTag: 'simple_theme_toggle',
+                          mini: true,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).primaryColor.withOpacity(0.8),
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
+                          onPressed: () {
+                            settings.setShowBackground(
+                              !settings.showBackground,
+                            );
+                          },
+                          child: Icon(
+                            settings.showBackground
+                                ? Icons.format_paint_outlined
+                                : Icons.format_paint,
                           ),
                         ),
                       ),
