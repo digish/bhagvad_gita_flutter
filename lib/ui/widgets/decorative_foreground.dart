@@ -36,6 +36,9 @@ class DecorativeForeground extends StatelessWidget {
     final double leaves2Size = isTablet ? 150.0 : 100.0;
     final double lotusSize = isTablet ? 150.0 : 100.0;
 
+    // Adjusted offset for rail
+    final double railOffset = isTablet ? 80.0 : 0.0;
+
     return Opacity(
       opacity: opacity,
       child: Stack(
@@ -43,7 +46,9 @@ class DecorativeForeground extends StatelessWidget {
           // ... (Your Positioned images remain the same)
           Positioned(
             top: 20,
-            left: MediaQuery.of(context).size.width * 0.08,
+            left:
+                MediaQuery.of(context).size.width * 0.08 +
+                railOffset, // Shifted
             child: Stack(
               children: [
                 // Shadow
@@ -77,7 +82,8 @@ class DecorativeForeground extends StatelessWidget {
           ),
           Positioned(
             top: 20,
-            left: MediaQuery.of(context).size.width * 0.7,
+            left:
+                MediaQuery.of(context).size.width * 0.7 + railOffset, // Shifted
             child: Stack(
               children: [
                 // Shadow
@@ -113,7 +119,9 @@ class DecorativeForeground extends StatelessWidget {
           // "Adhyay" (Chapters) Spinner
           Positioned(
             top: 30,
-            left: MediaQuery.of(context).size.width * 0.22,
+            left:
+                MediaQuery.of(context).size.width * 0.22 +
+                railOffset, // Shifted
             child: CenteredSpinner(
               isSpinning: false,
               anchor: _buildLotus(
@@ -134,7 +142,9 @@ class DecorativeForeground extends StatelessWidget {
           // "Parayan" Spinner
           Positioned(
             top: 100,
-            left: MediaQuery.of(context).size.width * 0.01,
+            left:
+                MediaQuery.of(context).size.width * 0.01 +
+                railOffset, // Shifted
             child: CenteredSpinner(
               isSpinning: false,
               spinDirection: SpinDirection.counterClockwise,
@@ -156,7 +166,9 @@ class DecorativeForeground extends StatelessWidget {
           // "Credits" Spinner
           Positioned(
             top: 65,
-            right: MediaQuery.of(context).size.width * 0.15,
+            right:
+                MediaQuery.of(context).size.width *
+                0.15, // No shift needed for right-aligned
             child: CenteredSpinner(
               isSpinning: false,
               spinDirection: SpinDirection.clockwise,

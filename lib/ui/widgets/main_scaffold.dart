@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../navigation/app_router.dart';
+import 'glass_navigation_rail.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;
@@ -17,15 +18,29 @@ class MainScaffold extends StatelessWidget {
     }
 
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          SafeArea(
-            child: NavigationRail(
-              leading: const SizedBox(height: 40),
+          // Content Layer - Injected with padding to avoid rail overlap
+          Positioned.fill(
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding:
+                    MediaQuery.of(context).padding +
+                    EdgeInsets.only(left: 80), // Rail width approx
+              ),
+              child: child,
+            ),
+          ),
+          // Navigation Rail Layer - Glassmorphic overlay
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 80, // Fixed width for the rail
+            child: GlassNavigationRail(
               selectedIndex: _calculateSelectedIndex(context),
               onDestinationSelected: (int index) =>
                   _onItemTapped(index, context),
-              labelType: NavigationRailLabelType.all,
               destinations: const <NavigationRailDestination>[
                 NavigationRailDestination(
                   icon: Icon(Icons.search_outlined),
@@ -50,8 +65,6 @@ class MainScaffold extends StatelessWidget {
               ],
             ),
           ),
-          const VerticalDivider(thickness: 1, width: 1),
-          Expanded(child: child),
         ],
       ),
     );

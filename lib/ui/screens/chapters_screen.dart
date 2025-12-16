@@ -84,9 +84,12 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                           ),
                           Expanded(
                             child: ListView.builder(
-                              padding: const EdgeInsets.only(
+                              padding: EdgeInsets.only(
                                 top: 0,
                                 bottom: 16,
+                                left: MediaQuery.of(
+                                  context,
+                                ).padding.left, // Avoid rail
                               ),
                               itemCount: chapters.length,
                               itemBuilder: (context, index) {

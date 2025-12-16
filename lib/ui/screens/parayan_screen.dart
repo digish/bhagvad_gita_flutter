@@ -159,6 +159,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).padding.top + 240,
+                    left: MediaQuery.of(
+                      context,
+                    ).padding.left, // Respect injected padding
                     right: 50,
                     bottom: 8.0,
                   ),
@@ -466,7 +469,10 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
             final double maxLotusLeft =
                 (width - maxLotusSize) / 2; // ✨ Use local width
             final double minLotusLeft =
-                56.0; // Shifted to make room for back button
+                56.0 +
+                MediaQuery.of(
+                  context,
+                ).padding.left; // ✨ Shifted to make room for rail
             final double currentLotusLeft = lerpDouble(
               maxLotusLeft,
               minLotusLeft,
