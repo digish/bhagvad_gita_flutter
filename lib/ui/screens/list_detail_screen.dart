@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -33,6 +34,31 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     _shlokasFuture = provider.getShlokasForList(db, widget.list.id);
   }
 
+  Future<void> _shareList() async {
+    try {
+      final shlokas = await _shlokasFuture;
+      if (shlokas.isEmpty) return;
+
+      final StringBuffer buffer = StringBuffer();
+      buffer.writeln('${widget.list.name}\n');
+
+      for (var shloka in shlokas) {
+        buffer.writeln('Chapter ${shloka.chapterNo}.${shloka.shlokNo}');
+        buffer.writeln(shloka.shlok);
+        buffer.writeln(); // Empty line between shlokas
+      }
+
+      await Share.share(buffer.toString());
+    } catch (e) {
+      debugPrint('Error sharing list: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to share list')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,6 +68,13 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareList,
+            tooltip: 'Share List',
+          ),
+        ],
       ),
       body: Stack(
         children: [
