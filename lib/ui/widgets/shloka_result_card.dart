@@ -38,7 +38,7 @@ class ShlokaResultCard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.grey[900]!.withOpacity(0.7),
               borderRadius: BorderRadius.circular(16.0),
               border: Border.all(
                 color: const Color(0xFFFFD700), // Golden border
@@ -47,10 +47,18 @@ class ShlokaResultCard extends StatelessWidget {
             ),
             child: InkWell(
               onTap: () {
-                context.push(AppRoutes.shlokaDetail.replaceFirst(':id', shloka.id.toString()));
+                context.push(
+                  AppRoutes.shlokaDetail.replaceFirst(
+                    ':id',
+                    shloka.id.toString(),
+                  ),
+                );
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

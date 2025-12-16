@@ -33,7 +33,9 @@ class WordResultCard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1), // frosted background
+              color: Colors.grey[900]!.withOpacity(
+                0.7,
+              ), // darker frosted background
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: Colors.amberAccent.withOpacity(0.5), // golden border
@@ -45,7 +47,10 @@ class WordResultCard extends StatelessWidget {
                 context.push('/shloka-list/${Uri.encodeComponent(word.word)}');
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
