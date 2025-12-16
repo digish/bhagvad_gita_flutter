@@ -23,6 +23,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../widgets/sneaky_emblem.dart';
+import 'add_to_list_sheet.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
 const bool _enableDynamicFontSizing = false;
@@ -338,6 +339,7 @@ ${shloka.bhavarth}''';
                               const SizedBox(width: 8),
                               Consumer<BookmarkProvider>(
                                 builder: (context, bookmarkProvider, _) {
+                                  // Now synchronous thanks to pre-loading
                                   final isBookmarked = bookmarkProvider
                                       .isBookmarked(
                                         shloka.chapterNo,
@@ -348,10 +350,22 @@ ${shloka.bhavarth}''';
                                         ? Icons.bookmark
                                         : Icons.bookmark_outline,
                                     onPressed: () {
-                                      bookmarkProvider.toggleBookmark(
-                                        shloka.chapterNo,
-                                        shloka.shlokNo,
-                                      );
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        shape: const RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(16),
+                                          ),
+                                        ),
+                                        builder: (context) => AddToListSheet(
+                                          chapterNo: shloka.chapterNo,
+                                          shlokNo: shloka.shlokNo,
+                                        ),
+                                      ).then((_) {
+                                        // Force UI refresh after closing sheet if state changed
+                                        // Actually Consumer should handle it if provider notifies.
+                                      });
                                     },
                                     color: isBookmarked
                                         ? theme.colorScheme.primary

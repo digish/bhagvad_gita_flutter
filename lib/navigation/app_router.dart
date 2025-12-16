@@ -23,7 +23,7 @@ import '../ui/screens/shloka_list_screen.dart';
 import '../ui/screens/audio_management_screen.dart';
 import '../ui/screens/credits_screen.dart';
 import '../ui/screens/settings_screen.dart';
-import '../ui/screens/bookmark_screen.dart';
+import '../ui/screens/user_lists_screen.dart';
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
@@ -146,7 +146,7 @@ final GoRouter router = GoRouter(
         ),
         GoRoute(
           path: AppRoutes.bookmarks,
-          builder: (context, state) => const BookmarkScreen(),
+          builder: (context, state) => const UserListsScreen(),
         ),
       ],
     ),
