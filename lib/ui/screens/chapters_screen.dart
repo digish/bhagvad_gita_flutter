@@ -25,8 +25,105 @@ class ChaptersScreen extends StatefulWidget {
   State<ChaptersScreen> createState() => _ChaptersScreenState();
 }
 
-class _ChaptersScreenState extends State<ChaptersScreen> {
+class _ChaptersScreenState extends State<ChaptersScreen>
+    with TickerProviderStateMixin {
   int? _selectedChapter;
+  final Map<int, GlobalKey> _emblemKeys = {}; // Keys for list items
+  bool _shouldDelayEmblem = false; // Flag to delay detail pane emblem
+
+  void _runFlyAnimation(int chapter, GlobalKey sourceKey) {
+    // 1. Get Source Rect
+    final RenderBox? sourceBox =
+        sourceKey.currentContext?.findRenderObject() as RenderBox?;
+    if (sourceBox == null) return;
+    final startRect = sourceBox.localToGlobal(Offset.zero) & sourceBox.size;
+
+    // 2. Calculate Target Rect
+    final screenWidth = MediaQuery.of(context).size.width;
+    final detailStartX = 350.0 + 1.0; // Master width + divider
+    final detailWidth = screenWidth - detailStartX;
+    final targetSize = 160.0;
+
+    // Center of the detail pane
+    final targetX = detailStartX + (detailWidth / 2) - (targetSize / 2);
+    final topPadding = MediaQuery.of(context).padding.top;
+
+    final endRect = Rect.fromLTWH(
+      targetX,
+      topPadding + 20,
+      targetSize,
+      targetSize,
+    );
+
+    // 3. Create Animation
+    final overlayState = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    final rectAnimation = RectTween(begin: startRect, end: endRect).animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeInOutCubic),
+    );
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        return AnimatedBuilder(
+          animation: controller,
+          builder: (context, child) {
+            final rect = rectAnimation.value!;
+            // Simple opacity fade out at the very end to blend?
+            // Or just remove.
+            return Positioned(
+              left: rect.left,
+              top: rect.top,
+              width: rect.width,
+              height: rect.height,
+              child: Material(
+                elevation: 8, // Add some shadow during flight
+                color: Colors.transparent,
+                shape: const CircleBorder(), // Or RoundedRect matching target
+                // Target is RoundedRect(16). Source is Circle.
+                // We should animate shape too?
+                // Visual complication: Source is circle, Target is RRest.
+                // Let's just use ClipRRect with animated radius.
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(
+                      lerpDouble(28, 16, controller.value)!, // 56/2 = 28
+                    ),
+                    image: DecorationImage(
+                      image: AssetImage(
+                        'assets/emblems/chapter/ch${chapter.toString().padLeft(2, '0')}.png',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withOpacity(0.5),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    overlayState.insert(overlayEntry);
+    controller.forward().then((_) {
+      overlayEntry.remove();
+      controller.dispose();
+      // Ensure emblem is visible in Detail Pane now
+      // (It faded in over 600ms, matching this duration)
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,14 +195,31 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                                 final isSelected =
                                     chapterNumber == activeChapter;
 
+                                // Ensure key exists
+                                if (!_emblemKeys.containsKey(chapterNumber)) {
+                                  _emblemKeys[chapterNumber] = GlobalKey();
+                                }
+
                                 return _ChapterCard(
                                   chapterNumber: chapterNumber,
                                   chapterName: chapterName,
                                   isSelected: isSelected,
                                   isWideScreen: true,
+                                  emblemKey: _emblemKeys[chapterNumber],
                                   onTap: () {
+                                    // Trigger animation
+                                    if (_emblemKeys.containsKey(
+                                      chapterNumber,
+                                    )) {
+                                      _runFlyAnimation(
+                                        chapterNumber,
+                                        _emblemKeys[chapterNumber]!,
+                                      );
+                                    }
                                     setState(() {
                                       _selectedChapter = chapterNumber;
+                                      _shouldDelayEmblem =
+                                          true; // Delay target appearance
                                     });
                                   },
                                 );
@@ -126,6 +240,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                       key: ValueKey(activeChapter), // Force rebuild on change
                       searchQuery: activeChapter.toString(),
                       showBackButton: false,
+                      delayEmblem: _shouldDelayEmblem, // Pass flag
                     ),
                   ),
                 ),
@@ -211,6 +326,7 @@ class _ChapterCard extends StatelessWidget {
   final bool isSelected;
   final bool isWideScreen;
   final VoidCallback onTap;
+  final GlobalKey? emblemKey; // ✨ NEW parameter
 
   const _ChapterCard({
     required this.chapterNumber,
@@ -218,6 +334,7 @@ class _ChapterCard extends StatelessWidget {
     required this.isSelected,
     required this.isWideScreen,
     required this.onTap,
+    this.emblemKey,
   });
 
   @override
@@ -259,6 +376,7 @@ class _ChapterCard extends StatelessWidget {
                             ? 'chapterListEmblem_$chapterNumber'
                             : 'chapterEmblem_$chapterNumber',
                         child: Container(
+                          key: emblemKey, // ✨ Assign key
                           width: 56,
                           height: 56,
                           decoration: BoxDecoration(

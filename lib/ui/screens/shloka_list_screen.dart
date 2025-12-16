@@ -31,11 +31,13 @@ enum PlaybackMode { single, continuous, repeatOne }
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
   final bool showBackButton; // ✨ NEW parameter
+  final bool delayEmblem; // ✨ NEW parameter for animation
 
   const ShlokaListScreen({
     super.key,
     required this.searchQuery,
     this.showBackButton = true, // Default to true
+    this.delayEmblem = false,
   });
 
   @override
@@ -500,6 +502,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                           TargetPlatform.iOS &&
                                       MediaQuery.of(context).size.width <=
                                           600), // ✨ Pass validated logic
+                              delayEmblem: widget.delayEmblem,
                             ),
                           ),
                         // Add some spacing between the header and the first card for chapter views
@@ -610,6 +613,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   final double maxExtent;
   final bool showBackButton; // ✨ NEW parameter
+  final bool delayEmblem;
 
   _AnimatingHeaderDelegate({
     required this.chapterNumber,
@@ -623,6 +627,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onBackgroundToggle,
     required this.maxExtent,
     required this.showBackButton,
+    required this.delayEmblem,
   });
 
   @override
@@ -782,36 +787,24 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
               Positioned(
                 top: currentTop,
                 left: currentLeft,
-                child: Hero(
-                  tag: 'chapterEmblem_$chapterNumber',
-                  child: Container(
-                    width: currentSize,
-                    height: currentSize,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.9),
-                        width: 2,
+                child: delayEmblem
+                    ? TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 600),
+                        curve: const Interval(
+                          0.5,
+                          1.0,
+                          curve: Curves.easeIn,
+                        ), // Delay start
+                        builder: (context, value, child) {
+                          return Opacity(opacity: value, child: child);
+                        },
+                        child: _buildEmblemContent(currentSize, t),
+                      )
+                    : Hero(
+                        tag: 'chapterEmblem_$chapterNumber',
+                        child: _buildEmblemContent(currentSize, t),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          // Animate the glow properties
-                          color: Colors.amber.withOpacity(
-                            lerpDouble(0.8, 0.7, t)!,
-                          ),
-                          spreadRadius: lerpDouble(4, 2, t)!,
-                          blurRadius: lerpDouble(15, 12, t)!,
-                          offset: Offset.zero,
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
               ),
 
               // ✨ FIX: Moved Back Button to the end of Stack to ensure it's on top
@@ -831,22 +824,47 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     );
   }
 
+  Widget _buildEmblemContent(double currentSize, double t) {
+    return Container(
+      width: currentSize,
+      height: currentSize,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.9), width: 2),
+        boxShadow: [
+          BoxShadow(
+            // Animate the glow properties
+            color: Colors.amber.withOpacity(lerpDouble(0.8, 0.7, t)!),
+            spreadRadius: lerpDouble(4, 2, t)!,
+            blurRadius: lerpDouble(15, 12, t)!,
+            offset: Offset.zero,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
   Widget _buildPlaybackModeButtonForHeader() {
     IconData icon;
-    String label;
+    String tooltip;
 
     switch (playbackMode) {
       case PlaybackMode.single:
         icon = Icons.play_arrow;
-        label = 'Single Play';
+        tooltip = 'Single Play';
         break;
       case PlaybackMode.continuous:
         icon = Icons.playlist_play;
-        label = 'Continuous';
+        tooltip = 'Continuous Play';
         break;
       case PlaybackMode.repeatOne:
         icon = Icons.repeat_one;
-        label = 'Repeat';
+        tooltip = 'Repeat Shloka';
         break;
     }
 
@@ -854,7 +872,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
       onPressed: onPlaybackModePressed,
       icon: Icon(icon, color: Colors.black54, size: 20),
       label: Text(
-        label,
+        tooltip,
         style: const TextStyle(color: Colors.black54, fontSize: 12),
       ),
       style: OutlinedButton.styleFrom(
