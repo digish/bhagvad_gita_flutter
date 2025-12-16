@@ -182,6 +182,15 @@ class AudioProvider extends ChangeNotifier {
       await _audioPlayer.setAudioSource(source);
       await _audioPlayer.play();
     } catch (e, s) {
+      // NEW: Suppress benign "Loading interrupted" errors.
+      // This happens when a new play request comes in while the previous one is still loading.
+      if (e.toString().contains('Loading interrupted')) {
+        debugPrint(
+          "[AUDIO_PLAYBACK] Loading interrupted by new request. This is expected behavior.",
+        );
+        return;
+      }
+
       debugPrint("[AUDIO_PLAYBACK] Error playing shloka: $e");
       debugPrint("[AUDIO_PLAYBACK] Stack trace: $s");
       _setPlaybackState(PlaybackState.error);
