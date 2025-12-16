@@ -345,176 +345,187 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               .shade100 // Pink for search results to match lotus
                         : Colors.amber.shade100, // Amber for chapter view
                   ),
-                Consumer2<ShlokaListProvider, AudioProvider>(
-                  builder: (context, provider, audioProvider, child) {
-                    if (provider.isLoading) {
-                      // This ensures the Hero widget is present during the page transition.
-                      if (chapterNumber != null) {
-                        return Align(
-                          alignment: Alignment.topCenter,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              top:
-                                  MediaQuery.of(context).padding.top +
-                                  kToolbarHeight +
-                                  20,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _ChapterEmblemHeader(
-                                  chapterNumber: chapterNumber,
-                                ),
-                                const SizedBox(height: 32),
-                                const CircularProgressIndicator(),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (provider.shlokas.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No shlokas found for "${widget.searchQuery}".',
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: Colors.white.withOpacity(0.8)),
-                        ),
-                      );
-                    }
-
-                    // Ensure the keys list is synchronized with the shlokas list
-                    // before attempting to scroll.
-                    if (provider.shlokas.isNotEmpty &&
-                        _itemKeys.length != provider.shlokas.length) {
-                      _itemKeys = List.generate(
-                        provider.shlokas.length,
-                        (_) => GlobalKey(),
-                      );
-                    }
-
-                    // If an initial scroll index is set by the provider, trigger the scroll.
-                    if (provider.initialScrollIndex != null) {
-                      debugPrint(
-                        "Scrolling to initial index: ${provider.initialScrollIndex!}",
-                      );
-                      _scrollToIndex(provider.initialScrollIndex!);
-                      // Clear the index in the provider to prevent re-scrolling on rebuilds.
-                      provider.clearScrollIndex();
-                    }
-
-                    final shlokas = provider.shlokas;
-                    // --- AUTO-SCROLL LOGIC ---
-                    // This logic triggers whenever the playing ID changes, either from user
-                    // interaction or continuous play.
-                    // We still read from the provider here for UI updates, but our state machine is independent.
-                    // We use a post-frame callback to ensure the widget tree is built before scrolling.
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      // The scroll should be based on our reliable local state, not the provider's.
-                      if (_currentShlokId != null &&
-                          _currentShlokId != provider.lastScrolledId) {
-                        final playingIndex = shlokas.indexWhere(
-                          (s) =>
-                              '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
-                        );
-                        if (playingIndex != -1) {
-                          _scrollToIndex(playingIndex);
-                          provider.setLastScrolledId(
-                            _currentShlokId,
-                          ); // Prevent re-scrolling
-                        }
-                      }
-                    });
-                    return CustomScrollView(
-                      controller: _scrollController,
-                      slivers: [
-                        if (chapterNumber == null)
-                          SliverToBoxAdapter(
-                            child: SizedBox(
-                              height:
-                                  MediaQuery.of(context).padding.top +
-                                  kToolbarHeight +
-                                  20,
-                            ),
-                          ),
-                        if (chapterNumber != null)
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _AnimatingHeaderDelegate(
-                              chapterNumber: chapterNumber,
-                              title: StaticData.getQueryTitle(
-                                widget.searchQuery,
+                SafeArea(
+                  top: false,
+                  bottom: false,
+                  // ✨ FIX: Only apply side padding for Search Results (chapterNumber == null)
+                  // to avoid double padding in Chapter View (which handles it differently).
+                  left: chapterNumber == null,
+                  right: chapterNumber == null,
+                  child: Consumer2<ShlokaListProvider, AudioProvider>(
+                    builder: (context, provider, audioProvider, child) {
+                      if (provider.isLoading) {
+                        // This ensures the Hero widget is present during the page transition.
+                        if (chapterNumber != null) {
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                top:
+                                    MediaQuery.of(context).padding.top +
+                                    kToolbarHeight +
+                                    20,
                               ),
-                              playbackMode: _playbackMode,
-                              onPlaybackModePressed: _cyclePlaybackMode,
-                              currentFontSize: settingsProvider.fontSize,
-                              onFontSizeIncrement: () {
-                                if (settingsProvider.fontSize < maxFontSize) {
-                                  settingsProvider.setFontSize(
-                                    settingsProvider.fontSize + fontStep,
-                                  );
-                                }
-                              },
-                              onFontSizeDecrement: () {
-                                if (settingsProvider.fontSize > minFontSize) {
-                                  settingsProvider.setFontSize(
-                                    settingsProvider.fontSize - fontStep,
-                                  );
-                                }
-                              },
-                              minExtent:
-                                  MediaQuery.of(context).padding.top +
-                                  kToolbarHeight +
-                                  50, // Increased for the second row
-                              // Further increase maxExtent to ensure title and switches are visible initially
-                              maxExtent:
-                                  MediaQuery.of(context).padding.top + 350,
-                              showBackButton:
-                                  widget.showBackButton &&
-                                  (Theme.of(context).platform ==
-                                          TargetPlatform.iOS &&
-                                      MediaQuery.of(context).size.width <=
-                                          600), // ✨ Pass validated logic
-                              delayEmblem: widget.delayEmblem,
-                            ),
-                          ),
-                        // Add some spacing between the header and the first card for chapter views
-                        if (chapterNumber != null)
-                          const SliverToBoxAdapter(
-                            child: SizedBox(height: 100),
-                          ),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => Container(
-                              key: _itemKeys[index],
-                              child: ResponsiveWrapper(
-                                child: FullShlokaCard(
-                                  shloka: shlokas[index],
-                                  config: _cardConfig.copyWith(
-                                    baseFontSize: settingsProvider.fontSize,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _ChapterEmblemHeader(
+                                    chapterNumber: chapterNumber,
                                   ),
-                                  currentlyPlayingId: _currentShlokId,
-                                  onPlayPause: () {
-                                    // When the user manually plays, update our local tracker.
-                                    _currentShlokId =
-                                        '${shlokas[index].chapterNo}.${shlokas[index].shlokNo}';
-                                    _hasPlaybackStarted =
-                                        false; // Reset for the new shloka
-                                  },
-                                ),
+                                  const SizedBox(height: 32),
+                                  const CircularProgressIndicator(),
+                                ],
                               ),
                             ),
-                            childCount: shlokas.length,
+                          );
+                        }
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (provider.shlokas.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No shlokas found for "${widget.searchQuery}".',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
                           ),
-                        ),
-                        const SliverPadding(
-                          padding: EdgeInsets.only(bottom: 20),
-                        ),
-                      ],
-                    );
-                  },
+                        );
+                      }
+
+                      // Ensure the keys list is synchronized with the shlokas list
+                      // before attempting to scroll.
+                      if (provider.shlokas.isNotEmpty &&
+                          _itemKeys.length != provider.shlokas.length) {
+                        _itemKeys = List.generate(
+                          provider.shlokas.length,
+                          (_) => GlobalKey(),
+                        );
+                      }
+
+                      // If an initial scroll index is set by the provider, trigger the scroll.
+                      if (provider.initialScrollIndex != null) {
+                        debugPrint(
+                          "Scrolling to initial index: ${provider.initialScrollIndex!}",
+                        );
+                        _scrollToIndex(provider.initialScrollIndex!);
+                        // Clear the index in the provider to prevent re-scrolling on rebuilds.
+                        provider.clearScrollIndex();
+                      }
+
+                      final shlokas = provider.shlokas;
+                      // --- AUTO-SCROLL LOGIC ---
+                      // This logic triggers whenever the playing ID changes, either from user
+                      // interaction or continuous play.
+                      // We still read from the provider here for UI updates, but our state machine is independent.
+                      // We use a post-frame callback to ensure the widget tree is built before scrolling.
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        // The scroll should be based on our reliable local state, not the provider's.
+                        if (_currentShlokId != null &&
+                            _currentShlokId != provider.lastScrolledId) {
+                          final playingIndex = shlokas.indexWhere(
+                            (s) =>
+                                '${s.chapterNo}.${s.shlokNo}' ==
+                                _currentShlokId,
+                          );
+                          if (playingIndex != -1) {
+                            _scrollToIndex(playingIndex);
+                            provider.setLastScrolledId(
+                              _currentShlokId,
+                            ); // Prevent re-scrolling
+                          }
+                        }
+                      });
+                      return CustomScrollView(
+                        controller: _scrollController,
+                        slivers: [
+                          if (chapterNumber == null)
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height:
+                                    MediaQuery.of(context).padding.top +
+                                    kToolbarHeight +
+                                    20,
+                              ),
+                            ),
+                          if (chapterNumber != null)
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _AnimatingHeaderDelegate(
+                                chapterNumber: chapterNumber,
+                                title: StaticData.getQueryTitle(
+                                  widget.searchQuery,
+                                ),
+                                playbackMode: _playbackMode,
+                                onPlaybackModePressed: _cyclePlaybackMode,
+                                currentFontSize: settingsProvider.fontSize,
+                                onFontSizeIncrement: () {
+                                  if (settingsProvider.fontSize < maxFontSize) {
+                                    settingsProvider.setFontSize(
+                                      settingsProvider.fontSize + fontStep,
+                                    );
+                                  }
+                                },
+                                onFontSizeDecrement: () {
+                                  if (settingsProvider.fontSize > minFontSize) {
+                                    settingsProvider.setFontSize(
+                                      settingsProvider.fontSize - fontStep,
+                                    );
+                                  }
+                                },
+                                minExtent:
+                                    MediaQuery.of(context).padding.top +
+                                    kToolbarHeight +
+                                    50, // Increased for the second row
+                                // Further increase maxExtent to ensure title and switches are visible initially
+                                maxExtent:
+                                    MediaQuery.of(context).padding.top + 350,
+                                showBackButton:
+                                    widget.showBackButton &&
+                                    (Theme.of(context).platform ==
+                                            TargetPlatform.iOS &&
+                                        MediaQuery.of(context).size.width <=
+                                            600), // ✨ Pass validated logic
+                                delayEmblem: widget.delayEmblem,
+                              ),
+                            ),
+                          // Add some spacing between the header and the first card for chapter views
+                          if (chapterNumber != null)
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 100),
+                            ),
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => Container(
+                                key: _itemKeys[index],
+                                child: ResponsiveWrapper(
+                                  child: FullShlokaCard(
+                                    shloka: shlokas[index],
+                                    config: _cardConfig.copyWith(
+                                      baseFontSize: settingsProvider.fontSize,
+                                    ),
+                                    currentlyPlayingId: _currentShlokId,
+                                    onPlayPause: () {
+                                      // When the user manually plays, update our local tracker.
+                                      _currentShlokId =
+                                          '${shlokas[index].chapterNo}.${shlokas[index].shlokNo}';
+                                      _hasPlaybackStarted =
+                                          false; // Reset for the new shloka
+                                    },
+                                  ),
+                                ),
+                              ),
+                              childCount: shlokas.length,
+                            ),
+                          ),
+                          const SliverPadding(
+                            padding: EdgeInsets.only(bottom: 20),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
