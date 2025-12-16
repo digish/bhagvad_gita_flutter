@@ -112,6 +112,13 @@ class AudioProvider extends ChangeNotifier {
 
   // --- PUBLIC METHODS ---
 
+  // --- PUBLIC METHODS ---
+
+  // NEW: Helper to expose audio path for sharing
+  Future<String?> getShlokaAudioPath(ShlokaResult shloka) {
+    return _getShlokaAssetPath(shloka);
+  }
+
   AssetPackStatus getChapterPackStatus(int chapterNumber) {
     // MODIFIED: On iOS or when using local assets, we treat everything as downloaded.
     if (_useLocalAssets || Platform.isIOS) {

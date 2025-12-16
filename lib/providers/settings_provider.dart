@@ -35,7 +35,11 @@ class SettingsProvider extends ChangeNotifier {
     // Load the saved font size, or fall back to the default.
     _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
     // Load the saved background visibility, or fall back to the default.
-    _showBackground = prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
+    _showBackground =
+        prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
+    // Load the "Share with Audio" preference
+    _shareWithAudio =
+        prefs.getBool(_shareWithAudioKey) ?? _defaultShareWithAudio;
     notifyListeners();
   }
 
@@ -53,5 +57,19 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Save the new background visibility to persistent storage.
     await prefs.setBool(_showBackgroundKey, newValue);
+  }
+
+  // --- NEW: Share with Audio Preference ---
+  static const String _shareWithAudioKey = 'shareWithAudio';
+  static const bool _defaultShareWithAudio = true;
+
+  bool _shareWithAudio = _defaultShareWithAudio;
+  bool get shareWithAudio => _shareWithAudio;
+
+  Future<void> setShareWithAudio(bool newValue) async {
+    _shareWithAudio = newValue;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_shareWithAudioKey, newValue);
   }
 }

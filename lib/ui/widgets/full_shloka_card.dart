@@ -18,6 +18,10 @@ import 'package:share_plus/share_plus.dart'; // Import the share_plus package
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/bookmark_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../widgets/sneaky_emblem.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
@@ -133,7 +137,7 @@ class FullShlokaCard extends StatelessWidget {
   }
 
   // --- NEW: Share functionality ---
-  void _shareShloka(BuildContext context) {
+  Future<void> _shareShloka(BuildContext context) async {
     final shlokaIdentifier =
         'Shrimad Bhagavad Gita\nअध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
 
@@ -169,13 +173,53 @@ ${shloka.bhavarth}''';
 
     // Calculate share position origin for iPad to prevent crashes
     final box = context.findRenderObject() as RenderBox?;
+    final sharePositionOrigin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
 
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+
+    if (settings.shareWithAudio) {
+      final audioPath = await audioProvider.getShlokaAudioPath(shloka);
+      if (audioPath != null) {
+        String? validFilePath;
+        if (audioPath.startsWith('assets/')) {
+          try {
+            // It's an asset path, copy it to a temp file
+            final byteData = await rootBundle.load(audioPath);
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File(
+              '${tempDir.path}/${audioPath.split('/').last}',
+            );
+            await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+            validFilePath = tempFile.path;
+          } catch (e) {
+            debugPrint('Error preparing asset for share: $e');
+          }
+        } else {
+          // Assume it's a valid local file path (Android download)
+          validFilePath = audioPath;
+        }
+
+        if (validFilePath != null && await File(validFilePath).exists()) {
+          // Share text AND file
+          await Share.shareXFiles(
+            [XFile(validFilePath)],
+            text: shareTextWithFooter,
+            subject: shlokaIdentifier,
+            sharePositionOrigin: sharePositionOrigin,
+          );
+          return; // Stop here if valid share
+        }
+      }
+    }
+
+    // Fallback to text sharing if audio not available or setting is off
     Share.share(
       shareTextWithFooter,
       subject: shlokaIdentifier,
-      sharePositionOrigin: box != null
-          ? box.localToGlobal(Offset.zero) & box.size
-          : null,
+      sharePositionOrigin: sharePositionOrigin,
     );
   }
 

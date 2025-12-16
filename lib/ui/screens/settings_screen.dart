@@ -65,6 +65,8 @@ class SettingsScreen extends StatelessWidget {
                       return ListView(
                         padding: const EdgeInsets.all(16.0),
                         children: [
+                          // --- Preferences Section ---
+                          _buildSectionHeader('Preferences'),
                           _buildSettingCard(
                             context,
                             title: 'Simple Theme',
@@ -77,6 +79,21 @@ class SettingsScreen extends StatelessWidget {
                             icon: Icons.format_paint_outlined,
                           ),
                           const SizedBox(height: 16),
+                          _buildSettingCard(
+                            context,
+                            title: 'Share Audio with Shloka',
+                            subtitle:
+                                'Include the audio file when sharing a shloka.',
+                            value: settings.shareWithAudio,
+                            onChanged: (value) {
+                              settings.setShareWithAudio(value);
+                            },
+                            icon: Icons.audiotrack,
+                          ),
+                          const SizedBox(height: 32),
+
+                          // --- Support Section ---
+                          _buildSectionHeader('Support'),
                           _buildActionTile(
                             context,
                             title: 'Send Feedback',
@@ -209,6 +226,28 @@ class SettingsScreen extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Divider(color: Colors.white24, thickness: 1),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
