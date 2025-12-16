@@ -14,6 +14,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/settings_provider.dart';
 import '../widgets/simple_gradient_background.dart';
 
@@ -74,6 +76,60 @@ class SettingsScreen extends StatelessWidget {
                             },
                             icon: Icons.format_paint_outlined,
                           ),
+                          const SizedBox(height: 16),
+                          _buildActionTile(
+                            context,
+                            title: 'Send Feedback',
+                            subtitle:
+                                'Have a suggestion or found a bug? Let us know!',
+                            icon: Icons.mail_outline,
+                            onTap: (innerContext) async {
+                              final Uri emailLaunchUri = Uri(
+                                scheme: 'mailto',
+                                path: 'digish.pandya@gmail.com',
+                                query: 'subject=Feedback for Bhagavad Gita App',
+                              );
+                              if (!await launchUrl(emailLaunchUri)) {
+                                debugPrint('Could not launch email');
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildActionTile(
+                            context,
+                            title: 'Share App',
+                            subtitle:
+                                'Share the wisdom with your friends and family.',
+                            icon: Icons.share_outlined,
+                            onTap: (innerContext) {
+                              final box =
+                                  innerContext.findRenderObject() as RenderBox?;
+                              Share.share(
+                                'Check out this Shrimad Bhagavad Gita app:\nhttps://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta',
+                                sharePositionOrigin: box != null
+                                    ? box.localToGlobal(Offset.zero) & box.size
+                                    : null,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildActionTile(
+                            context,
+                            title: 'More Apps',
+                            subtitle: 'Explore other apps by the developer.',
+                            icon: Icons.apps,
+                            onTap: (innerContext) async {
+                              final Uri developerPageUri = Uri.parse(
+                                'https://digish.github.io/project/',
+                              );
+                              if (!await launchUrl(
+                                developerPageUri,
+                                mode: LaunchMode.externalApplication,
+                              )) {
+                                debugPrint('Could not launch developer page');
+                              }
+                            },
+                          ),
                         ],
                       );
                     },
@@ -115,6 +171,44 @@ class SettingsScreen extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         activeColor: Theme.of(context).primaryColor,
+      ),
+    );
+  }
+
+  Widget _buildActionTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required void Function(BuildContext) onTap,
+  }) {
+    return Card(
+      color: Colors.white.withOpacity(0.9),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      child: Builder(
+        builder: (innerContext) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              child: Icon(icon, color: Theme.of(context).primaryColor),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+            ),
+            onTap: () => onTap(innerContext),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
+          );
+        },
       ),
     );
   }

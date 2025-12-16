@@ -146,7 +146,7 @@ class FullShlokaCard extends StatelessWidget {
 
     // --- NEW: App link for sharing ---
     const String appLink =
-        'https://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta';
+        'https://digish.github.io/project/index.html#bhagvadgita';
 
     final shareText =
         '''
@@ -167,7 +167,16 @@ ${shloka.bhavarth}''';
     final shareTextWithFooter =
         '$shareText\n\n---\nShared from the Shrimad Bhagavad Gita app:\n$appLink';
 
-    Share.share(shareTextWithFooter, subject: shlokaIdentifier);
+    // Calculate share position origin for iPad to prevent crashes
+    final box = context.findRenderObject() as RenderBox?;
+
+    Share.share(
+      shareTextWithFooter,
+      subject: shlokaIdentifier,
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+    );
   }
 
   // --- MODIFIED buildCardContent ---
@@ -274,9 +283,13 @@ ${shloka.bhavarth}''';
                                 ),
                               // --- MODIFICATION: Add spacer and audio button ---
                               const Spacer(),
-                              _ActionButton(
-                                icon: Icons.share_outlined,
-                                onPressed: () => _shareShloka(context),
+                              Builder(
+                                builder: (btnContext) {
+                                  return _ActionButton(
+                                    icon: Icons.share_outlined,
+                                    onPressed: () => _shareShloka(btnContext),
+                                  );
+                                },
                               ),
                               const SizedBox(width: 8),
                               Consumer<BookmarkProvider>(

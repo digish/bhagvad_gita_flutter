@@ -169,9 +169,7 @@ class CreditsScreen extends StatelessWidget {
                           children: [
                             ElevatedButton.icon(
                               onPressed: () {
-                                _launchUrl(
-                                  'https://play.google.com/store/apps/developer?id=Komal+Pandya',
-                                );
+                                _launchUrl('https://digish.github.io/project/');
                               },
                               icon: const Icon(Icons.shop_2_outlined),
                               label: const Text('More Apps'),
