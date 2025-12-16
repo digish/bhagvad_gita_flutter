@@ -17,7 +17,8 @@ import '../models/bookmark.dart';
 
 class UserDatabaseHelper {
   UserDatabaseHelper._privateConstructor();
-  static final UserDatabaseHelper instance = UserDatabaseHelper._privateConstructor();
+  static final UserDatabaseHelper instance =
+      UserDatabaseHelper._privateConstructor();
 
   static Database? _database;
 
@@ -33,8 +34,9 @@ class UserDatabaseHelper {
     String path = join(await getDatabasesPath(), 'geetaUser.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -50,18 +52,44 @@ class UserDatabaseHelper {
     ''');
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Check if table exists before creating it to avoid errors if users already have it
+      // or if FTS3 behaves differently.
+      try {
+        await db.execute('''
+          CREATE VIRTUAL TABLE IF NOT EXISTS bmarks USING fts3(
+            bmarkLabel TEXT,
+            chapterNo TEXT,
+            shlokNo TEXT
+          )
+        ''');
+      } catch (e) {
+        // Fallback for versions that might not support IF NOT EXISTS for Virtual Tables
+        var res = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='bmarks'",
+        );
+        if (res.isEmpty) {
+          await db.execute('''
+            CREATE VIRTUAL TABLE bmarks USING fts3(
+              bmarkLabel TEXT,
+              chapterNo TEXT,
+              shlokNo TEXT
+            )
+          ''');
+        }
+      }
+    }
+  }
+
   // Port of addBookmark
   Future<void> addBookmark(String chapter, String shlok) async {
     final db = await instance.database;
-    await db.insert(
-      'bmarks',
-      {
-        'bmarkLabel': '$chapter:$shlok',
-        'chapterNo': chapter,
-        'shlokNo': shlok,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('bmarks', {
+      'bmarkLabel': '$chapter:$shlok',
+      'chapterNo': chapter,
+      'shlokNo': shlok,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Port of removeBookmark
@@ -77,14 +105,17 @@ class UserDatabaseHelper {
   // Port of getAllBookmarks
   Future<List<Bookmark>> getAllBookmarks() async {
     final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query('bmarks');
+    // Explicitly select rowid as 'rowid' so it appears in the map
+    final List<Map<String, dynamic>> maps = await db.rawQuery(
+      'SELECT rowid, * FROM bmarks',
+    );
 
     if (maps.isEmpty) {
       return [];
     }
-    
+
     return List.generate(maps.length, (i) {
-        return Bookmark.fromMap(maps[i]);
+      return Bookmark.fromMap(maps[i]);
     });
   }
 }

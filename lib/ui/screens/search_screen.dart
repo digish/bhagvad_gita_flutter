@@ -183,6 +183,12 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
           backgroundColor: Theme.of(context).colorScheme.surface,
           onTap: () => context.push(AppRoutes.chapters),
         ),
+        SpeedDialChild(
+          child: const Icon(Icons.bookmark),
+          label: 'Bookmarks',
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          onTap: () => context.push(AppRoutes.bookmarks),
+        ),
         // In search_screen.dart's _buildSpeedDial method
         if (defaultTargetPlatform != TargetPlatform.iOS)
           SpeedDialChild(

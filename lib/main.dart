@@ -21,11 +21,12 @@ import 'navigation/app_router.dart';
 import 'providers/audio_provider.dart';
 import 'data/database_helper.dart';
 import 'providers/settings_provider.dart';
+import 'providers/bookmark_provider.dart';
 import 'data/database_helper_interface.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
-
-Future<void> main() async { // <-- Make main async
+Future<void> main() async {
+  // <-- Make main async
   // --- ADD THIS INITIALIZATION BLOCK ---
   WidgetsFlutterBinding.ensureInitialized();
   await JustAudioBackground.init(
@@ -46,6 +47,7 @@ Future<void> main() async { // <-- Make main async
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AudioProvider()),
+        ChangeNotifierProvider(create: (_) => BookmarkProvider()),
         Provider<DatabaseHelperInterface>.value(value: dbHelper),
       ],
       child: const MyApp(),
@@ -61,9 +63,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       routerConfig: router,
       title: 'Bhagavad Gita',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
     );
   }
 }

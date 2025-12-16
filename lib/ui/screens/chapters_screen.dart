@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import '../../data/static_data.dart';
+import '../../navigation/app_router.dart';
 import 'shloka_list_screen.dart';
 
 class ChaptersScreen extends StatefulWidget {
@@ -291,6 +292,22 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                               child: BackButton(color: Colors.black),
                             ),
                           ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.bookmark_outline,
+                                color: Colors.black,
+                                size: 28,
+                              ),
+                              onPressed: () {
+                                context.push(AppRoutes.bookmarks);
+                              },
+                            ),
+                          ),
+                        ),
                         GestureDetector(
                           onTap: () {
                             context.pop();

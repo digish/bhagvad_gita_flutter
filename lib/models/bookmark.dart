@@ -13,7 +13,7 @@ class Bookmark {
 
   factory Bookmark.fromMap(Map<String, dynamic> map) {
     return Bookmark(
-      id: map['rowid'] ?? map['_id'],
+      id: map['rowid'] ?? map['_id'] ?? 0, // Fallback to 0 if null
       chapterNo: map['chapterNo'] as String,
       shlokNo: map['shlokNo'] as String,
       label: map['bmarkLabel'] as String,

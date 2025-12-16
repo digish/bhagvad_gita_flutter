@@ -85,6 +85,14 @@ class MainScaffold extends StatelessWidget {
                 ),
                 NavigationRailDestination(
                   icon: const Icon(
+                    Icons.bookmark_outline,
+                    color: Colors.black54,
+                  ),
+                  selectedIcon: const Icon(Icons.bookmark, color: Colors.black),
+                  label: const Text('Bookmarks'),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(
                     Icons.settings_outlined,
                     color: Colors.black54,
                   ),
@@ -133,8 +141,11 @@ class MainScaffold extends StatelessWidget {
     if (location.startsWith(AppRoutes.credits)) {
       return 3;
     }
-    if (location.startsWith(AppRoutes.settings)) {
+    if (location.startsWith(AppRoutes.bookmarks)) {
       return 4;
+    }
+    if (location.startsWith(AppRoutes.settings)) {
+      return 5;
     }
     if (location == AppRoutes.search) {
       return 0;
@@ -157,6 +168,9 @@ class MainScaffold extends StatelessWidget {
         context.go(AppRoutes.credits);
         break;
       case 4:
+        context.go(AppRoutes.bookmarks);
+        break;
+      case 5:
         context.go(AppRoutes.settings);
         break;
     }

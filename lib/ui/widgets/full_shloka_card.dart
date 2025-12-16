@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // Import the share_plus package
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
+import '../../providers/bookmark_provider.dart';
 import '../widgets/sneaky_emblem.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
@@ -276,6 +277,30 @@ ${shloka.bhavarth}''';
                               _ActionButton(
                                 icon: Icons.share_outlined,
                                 onPressed: () => _shareShloka(context),
+                              ),
+                              const SizedBox(width: 8),
+                              Consumer<BookmarkProvider>(
+                                builder: (context, bookmarkProvider, _) {
+                                  final isBookmarked = bookmarkProvider
+                                      .isBookmarked(
+                                        shloka.chapterNo,
+                                        shloka.shlokNo,
+                                      );
+                                  return _ActionButton(
+                                    icon: isBookmarked
+                                        ? Icons.bookmark
+                                        : Icons.bookmark_outline,
+                                    onPressed: () {
+                                      bookmarkProvider.toggleBookmark(
+                                        shloka.chapterNo,
+                                        shloka.shlokNo,
+                                      );
+                                    },
+                                    color: isBookmarked
+                                        ? theme.colorScheme.primary
+                                        : null,
+                                  );
+                                },
                               ),
                               const SizedBox(width: 8),
                               _buildAudioActionButton(

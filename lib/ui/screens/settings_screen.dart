@@ -35,16 +35,17 @@ class SettingsScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: CircleAvatar(
-                          backgroundColor: Colors.black.withOpacity(0.3),
-                          child: BackButton(
-                            color: Colors.white,
-                            onPressed: () => context.pop(),
+                      if (MediaQuery.of(context).size.width <= 600)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: CircleAvatar(
+                            backgroundColor: Colors.black.withOpacity(0.3),
+                            child: BackButton(
+                              color: Colors.white,
+                              onPressed: () => context.pop(),
+                            ),
                           ),
                         ),
-                      ),
                       const Text(
                         'Settings',
                         style: TextStyle(
