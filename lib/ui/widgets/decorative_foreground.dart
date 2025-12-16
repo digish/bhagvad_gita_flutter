@@ -37,7 +37,7 @@ class DecorativeForeground extends StatelessWidget {
     final double lotusSize = isTablet ? 150.0 : 100.0;
 
     // Adjusted offset for rail
-    final double railOffset = isTablet ? 80.0 : 0.0;
+    final double railOffset = isTablet ? 100.0 : 0.0;
 
     return Opacity(
       opacity: opacity,

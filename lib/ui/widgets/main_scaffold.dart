@@ -26,7 +26,7 @@ class MainScaffold extends StatelessWidget {
               data: MediaQuery.of(context).copyWith(
                 padding:
                     MediaQuery.of(context).padding +
-                    EdgeInsets.only(left: 80), // Rail width approx
+                    const EdgeInsets.only(left: 100), // Rail width approx
               ),
               child: child,
             ),
@@ -36,31 +36,49 @@ class MainScaffold extends StatelessWidget {
             left: 0,
             top: 0,
             bottom: 0,
-            width: 80, // Fixed width for the rail
+            width: 100, // Fixed width for the rail
             child: GlassNavigationRail(
               selectedIndex: _calculateSelectedIndex(context),
               onDestinationSelected: (int index) =>
                   _onItemTapped(index, context),
-              destinations: const <NavigationRailDestination>[
+              destinations: <NavigationRailDestination>[
                 NavigationRailDestination(
-                  icon: Icon(Icons.search_outlined),
-                  selectedIcon: Icon(Icons.search),
-                  label: Text('Search'),
+                  icon: _buildLotusIcon('assets/images/lotus_top.png', false),
+                  selectedIcon: _buildLotusIcon(
+                    'assets/images/lotus_top.png',
+                    true,
+                  ),
+                  label: const Text('Search'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.menu_book_outlined),
-                  selectedIcon: Icon(Icons.menu_book),
-                  label: Text('Chapters'),
+                  icon: _buildLotusIcon(
+                    'assets/images/lotus_white22.png',
+                    false,
+                  ),
+                  selectedIcon: _buildLotusIcon(
+                    'assets/images/lotus_white22.png',
+                    true,
+                  ),
+                  label: const Text('Chapters'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.auto_stories_outlined),
-                  selectedIcon: Icon(Icons.auto_stories),
-                  label: Text('Parayan'),
+                  icon: _buildLotusIcon(
+                    'assets/images/lotus_blue12.png',
+                    false,
+                  ),
+                  selectedIcon: _buildLotusIcon(
+                    'assets/images/lotus_blue12.png',
+                    true,
+                  ),
+                  label: const Text('Parayan'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.info_outline),
-                  selectedIcon: Icon(Icons.info),
-                  label: Text('Credits'),
+                  icon: _buildLotusIcon('assets/images/lotus_gold.png', false),
+                  selectedIcon: _buildLotusIcon(
+                    'assets/images/lotus_gold.png',
+                    true,
+                  ),
+                  label: const Text('Credits'),
                 ),
               ],
             ),
@@ -68,6 +86,29 @@ class MainScaffold extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static Widget _buildLotusIcon(String assetPath, bool isSelected) {
+    if (isSelected) {
+      return Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.amber.withOpacity(0.6),
+              blurRadius: 12,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Image.asset(assetPath, width: 40, height: 40),
+      );
+    } else {
+      return Opacity(
+        opacity: 0.6,
+        child: Image.asset(assetPath, width: 32, height: 32),
+      );
+    }
   }
 
   static int _calculateSelectedIndex(BuildContext context) {
