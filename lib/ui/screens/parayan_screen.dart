@@ -270,9 +270,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
             },
           ),
           // --- Animating Header Layer ---
-          AnimatingParayanHeader(
-            itemPositionsListener: _itemPositionsListener,
-            settingsProvider: settingsProvider,
+          Positioned(
+            left: MediaQuery.of(context).padding.left,
+            top: 0,
+            right: 0,
+            child: AnimatingParayanHeader(
+              itemPositionsListener: _itemPositionsListener,
+              settingsProvider: settingsProvider,
+            ),
           ),
         ],
       ),
@@ -466,13 +471,18 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
               minLotusTop,
               t,
             )!;
+            // ✨ Widget is now positioned AFTER the rail, so we work in local coordinates.
+            // Width is already reduced by paddingLeft.
+
+            final double paddingRight = 50.0; // Matches list padding
+
+            // Center in the available local width (excluding list padding)
             final double maxLotusLeft =
-                (width - maxLotusSize) / 2; // ✨ Use local width
+                (width - paddingRight - maxLotusSize) / 2;
+
             final double minLotusLeft =
-                56.0 +
-                MediaQuery.of(
-                  context,
-                ).padding.left; // ✨ Shifted to make room for rail
+                56.0; // Fixed offset from local left edge in collapsed state
+
             final double currentLotusLeft = lerpDouble(
               maxLotusLeft,
               minLotusLeft,
@@ -486,13 +496,21 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
               minTextTop,
               t,
             )!;
-            final double maxTextLeft = 0;
+
+            // Text Alignment
+            final double maxTextLeft =
+                0.0; // Starts at local 0 (which is rail edge)
             final double minTextLeft = minLotusLeft + minLotusSize + 16;
+
             final double currentTextLeft = lerpDouble(
               maxTextLeft,
               minTextLeft,
               t,
             )!;
+
+            // ✨ Matches list padding (50.0) in expanded state, 0 in collapsed
+            final double currentTextRight = lerpDouble(50.0, 0.0, t)!;
+
             final double textOpacity = lerpDouble(
               1.0,
               0.0,
@@ -606,7 +624,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                   Positioned(
                     top: currentTextTop,
                     left: currentTextLeft,
-                    right: 0,
+                    right: currentTextRight, // ✨ Use dynamic right padding
                     height: kToolbarHeight,
                     child: Stack(
                       alignment: Alignment.center,
