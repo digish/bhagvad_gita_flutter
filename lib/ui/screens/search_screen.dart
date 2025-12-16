@@ -14,6 +14,8 @@ import '../widgets/lotus.dart';
 import '../widgets/shloka_result_card.dart';
 import '../widgets/word_result_card.dart';
 import '../widgets/decorative_foreground.dart';
+import '../widgets/simple_gradient_background.dart';
+import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
 
@@ -59,103 +61,114 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
               MediaQuery.of(context).size.width > 600)
           ? null
           : _buildSpeedDial(context),
-      body: Stack(
-        children: [
-          DarkenedAnimatedBackground(
-            opacity: MediaQuery.of(context).viewInsets.bottom > 0 ? 1.0 : 0.2,
-          ),
-          AnimatedOpacity(
-            opacity: isSearching ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: isSearching,
-              child: MediaQuery.of(context).viewInsets.bottom > 0
-                  ? const DecorativeForeground(opacity: 0.2)
-                  : const DecorativeForeground(opacity: 1.0),
-            ),
-          ),
+      body: Consumer<SettingsProvider>(
+        builder: (context, settings, child) {
+          return Stack(
+            children: [
+              if (settings.showBackground) ...[
+                DarkenedAnimatedBackground(
+                  opacity: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 1.0
+                      : 0.2,
+                ),
+                AnimatedOpacity(
+                  opacity: isSearching ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    ignoring: isSearching,
+                    child: MediaQuery.of(context).viewInsets.bottom > 0
+                        ? const DecorativeForeground(opacity: 0.2)
+                        : const DecorativeForeground(opacity: 1.0),
+                  ),
+                ),
+              ] else
+                // Simple background
+                const SimpleGradientBackground(startColor: Colors.black),
 
-          // Wrap the interactive UI in a SafeArea
-          SafeArea(
-            child: Stack(
-              children: [
-                AnimatedAlign(
-                  alignment: isSearching
-                      ? Alignment.topCenter
-                      : Alignment.center,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
-                  child: Padding(
-                    // Removed hardcoded top padding, SafeArea handles it.
-                    padding: const EdgeInsets.only(
-                      top: 16.0,
-                      left: 16.0,
-                      right: 16.0,
-                    ),
-                    child: SingleChildScrollView(
-                      child: ResponsiveWrapper(
-                        maxWidth: 600,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              child: !isSearching
-                                  ? AnimatedScale(
-                                      scale:
-                                          MediaQuery.of(
-                                                context,
-                                              ).viewInsets.bottom >
-                                              0
-                                          ? 0.7
-                                          : 1.0,
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeInOut,
-                                      child: const Lotus(),
-                                    )
-                                  : const SizedBox.shrink(),
+              // Wrap the interactive UI in a SafeArea
+              SafeArea(
+                child: Stack(
+                  children: [
+                    AnimatedAlign(
+                      alignment: isSearching
+                          ? Alignment.topCenter
+                          : Alignment.center,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                      child: Padding(
+                        // Removed hardcoded top padding, SafeArea handles it.
+                        padding: const EdgeInsets.only(
+                          top: 16.0,
+                          left: 16.0,
+                          right: 16.0,
+                        ),
+                        child: SingleChildScrollView(
+                          child: ResponsiveWrapper(
+                            maxWidth: 600,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 300),
+                                  child: !isSearching
+                                      ? AnimatedScale(
+                                          scale:
+                                              MediaQuery.of(
+                                                    context,
+                                                  ).viewInsets.bottom >
+                                                  0
+                                              ? 0.7
+                                              : 1.0,
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                          child: const Lotus(),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  height:
+                                      MediaQuery.of(context).viewInsets.bottom >
+                                          16
+                                      ? 0
+                                      : 10,
+                                ),
+                                _buildSearchBar(provider),
+                              ],
                             ),
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              height:
-                                  MediaQuery.of(context).viewInsets.bottom > 16
-                                  ? 0
-                                  : 10,
-                            ),
-                            _buildSearchBar(provider),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                if (isSearching)
-                  Padding(
-                    // Adjusted padding to position the list below the search bar area.
-                    padding: const EdgeInsets.only(top: 100.0),
-                    child: ResponsiveWrapper(
-                      maxWidth: 600,
-                      child: ListView.builder(
-                        itemCount: provider.searchResults.length,
-                        itemBuilder: (context, index) {
-                          final item = provider.searchResults[index];
-                          if (item is ShlokaItem) {
-                            return ShlokaResultCard(shloka: item.shloka);
-                          }
-                          if (item is WordItem) {
-                            return WordResultCard(word: item.word);
-                          }
-                          return const SizedBox.shrink();
-                        },
+                    if (isSearching)
+                      Padding(
+                        // Adjusted padding to position the list below the search bar area.
+                        padding: const EdgeInsets.only(top: 100.0),
+                        child: ResponsiveWrapper(
+                          maxWidth: 600,
+                          child: ListView.builder(
+                            itemCount: provider.searchResults.length,
+                            itemBuilder: (context, index) {
+                              final item = provider.searchResults[index];
+                              if (item is ShlokaItem) {
+                                return ShlokaResultCard(shloka: item.shloka);
+                              }
+                              if (item is WordItem) {
+                                return WordResultCard(word: item.word);
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

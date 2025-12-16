@@ -458,9 +458,8 @@ class AudioProvider extends ChangeNotifier {
         );
         return finalPath;
       }
-    } catch (e, s) {
+    } catch (e) {
       debugPrint("[ASSET_DELIVERY] CRITICAL ERROR in _getShlokaAssetPath: $e");
-      debugPrint("[ASSET_DELIVERY] Stack trace: $s");
       return null;
     }
   }
