@@ -9,6 +9,7 @@ import '../../models/shloka_result.dart';
 import '../../models/shloka_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
+import '../widgets/share_options_sheet.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final ShlokaList list;
@@ -34,7 +35,23 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     _shlokasFuture = provider.getShlokasForList(db, widget.list.id);
   }
 
-  Future<void> _shareList() async {
+  Future<void> _shareList(BuildContext context) async {
+    // Show options, Audio disabled for list sharing
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShareOptionsSheet(
+        showAudioOption: false,
+        onShare: (selectedOptions) =>
+            _executeShareList(context, selectedOptions),
+      ),
+    );
+  }
+
+  Future<void> _executeShareList(
+    BuildContext context,
+    Set<ShareOption> options,
+  ) async {
     try {
       final shlokas = await _shlokasFuture;
       if (shlokas.isEmpty) return;
@@ -42,13 +59,51 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       final StringBuffer buffer = StringBuffer();
       buffer.writeln('${widget.list.name}\n');
 
-      for (var shloka in shlokas) {
-        buffer.writeln('Chapter ${shloka.chapterNo}.${shloka.shlokNo}');
-        buffer.writeln(shloka.shlok);
-        buffer.writeln(); // Empty line between shlokas
+      const String appLink =
+          'https://digish.github.io/project/index.html#bhagvadgita';
+
+      // Helper to format text
+      String formatText(String text) {
+        return text
+            .replaceAll('<C>', '\n')
+            .replaceAll('*', '\n')
+            .replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥')
+            .trim();
       }
 
-      await Share.share(buffer.toString());
+      for (var shloka in shlokas) {
+        buffer.writeln('Chapter ${shloka.chapterNo}.${shloka.shlokNo}');
+
+        if (shloka.speaker != null && shloka.speaker!.isNotEmpty) {
+          buffer.writeln('${shloka.speaker}:');
+        }
+
+        // Shloka Text (Mandatory)
+        buffer.writeln(formatText(shloka.shlok));
+
+        // Anvay
+        if (options.contains(ShareOption.anvay) && shloka.anvay.isNotEmpty) {
+          buffer.writeln('\nअन्वय:');
+          buffer.writeln(formatText(shloka.anvay));
+        }
+
+        // Tika (Bhavarth)
+        if (options.contains(ShareOption.tika) && shloka.bhavarth.isNotEmpty) {
+          buffer.writeln('\nटिका:');
+          buffer.writeln(shloka.bhavarth);
+        }
+
+        buffer.writeln('\n---\n'); // Separator between shlokas
+      }
+
+      buffer.writeln('Shared from the Shrimad Bhagavad Gita app:\n$appLink');
+
+      final box = context.findRenderObject() as RenderBox?;
+
+      await Share.share(
+        buffer.toString(),
+        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+      );
     } catch (e) {
       debugPrint('Error sharing list: $e');
       if (mounted) {
@@ -69,10 +124,14 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _shareList,
-            tooltip: 'Share List',
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: () => _shareList(context),
+                tooltip: 'Share List',
+              );
+            },
           ),
         ],
       ),

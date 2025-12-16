@@ -21,9 +21,10 @@ import '../../providers/bookmark_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import '../../providers/settings_provider.dart';
+
 import '../widgets/sneaky_emblem.dart';
 import 'add_to_list_sheet.dart';
+import 'share_options_sheet.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
 const bool _enableDynamicFontSizing = false;
@@ -137,57 +138,85 @@ class FullShlokaCard extends StatelessWidget {
     }
   }
 
-  // --- NEW: Share functionality ---
+  // --- NEW: Share functionality with Options ---
   Future<void> _shareShloka(BuildContext context) async {
+    // Show the options sheet first
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShareOptionsSheet(
+        showAudioOption: true, // Allow audio for individual shloka
+        onShare: (selectedOptions) => _executeShare(context, selectedOptions),
+      ),
+    );
+  }
+
+  Future<void> _executeShare(
+    BuildContext context,
+    Set<ShareOption> options,
+  ) async {
     final shlokaIdentifier =
         'Shrimad Bhagavad Gita\nअध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
 
-    // Clean up the shloka text for sharing
-    String cleanShlok = shloka.shlok
-        .replaceAll('<C>', '\n') // Replace center marker with newline
-        .replaceAll('*', '\n') // Replace couplet separator with newline
-        .replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥') // Clean up shloka numbers
-        .trim();
+    // Helper to format text
+    String formatText(String text) {
+      return text
+          .replaceAll('<C>', '\n')
+          .replaceAll('*', '\n')
+          .replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥')
+          .trim();
+    }
 
-    // --- NEW: App link for sharing ---
+    final buffer = StringBuffer();
+    buffer.writeln(shlokaIdentifier);
+    buffer.writeln();
+
+    // Speaker
+    if (shloka.speaker != null && shloka.speaker!.isNotEmpty) {
+      buffer.writeln('${shloka.speaker}:');
+    }
+
+    // Shloka Text (Mandatory)
+    buffer.writeln(formatText(shloka.shlok));
+
+    // Anvay
+    if (options.contains(ShareOption.anvay) && shloka.anvay.isNotEmpty) {
+      buffer.writeln('\n---\n');
+      buffer.writeln('अन्वय:');
+      buffer.writeln(formatText(shloka.anvay));
+    }
+
+    // Tika/Bhavarth
+    if (options.contains(ShareOption.tika) && shloka.bhavarth.isNotEmpty) {
+      buffer.writeln('\n---\n'); // Separator
+      buffer.writeln('टिका:');
+      buffer.writeln(shloka.bhavarth);
+    }
+
+    // Footer
     const String appLink =
         'https://digish.github.io/project/index.html#bhagvadgita';
+    buffer.writeln(
+      '\n\n---\nShared from the Shrimad Bhagavad Gita app:\n$appLink',
+    );
 
-    final shareText =
-        '''
-$shlokaIdentifier
+    final shareText = buffer.toString();
 
-${shloka.speaker != null && shloka.speaker!.isNotEmpty ? '${shloka.speaker}:' : ''}
-$cleanShlok
-
----
-
-अन्वय:
-${shloka.anvay}
-
-टिका:
-${shloka.bhavarth}''';
-
-    // --- MODIFIED: Add a footer with the app link ---
-    final shareTextWithFooter =
-        '$shareText\n\n---\nShared from the Shrimad Bhagavad Gita app:\n$appLink';
-
-    // Calculate share position origin for iPad to prevent crashes
+    // Calculate share position origin for iPad
     final box = context.findRenderObject() as RenderBox?;
     final sharePositionOrigin = box != null
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
 
-    final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-
-    if (settings.shareWithAudio) {
+    // Handle Audio sharing if selected
+    if (options.contains(ShareOption.audio)) {
+      final audioProvider = Provider.of<AudioProvider>(context, listen: false);
       final audioPath = await audioProvider.getShlokaAudioPath(shloka);
+
       if (audioPath != null) {
         String? validFilePath;
         if (audioPath.startsWith('assets/')) {
           try {
-            // It's an asset path, copy it to a temp file
             final byteData = await rootBundle.load(audioPath);
             final tempDir = await getTemporaryDirectory();
             final tempFile = File(
@@ -199,26 +228,24 @@ ${shloka.bhavarth}''';
             debugPrint('Error preparing asset for share: $e');
           }
         } else {
-          // Assume it's a valid local file path (Android download)
           validFilePath = audioPath;
         }
 
         if (validFilePath != null && await File(validFilePath).exists()) {
-          // Share text AND file
           await Share.shareXFiles(
             [XFile(validFilePath)],
-            text: shareTextWithFooter,
+            text: shareText,
             subject: shlokaIdentifier,
             sharePositionOrigin: sharePositionOrigin,
           );
-          return; // Stop here if valid share
+          return;
         }
       }
     }
 
-    // Fallback to text sharing if audio not available or setting is off
+    // Fallback or Text Only Share
     Share.share(
-      shareTextWithFooter,
+      shareText,
       subject: shlokaIdentifier,
       sharePositionOrigin: sharePositionOrigin,
     );

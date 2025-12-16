@@ -78,18 +78,7 @@ class SettingsScreen extends StatelessWidget {
                             },
                             icon: Icons.format_paint_outlined,
                           ),
-                          const SizedBox(height: 16),
-                          _buildSettingCard(
-                            context,
-                            title: 'Share Audio with Shloka',
-                            subtitle:
-                                'Include the audio file when sharing a shloka.',
-                            value: settings.shareWithAudio,
-                            onChanged: (value) {
-                              settings.setShareWithAudio(value);
-                            },
-                            icon: Icons.audiotrack,
-                          ),
+
                           const SizedBox(height: 32),
 
                           // --- Support Section ---
