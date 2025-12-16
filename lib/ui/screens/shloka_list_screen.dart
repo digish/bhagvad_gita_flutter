@@ -251,26 +251,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
   }
 
-  // --- NEW: Helper for background toggle button ---
-  Widget _buildBackgroundToggleButton({required Color color}) {
-    final settingsProvider = Provider.of<SettingsProvider>(
-      context,
-      listen: false,
-    );
-    final showBackground = Provider.of<SettingsProvider>(
-      context,
-    ).showBackground;
-
-    return IconButton(
-      icon: Icon(
-        showBackground ? Icons.image : Icons.image_not_supported,
-        color: color,
-      ),
-      tooltip: showBackground ? 'Hide Background' : 'Show Background',
-      onPressed: () => settingsProvider.setShowBackground(!showBackground),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
@@ -348,7 +328,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               color: Colors.white,
                             ),
                             _buildPlaybackModeButton(isHeader: false),
-                            _buildBackgroundToggleButton(color: Colors.white70),
                           ],
                         ),
                       ),
@@ -485,10 +464,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                   );
                                 }
                               },
-                              onBackgroundToggle: () =>
-                                  settingsProvider.setShowBackground(
-                                    !settingsProvider.showBackground,
-                                  ),
                               minExtent:
                                   MediaQuery.of(context).padding.top +
                                   kToolbarHeight +
@@ -608,7 +583,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double currentFontSize;
   final VoidCallback onFontSizeIncrement;
   final VoidCallback onFontSizeDecrement;
-  final VoidCallback onBackgroundToggle;
   final double minExtent;
   @override
   final double maxExtent;
@@ -624,7 +598,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onFontSizeIncrement,
     required this.onFontSizeDecrement,
     required this.minExtent,
-    required this.onBackgroundToggle,
     required this.maxExtent,
     required this.showBackButton,
     required this.delayEmblem,
@@ -777,7 +750,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                         color: Colors.black54,
                       ),
                       _buildPlaybackModeButtonForHeader(),
-                      _buildBackgroundToggleButtonForHeader(),
                     ],
                   ),
                 ),
@@ -885,24 +857,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     );
   }
 
-  Widget _buildBackgroundToggleButtonForHeader() {
-    // This doesn't need to be part of the stateful widget as it reads from provider.
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
-        return IconButton(
-          icon: Icon(
-            settings.showBackground ? Icons.image : Icons.image_not_supported,
-            color: Colors.black54,
-          ),
-          onPressed: onBackgroundToggle,
-          tooltip: settings.showBackground
-              ? 'Hide Background'
-              : 'Show Background',
-        );
-      },
-    );
-  }
-
   @override
   bool shouldRebuild(_AnimatingHeaderDelegate oldDelegate) {
     return minExtent != oldDelegate.minExtent ||
@@ -913,8 +867,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         onPlaybackModePressed != oldDelegate.onPlaybackModePressed ||
         currentFontSize != oldDelegate.currentFontSize ||
         onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
-        onFontSizeDecrement != oldDelegate.onFontSizeDecrement ||
-        onBackgroundToggle != oldDelegate.onBackgroundToggle;
+        onFontSizeDecrement != oldDelegate.onFontSizeDecrement;
   }
 }
 

@@ -22,6 +22,7 @@ import '../ui/screens/shloka_detail_screen.dart';
 import '../ui/screens/shloka_list_screen.dart';
 import '../ui/screens/audio_management_screen.dart';
 import '../ui/screens/credits_screen.dart';
+import '../ui/screens/settings_screen.dart';
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String shlokaDetail = '/shloka-detail/:id';
   static const String audioManagement = '/audio-management';
   static const String credits = '/credits';
+  static const String settings = '/settings';
 }
 
 final GoRouter router = GoRouter(
@@ -135,6 +137,10 @@ final GoRouter router = GoRouter(
                   },
             );
           },
+        ),
+        GoRoute(
+          path: AppRoutes.settings,
+          builder: (context, state) => const SettingsScreen(),
         ),
       ],
     ),

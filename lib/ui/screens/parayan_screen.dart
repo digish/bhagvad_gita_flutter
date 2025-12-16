@@ -561,25 +561,6 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                     _ParayanScreenState
                                   >()!)
                               ._buildDisplayModeButton(),
-                          // --- NEW: Background Toggle Button (Collapsed) ---
-                          Consumer<SettingsProvider>(
-                            builder: (context, settings, _) {
-                              return IconButton(
-                                icon: Icon(
-                                  settings.showBackground
-                                      ? Icons.image
-                                      : Icons.image_not_supported,
-                                  color: Colors.black54,
-                                ),
-                                tooltip: settings.showBackground
-                                    ? 'Hide Background'
-                                    : 'Show Background',
-                                onPressed: () => settings.setShowBackground(
-                                  !settings.showBackground,
-                                ),
-                              );
-                            },
-                          ),
                         ],
                       ),
                     ),

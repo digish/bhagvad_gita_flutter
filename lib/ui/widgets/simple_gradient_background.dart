@@ -13,6 +13,8 @@
 
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:provider/provider.dart';
+import '../../providers/settings_provider.dart';
 import './glowing_lotus.dart';
 
 class SimpleGradientBackground extends StatefulWidget {
@@ -46,11 +48,28 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
 
   @override
   Widget build(BuildContext context) {
+    // Watch the SettingsProvider
+    final showBackground = context.select<SettingsProvider, bool>(
+      (settings) => settings.showBackground,
+    );
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         // Use the provided start color for the gradient, or default to white if null.
         final gradientStartColor = widget.startColor ?? Colors.white;
+
+        if (!showBackground) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [gradientStartColor.withOpacity(1.0), Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.center,
+              ),
+            ),
+          );
+        }
 
         return Stack(
           fit: StackFit.expand,

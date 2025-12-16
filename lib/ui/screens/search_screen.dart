@@ -197,6 +197,12 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
           backgroundColor: Theme.of(context).colorScheme.surface,
           onTap: () => context.push(AppRoutes.credits),
         ),
+        SpeedDialChild(
+          child: const Icon(Icons.settings),
+          label: 'Settings',
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          onTap: () => context.push(AppRoutes.settings),
+        ),
       ],
     );
   }

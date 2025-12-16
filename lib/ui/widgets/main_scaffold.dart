@@ -83,6 +83,14 @@ class MainScaffold extends StatelessWidget {
                   ),
                   label: const Text('Credits'),
                 ),
+                NavigationRailDestination(
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    color: Colors.black54,
+                  ),
+                  selectedIcon: const Icon(Icons.settings, color: Colors.black),
+                  label: const Text('Settings'),
+                ),
               ],
             ),
           ),
@@ -125,6 +133,9 @@ class MainScaffold extends StatelessWidget {
     if (location.startsWith(AppRoutes.credits)) {
       return 3;
     }
+    if (location.startsWith(AppRoutes.settings)) {
+      return 4;
+    }
     if (location == AppRoutes.search) {
       return 0;
     }
@@ -144,6 +155,9 @@ class MainScaffold extends StatelessWidget {
         break;
       case 3:
         context.go(AppRoutes.credits);
+        break;
+      case 4:
+        context.go(AppRoutes.settings);
         break;
     }
   }
