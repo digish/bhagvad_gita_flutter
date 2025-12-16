@@ -17,6 +17,9 @@ class MainScaffold extends StatelessWidget {
       return child;
     }
 
+    final bool isLandscape = width > MediaQuery.of(context).size.height;
+    final double railWidth = isLandscape ? 220.0 : 100.0;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -24,9 +27,9 @@ class MainScaffold extends StatelessWidget {
           Positioned.fill(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                padding:
-                    MediaQuery.of(context).padding +
-                    const EdgeInsets.only(left: 100), // Rail width approx
+                padding: MediaQuery.of(
+                  context,
+                ).padding.copyWith(left: railWidth),
               ),
               child: child,
             ),
@@ -36,7 +39,7 @@ class MainScaffold extends StatelessWidget {
             left: 0,
             top: 0,
             bottom: 0,
-            width: 100, // Fixed width for the rail
+            width: railWidth, // Responsive width
             child: GlassNavigationRail(
               selectedIndex: _calculateSelectedIndex(context),
               onDestinationSelected: (int index) =>

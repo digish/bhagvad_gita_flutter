@@ -15,6 +15,9 @@ class GlassNavigationRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
@@ -30,9 +33,13 @@ class GlassNavigationRail extends StatelessWidget {
           ),
           child: NavigationRail(
             backgroundColor: Colors.transparent,
+            extended: isLandscape,
+            minExtendedWidth: 220,
             selectedIndex: selectedIndex,
             onDestinationSelected: onDestinationSelected,
-            labelType: NavigationRailLabelType.all,
+            labelType: isLandscape
+                ? NavigationRailLabelType.none
+                : NavigationRailLabelType.all,
             indicatorColor: Colors.transparent,
             groupAlignment: -1.0, // Top align
             leading: SizedBox(

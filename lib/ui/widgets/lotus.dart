@@ -82,8 +82,7 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
+    final isTablet = MediaQuery.of(context).size.shortestSide > 600;
     final double glowSize = isTablet ? 400 : 250;
     final double imageSize = isTablet ? 360 : 230;
 

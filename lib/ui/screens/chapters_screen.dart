@@ -40,7 +40,10 @@ class _ChaptersScreenState extends State<ChaptersScreen>
 
     // 2. Calculate Target Rect
     final screenWidth = MediaQuery.of(context).size.width;
-    final detailStartX = 350.0 + 1.0; // Master width + divider
+    final paddingLeft = MediaQuery.of(context).padding.left;
+    final isCompact = true; // Sidebar is always compact in master-detail now
+    final contentWidth = isCompact ? 160.0 : 350.0;
+    final detailStartX = contentWidth + paddingLeft + 1.0;
     final detailWidth = screenWidth - detailStartX;
     final targetSize = 160.0;
 
@@ -132,6 +135,10 @@ class _ChaptersScreenState extends State<ChaptersScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWideScreen = constraints.maxWidth > 600;
+        final bool isCompactMasterPane = isWideScreen;
+        final double contentWidth = isCompactMasterPane ? 160.0 : 350.0;
+        final double masterPaneWidth =
+            contentWidth + MediaQuery.of(context).padding.left;
 
         // If we are on a wide screen and no chapter is selected, select the first one by default.
         if (isWideScreen && _selectedChapter == null) {
@@ -149,17 +156,26 @@ class _ChaptersScreenState extends State<ChaptersScreen>
               children: [
                 // MASTER PANE
                 SizedBox(
-                  width: 350,
+                  width: masterPaneWidth,
                   child: Stack(
                     children: [
                       const SimpleGradientBackground(startColor: Colors.white),
                       Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // Header
                           SafeArea(
                             bottom: false,
+                            left: false,
+                            right: false,
                             child: Padding(
-                              padding: const EdgeInsets.all(16.0),
+                              padding: EdgeInsets.only(
+                                top: 16.0,
+                                right: 16.0,
+                                bottom: 16.0,
+                                left:
+                                    16.0 + MediaQuery.of(context).padding.left,
+                              ),
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
@@ -171,7 +187,7 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                                     tag: 'whiteLotusHero',
                                     child: Image.asset(
                                       'assets/images/lotus_white22.png',
-                                      height: 100,
+                                      height: isCompactMasterPane ? 60 : 100,
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -205,6 +221,7 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                                   chapterName: chapterName,
                                   isSelected: isSelected,
                                   isWideScreen: true,
+                                  isCompact: isCompactMasterPane,
                                   emblemKey: _emblemKeys[chapterNumber],
                                   onTap: () {
                                     // Trigger animation
@@ -302,6 +319,7 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                             chapterName: chapterName,
                             isSelected: false,
                             isWideScreen: false,
+                            isCompact: false,
                             onTap: () {
                               context.push('/shloka-list/$chapterNumber');
                             },
@@ -325,6 +343,7 @@ class _ChapterCard extends StatelessWidget {
   final String chapterName;
   final bool isSelected;
   final bool isWideScreen;
+  final bool isCompact;
   final VoidCallback onTap;
   final GlobalKey? emblemKey; // ✨ NEW parameter
 
@@ -333,6 +352,7 @@ class _ChapterCard extends StatelessWidget {
     required this.chapterName,
     required this.isSelected,
     required this.isWideScreen,
+    required this.isCompact,
     required this.onTap,
     this.emblemKey,
   });
@@ -367,70 +387,129 @@ class _ChapterCard extends StatelessWidget {
               child: InkWell(
                 onTap: onTap,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Hero(
-                        tag: isWideScreen
-                            ? 'chapterListEmblem_$chapterNumber'
-                            : 'chapterEmblem_$chapterNumber',
-                        child: Container(
-                          key: emblemKey, // ✨ Assign key
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.9),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.amber.withOpacity(0.7),
-                                spreadRadius: 2,
-                                blurRadius: 12.0,
-                                offset: Offset.zero,
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                  padding: const EdgeInsets.all(12.0),
+                  child: isCompact
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
+                            Hero(
+                              tag: isWideScreen
+                                  ? 'chapterListEmblem_$chapterNumber'
+                                  : 'chapterEmblem_$chapterNumber',
+                              child: Container(
+                                key: emblemKey, // ✨ Assign key
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.9),
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.amber.withOpacity(0.7),
+                                      spreadRadius: 2,
+                                      blurRadius: 12.0,
+                                      offset: Offset.zero,
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             Text(
                               'अध्याय $chapterNumber',
-                              style: theme.textTheme.bodyMedium?.copyWith(
+                              style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.primary.withOpacity(
                                   0.9,
                                 ),
                                 fontWeight: FontWeight.bold,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 2),
                             Text(
                               chapterName,
-                              style: theme.textTheme.titleLarge?.copyWith(
+                              style: theme.textTheme.titleMedium?.copyWith(
                                 color: Colors.black.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
-                                fontSize: 20,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Hero(
+                              tag: isWideScreen
+                                  ? 'chapterListEmblem_$chapterNumber'
+                                  : 'chapterEmblem_$chapterNumber',
+                              child: Container(
+                                key: emblemKey, // ✨ Assign key
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.9),
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.amber.withOpacity(0.7),
+                                      spreadRadius: 2,
+                                      blurRadius: 12.0,
+                                      offset: Offset.zero,
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'अध्याय $chapterNumber',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.9),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    chapterName,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      color: Colors.black.withOpacity(0.85),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
