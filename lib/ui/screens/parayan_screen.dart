@@ -115,11 +115,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
         case PlaybackMode.continuous:
           if (lastPlayedIndex < shlokas.length - 1) {
             final nextShloka = shlokas[lastPlayedIndex + 1];
-            final nextShlokaId =
-                '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
-
+            // Fix: remove manual assignment, let listener handle state update to trigger rebuild
             audioProvider.playOrPauseShloka(nextShloka);
-            _currentlyPlayingId = nextShlokaId;
 
             // Auto-scroll to the next item
             _scrollToIndex(lastPlayedIndex + 1);
