@@ -28,6 +28,9 @@ import '../widgets/responsive_wrapper.dart';
 // --- NEW: Enum to manage the content display modes ---
 enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
 
+// --- NEW: Enum for Playback Mode ---
+enum PlaybackMode { single, continuous, repeatOne }
+
 class ParayanScreen extends StatefulWidget {
   const ParayanScreen({super.key});
 
@@ -42,6 +45,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
       ItemPositionsListener.create();
 
   ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
+
+  // --- NEW: Playback Mode State ---
+  PlaybackMode _playbackMode = PlaybackMode.single;
+  bool _hasPlaybackStarted = false;
 
   final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
     // This is not used anymore but kept for potential future use.
@@ -58,23 +65,80 @@ class _ParayanScreenState extends State<ParayanScreen> {
   void initState() {
     super.initState();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    _audioProvider?.addListener(_audioListener);
+    _audioProvider?.addListener(_handleAudioChange);
   }
 
-  // --- NEW: Listener to update the playing ID ---
-  void _audioListener() {
+  // --- UPDATED: Listener to handle audio state changes ---
+  void _handleAudioChange() {
+    final audioProvider = _audioProvider;
+    if (audioProvider == null) return;
+
+    // Update local playing ID state
     if (mounted &&
-        _currentlyPlayingId != _audioProvider?.currentPlayingShlokaId) {
+        _currentlyPlayingId != audioProvider.currentPlayingShlokaId) {
       setState(() {
-        _currentlyPlayingId = _audioProvider?.currentPlayingShlokaId;
+        _currentlyPlayingId = audioProvider.currentPlayingShlokaId;
       });
+    }
+
+    final currentPlaybackState = audioProvider.playbackState;
+
+    if (currentPlaybackState == PlaybackState.playing) {
+      if (_currentlyPlayingId != null) _hasPlaybackStarted = true;
+      return;
+    }
+
+    // --- NEW: Handle Auto-Advance Logic ---
+    if (currentPlaybackState == PlaybackState.stopped) {
+      if (!_hasPlaybackStarted) return;
+      if (_currentlyPlayingId == null) return;
+
+      final parayanProvider = Provider.of<ParayanProvider>(
+        context,
+        listen: false,
+      );
+      final shlokas = parayanProvider.shlokas;
+
+      final lastPlayedIndex = shlokas.indexWhere(
+        (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
+      );
+
+      if (lastPlayedIndex == -1) {
+        _hasPlaybackStarted = false;
+        return;
+      }
+
+      switch (_playbackMode) {
+        case PlaybackMode.single:
+          // Do nothing
+          break;
+        case PlaybackMode.continuous:
+          if (lastPlayedIndex < shlokas.length - 1) {
+            final nextShloka = shlokas[lastPlayedIndex + 1];
+            final nextShlokaId =
+                '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
+
+            audioProvider.playOrPauseShloka(nextShloka);
+            _currentlyPlayingId = nextShlokaId;
+
+            // Auto-scroll to the next item
+            _scrollToIndex(lastPlayedIndex + 1);
+          }
+          break;
+        case PlaybackMode.repeatOne:
+          final currentShloka = shlokas[lastPlayedIndex];
+          audioProvider.playOrPauseShloka(currentShloka);
+          break;
+      }
+
+      _hasPlaybackStarted = false;
     }
   }
 
   @override
   void dispose() {
     _currentPositionLabelNotifier.dispose(); // ✨ Add this line
-    _audioProvider?.removeListener(_audioListener);
+    _audioProvider?.removeListener(_handleAudioChange);
     super.dispose();
   }
 
@@ -85,6 +149,50 @@ class _ParayanScreenState extends State<ParayanScreen> {
       index: index,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOutCubic,
+    );
+  }
+
+  // --- NEW: Cycle button for playback mode ---
+  void _cyclePlaybackMode() {
+    setState(() {
+      final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
+      _playbackMode = PlaybackMode.values[nextIndex];
+    });
+  }
+
+  Widget _buildPlaybackModeButton() {
+    IconData icon;
+    String label;
+
+    switch (_playbackMode) {
+      case PlaybackMode.single:
+        icon = Icons.play_arrow;
+        label = 'Single';
+        break;
+      case PlaybackMode.continuous:
+        icon = Icons.playlist_play;
+        label = 'Continue';
+        break;
+      case PlaybackMode.repeatOne:
+        icon = Icons.repeat_one;
+        label = 'Repeat';
+        break;
+    }
+
+    return OutlinedButton.icon(
+      onPressed: _cyclePlaybackMode,
+      icon: Icon(icon, color: Colors.black54, size: 20),
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: BorderSide(color: Colors.black.withOpacity(0.2)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+      ),
     );
   }
 
@@ -193,10 +301,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           shloka: shloka,
                           currentlyPlayingId: _currentlyPlayingId,
                           onPlayPause: () {
-                            setState(() {
-                              _currentlyPlayingId =
-                                  '${shloka.chapterNo}.${shloka.shlokNo}';
-                            });
+                            // Manual play resets auto-play flag logic just in case, handled by provider listener usually
+                            _audioProvider?.playOrPauseShloka(shloka);
                           },
                           config: cardConfig.copyWith(
                             showSpeaker: false,
@@ -556,11 +662,18 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                             },
                             color: Colors.black54,
                           ),
+                          // Display Mode Button
                           (context
                                   .findAncestorStateOfType<
                                     _ParayanScreenState
                                   >()!)
                               ._buildDisplayModeButton(),
+                          // Playback Mode Button
+                          (context
+                                  .findAncestorStateOfType<
+                                    _ParayanScreenState
+                                  >()!)
+                              ._buildPlaybackModeButton(),
                         ],
                       ),
                     ),
