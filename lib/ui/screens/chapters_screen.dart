@@ -140,16 +140,22 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
               SafeArea(
                 child: Column(
                   children: [
+                    const SizedBox(
+                      height: 24,
+                    ), // ✨ Standardized spacing matching CreditsScreen
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: EdgeInsets.only(left: 8.0),
-                            child: BackButton(color: Colors.black),
+                        // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
+                        if (Theme.of(context).platform == TargetPlatform.iOS &&
+                            constraints.maxWidth <= 600)
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: BackButton(color: Colors.black),
+                            ),
                           ),
-                        ),
                         GestureDetector(
                           onTap: () {
                             context.pop();

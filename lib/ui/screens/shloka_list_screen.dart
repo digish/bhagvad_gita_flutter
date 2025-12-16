@@ -314,9 +314,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                     backgroundColor: Colors.pink.shade900,
                     elevation: 0,
                     centerTitle: true,
-                    leading: widget.showBackButton
+                    leading:
+                        widget.showBackButton &&
+                            (Theme.of(context).platform == TargetPlatform.iOS &&
+                                MediaQuery.of(context).size.width <= 600)
                         ? const BackButton(color: Colors.white)
-                        : null, // ✨ Respect showBackButton
+                        : null, // ✨ Respect showBackButton AND Platform logic
                     bottom: PreferredSize(
                       preferredSize: const Size.fromHeight(50.0),
                       child: Padding(
@@ -492,7 +495,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               maxExtent:
                                   MediaQuery.of(context).padding.top + 350,
                               showBackButton:
-                                  widget.showBackButton, // ✨ Pass parameter
+                                  widget.showBackButton &&
+                                  (Theme.of(context).platform ==
+                                          TargetPlatform.iOS &&
+                                      MediaQuery.of(context).size.width <=
+                                          600), // ✨ Pass validated logic
                             ),
                           ),
                         // Add some spacing between the header and the first card for chapter views
@@ -688,14 +695,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Back button (conditionally visible)
-              if (showBackButton)
-                Positioned(
-                  top: paddingTop,
-                  left: 4,
-                  child: const BackButton(color: Colors.black87),
-                ),
-
               // Title (fades in)
               Positioned(
                 top: titleCurrentTop,
@@ -814,6 +813,17 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 ),
               ),
+
+              // ✨ FIX: Moved Back Button to the end of Stack to ensure it's on top
+              // Added some vertical spacing to avoid iPad multitasking controls
+              if (showBackButton)
+                Positioned(
+                  top:
+                      paddingTop +
+                      60, // Standardized spacing matching Credits Screen
+                  left: 4,
+                  child: const BackButton(color: Colors.black87),
+                ),
             ],
           ),
         );

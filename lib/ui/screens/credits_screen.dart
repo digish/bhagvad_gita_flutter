@@ -124,7 +124,10 @@ class CreditsScreen extends StatelessWidget {
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          if (MediaQuery.of(context).size.width <= 600)
+                          // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
+                          if (Theme.of(context).platform ==
+                                  TargetPlatform.iOS &&
+                              MediaQuery.of(context).size.width <= 600)
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Padding(

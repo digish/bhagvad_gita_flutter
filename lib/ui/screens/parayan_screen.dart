@@ -501,13 +501,6 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                 fit: StackFit.expand,
                 children: [
                   // Back Button (always visible)
-                  // Back Button (only visible on mobile)
-                  if (MediaQuery.of(context).size.width <= 600)
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top,
-                      left: 4,
-                      child: const BackButton(color: Colors.black87),
-                    ),
 
                   // Expanded Controls (unchanged)
                   // Collapsed Controls (unchanged)
@@ -639,6 +632,15 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                       ],
                     ),
                   ),
+                  // ✨ FIX: Back Button moved to end of Stack and spacing standardized
+                  // Only show on iOS and narrow screens (<= 600)
+                  if (Theme.of(context).platform == TargetPlatform.iOS &&
+                      MediaQuery.of(context).size.width <= 600)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 60,
+                      left: 4,
+                      child: const BackButton(color: Colors.black87),
+                    ),
                 ],
               ),
             );
