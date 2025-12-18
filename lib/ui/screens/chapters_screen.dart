@@ -327,7 +327,11 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                         ),
                         GestureDetector(
                           onTap: () {
-                            context.pop();
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/');
+                            }
                           },
                           child: Hero(
                             tag: 'whiteLotusHero',

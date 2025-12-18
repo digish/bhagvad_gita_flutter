@@ -152,7 +152,13 @@ class CreditsScreen extends StatelessWidget {
                           GestureDetector(
                             onTap: MediaQuery.of(context).size.width > 600
                                 ? null
-                                : () => context.pop(),
+                                : () {
+                                    if (context.canPop()) {
+                                      context.pop();
+                                    } else {
+                                      context.go('/');
+                                    }
+                                  },
                             child: Hero(
                               tag: 'creditsLotusHero', // A new unique tag
                               child: Image.asset(

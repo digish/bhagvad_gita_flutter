@@ -12,6 +12,7 @@
 **/
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -751,7 +752,13 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                     child: GestureDetector(
                       onTap: MediaQuery.of(context).size.width > 600
                           ? null
-                          : () => Navigator.of(context).pop(),
+                          : () {
+                              if (context.canPop()) {
+                                context.pop();
+                              } else {
+                                context.go('/');
+                              }
+                            },
                       child: Hero(
                         tag: 'blueLotusHero',
                         flightShuttleBuilder:
