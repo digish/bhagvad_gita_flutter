@@ -34,6 +34,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   // Typography Constants
   static const double _kPadding = 24.0;
 
+  // Local theme override
+  bool? _isNightModeOverride;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +90,77 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOutCubic,
     );
+  }
+
+  String _processShlokaText(String rawText) {
+    String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
+    final couplets = processed.split('*');
+    final allLines = <String>[];
+
+    for (var couplet in couplets) {
+      final parts = couplet.split('<C>');
+      for (int i = 0; i < parts.length; i++) {
+        String line = parts[i].trim();
+        if (line.isNotEmpty) {
+          allLines.add(line);
+        }
+      }
+    }
+    return allLines.join('\n');
+  }
+
+  Commentary? _getBestCommentary(
+    List<Commentary>? variants,
+    String selectedAuthor,
+    String preferredScript,
+    String preferredLang,
+  ) {
+    if (variants == null || variants.isEmpty) return null;
+
+    final authorVariants = variants
+        .where((c) => c.authorName == selectedAuthor)
+        .toList();
+    if (authorVariants.isEmpty) return null;
+
+    // Smart Match Logic (Similar to CommentarySheet)
+    Commentary? bestMatch;
+
+    // 1. Try User's Preferred Script (e.g. 'gu' for Gujarati)
+    try {
+      bestMatch = authorVariants.firstWhere(
+        (c) => c.languageCode == preferredScript,
+      );
+    } catch (_) {}
+
+    // 2. Try User's Preferred Language
+    if (bestMatch == null) {
+      if (preferredLang == 'en') {
+        try {
+          bestMatch = authorVariants.firstWhere((c) => c.languageCode == 'en');
+        } catch (_) {}
+      } else if (preferredLang == 'hi') {
+        try {
+          bestMatch = authorVariants.firstWhere((c) => c.languageCode == 'hi');
+        } catch (_) {
+          try {
+            bestMatch = authorVariants.firstWhere(
+              (c) => c.languageCode == 'sa',
+            );
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 3. Fallbacks
+    bestMatch ??= authorVariants.firstWhere(
+      (c) => c.languageCode == 'en',
+      orElse: () => authorVariants.firstWhere(
+        (c) => c.languageCode == 'sa',
+        orElse: () => authorVariants.first,
+      ),
+    );
+
+    return bestMatch;
   }
 
   void _showJumpToShlokaSheet() {
@@ -151,16 +225,21 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDark =
+        _isNightModeOverride ??
+        (Theme.of(context).brightness == Brightness.dark);
 
     // Paper-like background for "Book" feel
     final backgroundColor = isDark
-        ? const Color(0xFF1E1E1E)
+        ? const Color(0xFF121212) // Deeper black for reading
         : const Color(0xFFFAF9F6); // Off-white/Cream
     final textColor = isDark
         ? const Color(0xFFE0E0E0)
         : const Color(0xFF2C2C2C); // Soft Black
     final separatorColor = isDark ? Colors.white12 : Colors.black12;
+    final accentColor = isDark
+        ? Colors.orange.shade200
+        : Colors.orange.shade700;
 
     final script = settings.script;
     final chapterName = StaticData.getChapterName(widget.chapterNumber, script);
@@ -191,6 +270,15 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                 color: textColor,
               ),
             ),
+            const SizedBox(height: 2),
+            Text(
+              "Commentary by $_selectedAuthor",
+              style: GoogleFonts.notoSerif(
+                fontSize: 10,
+                color: textColor.withOpacity(0.5),
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
         centerTitle: true,
@@ -214,6 +302,13 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                 }).toList();
               },
             ),
+
+          // Theme Toggle
+          IconButton(
+            icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode),
+            tooltip: "Toggle Reading Mode",
+            onPressed: () => setState(() => _isNightModeOverride = !isDark),
+          ),
 
           // Jump to Shloka
           IconButton(
@@ -239,10 +334,11 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
               ),
               itemBuilder: (context, index) {
                 final shloka = _shlokas[index];
-                final commentary = shloka.commentaries?.firstWhere(
-                  (c) => c.authorName == _selectedAuthor,
-                  orElse: () =>
-                      Commentary(authorName: '', languageCode: '', content: ''),
+                final commentary = _getBestCommentary(
+                  shloka.commentaries,
+                  _selectedAuthor,
+                  settings.script,
+                  settings.language,
                 );
 
                 return Padding(
@@ -259,7 +355,8 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                           ),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: textColor.withOpacity(0.2),
+                              color: accentColor.withOpacity(0.4),
+                              width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -267,7 +364,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             "${shloka.chapterNo}.${shloka.shlokNo}",
                             style: GoogleFonts.notoSerif(
                               fontSize: 14,
-                              color: textColor.withOpacity(0.6),
+                              color: accentColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -277,9 +374,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
 
                       // Sanskrit Shloka
                       Text(
-                        shloka.shlok,
+                        _processShlokaText(shloka.shlok),
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.notoSerifDevanagari(
+                        style: GoogleFonts.notoSerif(
                           fontSize: 20,
                           height: 1.8,
                           color: textColor,
@@ -295,10 +392,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                           color: textColor.withOpacity(0.03),
                           borderRadius: BorderRadius.circular(8),
                           border: Border(
-                            left: BorderSide(
-                              color: Colors.orange.shade300,
-                              width: 3,
-                            ),
+                            left: BorderSide(color: accentColor, width: 3),
                           ),
                         ),
                         child: Text(
@@ -313,17 +407,40 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Commentary
                       if (commentary != null &&
                           commentary.content.isNotEmpty) ...[
-                        Text(
-                          "Commentary",
-                          style: GoogleFonts.cinzel(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: textColor.withOpacity(0.5),
-                            letterSpacing: 1.5,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              "Commentary by $_selectedAuthor",
+                              style: GoogleFonts.cinzel(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: textColor.withOpacity(0.5),
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (commentary.languageCode.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: textColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  commentary.languageCode.toUpperCase(),
+                                  style: GoogleFonts.notoSerif(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor.withOpacity(0.4),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Text(
