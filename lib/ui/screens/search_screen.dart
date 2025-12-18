@@ -454,6 +454,36 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
     if (_loadingRandom) return const SizedBox.shrink();
     if (_randomShloka == null) return const SizedBox.shrink();
 
+    final settings = Provider.of<SettingsProvider>(context);
+    // Determine styles based on theme
+    final isSimpleTheme = !settings.showBackground;
+
+    final cardColor = isSimpleTheme
+        ? Colors.white.withOpacity(0.3)
+        : Colors.black.withOpacity(0.3);
+
+    final borderColor = isSimpleTheme
+        ? Colors.white.withOpacity(0.6)
+        : Colors.white.withOpacity(0.1);
+
+    final titleColor = isSimpleTheme
+        ? Colors.pink.shade900.withOpacity(0.8)
+        : Colors.amberAccent.withOpacity(0.8);
+
+    final speakerColor = isSimpleTheme
+        ? Colors.black54
+        : Colors.white.withOpacity(0.6);
+
+    final textColor = isSimpleTheme
+        ? Colors.brown.shade900
+        : Colors.white.withOpacity(0.95);
+
+    final subtitleColor = isSimpleTheme
+        ? Colors.brown.shade800.withOpacity(0.6)
+        : Colors.white.withOpacity(0.5);
+
+    final iconColor = isSimpleTheme ? Colors.black45 : Colors.white70;
+
     return Padding(
       padding: const EdgeInsets.only(top: 24.0),
       child: ClipRRect(
@@ -471,16 +501,23 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                   ),
                 );
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(16.0),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1,
-                  ),
+                  border: Border.all(color: borderColor, width: 1),
+                  boxShadow: isSimpleTheme
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,7 +529,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                           child: Text(
                             _randomShlokaListName.toUpperCase(),
                             style: TextStyle(
-                              color: Colors.amberAccent.withOpacity(0.8),
+                              color: titleColor,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.0,
@@ -509,7 +546,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                                 Provider.of<SettingsProvider>(context).script,
                               ).toUpperCase(),
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
+                                color: speakerColor,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -520,10 +557,10 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                               width: 24,
                               child: IconButton(
                                 padding: EdgeInsets.zero,
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.refresh,
                                   size: 16,
-                                  color: Colors.white70,
+                                  color: iconColor,
                                 ),
                                 onPressed: _loadRandomShloka,
                                 tooltip: 'Refresh Insight',
@@ -539,10 +576,10 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                         _processShlokaText(_randomShloka!.shlok),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.95),
+                          color: textColor,
                           fontSize: 16,
                           height: 1.5,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -551,8 +588,9 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                       child: Text(
                         'Ch ${_randomShloka!.chapterNo}.${_randomShloka!.shlokNo}',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: subtitleColor,
                           fontSize: 10,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
