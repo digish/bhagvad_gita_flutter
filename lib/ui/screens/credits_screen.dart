@@ -48,6 +48,13 @@ final List<CreditItem> creditsData = [
   ),
 
   const CreditItem(
+    category: 'Commentary & Translations',
+    source: 'https://www.gitasupersite.iitk.ac.in/srimad',
+    description:
+        'Comprehensive commentary and multiple translations sourced from Gita Supersite (IIT Kanpur).',
+  ),
+
+  const CreditItem(
     category: 'Transliteration Tool',
     source: 'http://www.learnsanskrit.org/tools/sanscript',
     description: 'Transliteration tool used.',
@@ -75,6 +82,13 @@ final List<CreditItem> creditsData = [
     source: 'https://github.com/digish/bhagvad_gita_flutter',
     description:
         'Source code is open source and available on GitHub under the MIT License.',
+  ),
+
+  const CreditItem(
+    category: 'Coding Partner',
+    source: 'Gemini and Antigravity',
+    description:
+        'Developed with the assistance of Google DeepMind\'s advanced AI coding agents.',
   ),
 ];
 
@@ -245,13 +259,37 @@ class _CreditCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Source: ${item.source}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+                item.source.startsWith('http') || item.source.startsWith('www')
+                    ? InkWell(
+                        onTap: () async {
+                          String url = item.source;
+                          if (url.startsWith('www')) {
+                            url = 'https://$url';
+                          }
+                          final Uri uri = Uri.parse(url);
+                          if (!await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          )) {
+                            debugPrint('Could not launch $url');
+                          }
+                        },
+                        child: Text(
+                          'Source: ${item.source}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.blue.shade700,
+                            fontStyle: FontStyle.italic,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        'Source: ${item.source}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black54,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                 const SizedBox(height: 8),
                 Text(
                   item.description,

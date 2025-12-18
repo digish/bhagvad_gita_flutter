@@ -6,12 +6,14 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import 'database_helper_interface.dart';
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
+  static const int DB_VERSION = 2; // Increment this to force DB update
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
@@ -20,12 +22,41 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final path = join(documentsDirectory.path, "geeta_v2.db");
 
-    // Check if the database exists
+    // Check version
+    final prefs = await SharedPreferences.getInstance();
+    final savedVersion = prefs.getInt('db_version') ?? 0;
+
     bool exists = await databaseExists(path);
 
-    if (!exists) {
-      print("[DB_MOBILE] Creating new copy of database from assets: $path");
+    // Force update if version mismatch (or file missing)
+    if (!exists || savedVersion < DB_VERSION) {
+      print(
+        "[DB_MOBILE] New DB version ($DB_VERSION) detected (current: $savedVersion). Updating...",
+      );
+
       try {
+        // Close existing DB connections if any? (Not easily possible statically, rely on restart)
+
+        // 1. Clean up OLD databases to save space
+        final oldDbV1 = File(join(documentsDirectory.path, "geeta_v1.db"));
+        if (await oldDbV1.exists()) {
+          print("[DB_MOBILE] Deleting old DB: geeta_v1.db");
+          await oldDbV1.delete();
+        }
+        final oldDbLegacy = File(join(documentsDirectory.path, "geeta.db"));
+        if (await oldDbLegacy.exists()) {
+          print("[DB_MOBILE] Deleting old DB: geeta.db");
+          await oldDbLegacy.delete();
+        }
+
+        // 2. Delete current file if it exists (to overwrite)
+        if (exists) {
+          print("[DB_MOBILE] Deleting outdated DB file: $path");
+          await deleteDatabase(path);
+        }
+
+        // 3. Copy new DB
+        print("[DB_MOBILE] Copying new database from assets...");
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load(
           join("assets", "database", "geeta_v2.db"),
@@ -35,12 +66,20 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
           data.lengthInBytes,
         );
         await File(path).writeAsBytes(bytes, flush: true);
+
+        // 4. Update preference
+        await prefs.setInt('db_version', DB_VERSION);
+        print("[DB_MOBILE] Database updated to version $DB_VERSION.");
       } catch (e) {
         print("Error copying database: $e");
+        // If copy fails, we might still try to open what's there if it exists?
+        // Or rethrow to show error. Rethrow is safer.
         rethrow;
       }
     } else {
-      print("[DB_MOBILE] Opening existing database: $path");
+      print(
+        "[DB_MOBILE] Opening existing database (Version $savedVersion): $path",
+      );
     }
 
     final db = await openDatabase(path, readOnly: true);
@@ -298,7 +337,8 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String language = 'hi',
     String script = 'dev',
   }) async {
-    final sql = _buildQuery(language, script);
+    final sql =
+        "${_buildQuery(language, script)} ORDER BY CAST(m.chapter_no AS INTEGER) ASC, CAST(m.shloka_no AS INTEGER) ASC";
     final List<Map<String, dynamic>> maps = await _db.rawQuery(sql);
 
     // Fetch all commentaries
