@@ -18,6 +18,11 @@ import '../widgets/simple_gradient_background.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../../models/shloka_list.dart';
+import '../../models/shloka_result.dart';
+import '../../providers/bookmark_provider.dart';
+// import '../../main.dart'; // For routeObserver - Removed
+import '../../data/static_data.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -51,7 +56,7 @@ class _SearchScreenView extends StatefulWidget {
   State<_SearchScreenView> createState() => _SearchScreenViewState();
 }
 
-class _SearchScreenViewState extends State<_SearchScreenView> {
+class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SearchProvider>(context);
@@ -143,6 +148,8 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
                                       : 10,
                                 ),
                                 _buildSearchBar(provider),
+                                if (settings.showRandomShloka)
+                                  _buildRandomShlokaCard(),
                               ],
                             ),
                           ),
@@ -329,7 +336,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
             onSubmitted: (value) {
               if (value.isNotEmpty) {
                 context.pushNamed(
-                  'shloka-list', // Use name if defined or construct path
+                  'shloka-list',
                   pathParameters: {'query': value},
                 );
               }
@@ -342,6 +349,216 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 14,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Random Shloka Logic & UI
+  ShlokaResult? _randomShloka;
+  String _randomShlokaListName = '';
+  bool _loadingRandom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Defer the random fetch until after the first frame to access providers context safely
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadRandomShloka();
+      }
+    });
+  }
+
+  Future<void> _loadRandomShloka() async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    if (!settings.showRandomShloka) {
+      if (mounted) setState(() => _randomShloka = null);
+      return;
+    }
+
+    if (mounted) setState(() => _loadingRandom = true);
+
+    try {
+      final db = Provider.of<DatabaseHelperInterface>(context, listen: false);
+      ShlokaResult? result;
+
+      if (settings.randomShlokaSource == -1) {
+        // Entire Gita
+        if (mounted) setState(() => _randomShlokaListName = 'Gita Wisdom');
+        // Force database to give a random record. logic depends on DB implementation
+        result = await db.getRandomShloka(
+          language: settings.language,
+          script: settings.script,
+        );
+      } else {
+        // Specific List
+        final bookmarks = Provider.of<BookmarkProvider>(context, listen: false);
+
+        // Manually get list name
+        final lists = [...bookmarks.lists, ...bookmarks.predefinedLists];
+        final list = lists.firstWhere(
+          (l) => l.id == settings.randomShlokaSource,
+          orElse: () => ShlokaList(id: -999, name: 'Collection'),
+        );
+        if (mounted) setState(() => _randomShlokaListName = list.name);
+
+        final shlokas = await bookmarks.getShlokasForList(
+          db,
+          settings.randomShlokaSource,
+          language: settings.language,
+          script: settings.script,
+        );
+
+        if (shlokas.isNotEmpty) {
+          // Manually pick random from list
+          shlokas.shuffle(); // Shuffle in place
+          result = shlokas.first;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _randomShloka = result;
+          _loadingRandom = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('SearchScreen: Error loading random shloka: $e');
+      if (mounted) setState(() => _loadingRandom = false);
+    }
+  }
+
+  // Helper to process shloka text similar to FullShlokaCard
+  String _processShlokaText(String rawText) {
+    String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
+    final couplets = processed.split('*');
+    final allLines = <String>[];
+
+    for (var couplet in couplets) {
+      final parts = couplet.split('<C>');
+      for (int i = 0; i < parts.length; i++) {
+        String line = parts[i].trim();
+        if (line.isNotEmpty) {
+          allLines.add(line);
+        }
+      }
+    }
+    return allLines.join('\n');
+  }
+
+  Widget _buildRandomShlokaCard() {
+    if (_loadingRandom) return const SizedBox.shrink();
+    if (_randomShloka == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16.0),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                context.push(
+                  AppRoutes.shlokaDetail.replaceFirst(
+                    ':id',
+                    _randomShloka!.id.toString(),
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(16.0),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _randomShlokaListName.toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.amberAccent.withOpacity(0.8),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              StaticData.localizeSpeaker(
+                                _randomShloka!.speaker,
+                                Provider.of<SettingsProvider>(context).script,
+                              ).toUpperCase(),
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(
+                                  Icons.refresh,
+                                  size: 16,
+                                  color: Colors.white70,
+                                ),
+                                onPressed: _loadRandomShloka,
+                                tooltip: 'Refresh Insight',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(
+                        _processShlokaText(_randomShloka!.shlok),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.95),
+                          fontSize: 16,
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Ch ${_randomShloka!.chapterNo}.${_randomShloka!.shlokNo}',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

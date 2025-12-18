@@ -33,4 +33,8 @@ abstract class DatabaseHelperInterface {
   });
   Future<List<WordResult>> searchWords(String query);
   Future<Map<String, dynamic>?> getWordDefinition(String query);
+  Future<ShlokaResult?> getRandomShloka({
+    String language = 'hi',
+    String script = 'dev',
+  });
 }

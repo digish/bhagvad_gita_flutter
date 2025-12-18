@@ -14,6 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../main.dart'; // Check if this import is correct based on file structure
 import '../ui/screens/chapters_screen.dart';
 import '../ui/screens/parayan_screen.dart';
 import '../providers/parayan_provider.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
 
 final GoRouter router = GoRouter(
   initialLocation: AppRoutes.search,
+  observers: [routeObserver],
   routes: [
     ShellRoute(
       builder: (context, state, child) {

@@ -134,6 +134,32 @@ class SettingsProvider extends ChangeNotifier {
     }
     _script = loadedScript;
 
+    _showRandomShloka = prefs.getBool('show_random_shloka') ?? true;
+    _randomShlokaSource = prefs.getInt('random_shloka_source') ?? -1;
+
     notifyListeners();
+  }
+
+  // --- Random Shloka Settings ---
+  bool _showRandomShloka = true;
+  bool get showRandomShloka => _showRandomShloka;
+
+  int _randomShlokaSource = -1; // -1 for Entire Gita
+  int get randomShlokaSource => _randomShlokaSource;
+
+  Future<void> setShowRandomShloka(bool value) async {
+    if (_showRandomShloka == value) return;
+    _showRandomShloka = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('show_random_shloka', value);
+  }
+
+  Future<void> setRandomShlokaSource(int listId) async {
+    if (_randomShlokaSource == listId) return;
+    _randomShlokaSource = listId;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('random_shloka_source', listId);
   }
 }

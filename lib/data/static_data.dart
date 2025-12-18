@@ -183,6 +183,15 @@ class StaticData {
   // Speaker Localization
   // Keys are lowercase partial matches or standardization of DB values.
   static const Map<String, Map<String, String>> _localizedSpeakers = {
+    'sanjay_arjuna': {
+      'dev': 'संजय-अर्जुन संवाद',
+      'en': 'Sanjaya-Arjuna Dialogue',
+      'gu': 'સંજય-અર્જુન સંવાદ',
+      'te': 'సంజయ-అర్జున సంవాదము',
+      'bn': 'সঞ্জয়-অর্জুন সংবাদ',
+      'ta': 'சஞ்சயன்-அர்ஜுனன் உரையாடல்',
+      'kn': 'ಸಂಜಯ-ಅರ್ಜುನ ಸಂವಾದ',
+    },
     'dhritarashtra': {
       'dev': 'धृतराष्ट्र उवाच',
       'en': 'Dhritarashtra Uvaca',
@@ -226,16 +235,31 @@ class StaticData {
     final lower = speaker.toLowerCase();
 
     String? key;
-    if (lower.contains('dhritarashtra'))
+    // Enhanced detection for non-English inputs
+    // Check mixed speakers FIRST to avoid partial matches
+    if (lower.contains('sanjay') && lower.contains('arjun') ||
+        lower.contains('संजय') && lower.contains('अर्जुन')) {
+      key = 'sanjay_arjuna';
+    } else if (lower.contains('dhritarashtra') ||
+        lower.contains('धृतराष्ट्र') ||
+        lower.contains('ધૃતરાષ્ટ્ર')) {
       key = 'dhritarashtra';
-    else if (lower.contains('sanjaya'))
+    } else if (lower.contains('sanjaya') ||
+        lower.contains('संजय') ||
+        lower.contains('સંજય') ||
+        lower.contains('sanjay')) {
       key = 'sanjaya';
-    else if (lower.contains('arjun'))
+    } else if (lower.contains('arjun') ||
+        lower.contains('अर्जुन') ||
+        lower.contains('અર્જુન')) {
       key = 'arjuna';
-    else if (lower.contains('bhagavan') ||
+    } else if (lower.contains('bhagavan') ||
         lower.contains('bhagwan') ||
-        lower.contains('krishna'))
+        lower.contains('krishna') ||
+        lower.contains('भगवान') ||
+        lower.contains('ભગવાન')) {
       key = 'bhagavan';
+    }
 
     if (key != null && _localizedSpeakers.containsKey(key)) {
       final map = _localizedSpeakers[key]!;

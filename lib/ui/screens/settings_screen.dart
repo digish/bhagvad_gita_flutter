@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/bookmark_provider.dart';
 import '../widgets/simple_gradient_background.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -255,6 +256,127 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
+
+                          // --- Daily Inspiration Section ---
+                          _buildSectionHeader('Daily Inspiration'),
+                          Card(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                            child: Column(
+                              children: [
+                                SwitchListTile(
+                                  secondary: CircleAvatar(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.1),
+                                    child: Icon(
+                                      Icons.lightbulb_outline,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                  title: const Text(
+                                    'Gita Wisdom',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Show a random shloka on the search screen.',
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  value: settings.showRandomShloka,
+                                  onChanged: (bool value) {
+                                    settings.setShowRandomShloka(value);
+                                  },
+                                  activeColor: Theme.of(context).primaryColor,
+                                ),
+                                if (settings.showRandomShloka) ...[
+                                  const Divider(height: 1, indent: 72),
+                                  ListTile(
+                                    leading: const SizedBox(
+                                      width: 40,
+                                      height: 40,
+                                    ), // Spacer for alignment
+                                    title: const Text(
+                                      'Source',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Consumer<BookmarkProvider>(
+                                      builder: (context, bookmarks, _) {
+                                        // Combine user lists and predefined lists
+                                        final List<Map<String, dynamic>>
+                                        allLists = [
+                                          {'id': -1, 'name': 'Entire Gita'},
+                                          ...bookmarks.lists.map(
+                                            (l) => {'id': l.id, 'name': l.name},
+                                          ),
+                                          ...bookmarks.predefinedLists.map(
+                                            (l) => {'id': l.id, 'name': l.name},
+                                          ),
+                                        ];
+
+                                        // Ensure unique IDs (though lists should be unique by ID normally)
+                                        final uniqueLists =
+                                            <int, Map<String, dynamic>>{};
+                                        for (var l in allLists) {
+                                          uniqueLists[l['id'] as int] = l;
+                                        }
+                                        final uniqueListItems = uniqueLists
+                                            .values
+                                            .toList();
+
+                                        final currentValue =
+                                            settings.randomShlokaSource;
+                                        // If current value is not in validity set, fallback to -1
+                                        final effectiveValue =
+                                            uniqueLists.containsKey(
+                                              currentValue,
+                                            )
+                                            ? currentValue
+                                            : -1;
+
+                                        return DropdownButton<int>(
+                                          value: effectiveValue,
+                                          isExpanded: true,
+                                          underline: const SizedBox(),
+                                          onChanged: (int? newValue) {
+                                            if (newValue != null) {
+                                              settings.setRandomShlokaSource(
+                                                newValue,
+                                              );
+                                            }
+                                          },
+                                          items: uniqueListItems.map((list) {
+                                            return DropdownMenuItem<int>(
+                                              value: list['id'] as int,
+                                              child: Text(
+                                                list['name'] as String,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            );
+                                          }).toList(),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
 
                           // --- Preferences Section ---
                           _buildSectionHeader('Preferences'),

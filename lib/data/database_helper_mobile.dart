@@ -368,6 +368,33 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     // Unimplemented for now in V2 schema
     return null;
   }
+
+  @override
+  Future<ShlokaResult?> getRandomShloka({
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    final sql = _buildQuery(language, script);
+    final fullSql = "$sql ORDER BY RANDOM() LIMIT 1";
+
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
+    if (maps.isEmpty) return null;
+
+    final m = maps.first;
+    final id = m['id'].toString();
+
+    // Fetch commentaries for this specific shloka
+    final comms = await _db.rawQuery(
+      "SELECT * FROM commentaries WHERE shloka_id = ?",
+      [id],
+    );
+
+    final List<Commentary> commentaries = comms
+        .map((c) => Commentary.fromMap(c))
+        .toList();
+
+    return ShlokaResult.fromMap(m, commentaries: commentaries);
+  }
 }
 
 // Top-level function for conditional import

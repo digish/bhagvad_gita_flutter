@@ -55,6 +55,10 @@ Future<void> main() async {
   );
 }
 
+// Define global RouteObserver
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

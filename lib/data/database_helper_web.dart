@@ -155,6 +155,22 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   Future<Map<String, dynamic>?> getWordDefinition(String query) async {
     return null;
   }
+
+  @override
+  Future<ShlokaResult?> getRandomShloka({
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    // Stub for web, can implement similarly if needed but focusing on mobile primarily
+    final sql = _buildQuery(language, script);
+    // SQLite web FFI might not support RANDOM() efficiently or identically,
+    // but for basic usage:
+    final fullSql = "$sql ORDER BY RANDOM() LIMIT 1";
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
+
+    if (maps.isEmpty) return null;
+    return ShlokaResult.fromMap(maps.first);
+  }
 }
 
 Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
