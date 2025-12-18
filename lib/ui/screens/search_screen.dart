@@ -61,6 +61,8 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
   Widget build(BuildContext context) {
     final provider = Provider.of<SearchProvider>(context);
     final isSearching = provider.searchQuery.isNotEmpty;
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final shouldShowResults = isSearching || isKeyboardOpen;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -68,8 +70,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
       // ✨ RESTORED: The floating action button for navigation.
       // It's hidden when the keyboard is visible.
       floatingActionButton:
-          (MediaQuery.of(context).viewInsets.bottom > 0 ||
-              MediaQuery.of(context).size.width > 600)
+          (isKeyboardOpen || MediaQuery.of(context).size.width > 600)
           ? null
           : _buildSpeedDial(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -78,17 +79,13 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
           return Stack(
             children: [
               if (settings.showBackground) ...[
-                DarkenedAnimatedBackground(
-                  opacity: MediaQuery.of(context).viewInsets.bottom > 0
-                      ? 1.0
-                      : 0.2,
-                ),
+                DarkenedAnimatedBackground(opacity: isKeyboardOpen ? 1.0 : 0.2),
                 AnimatedOpacity(
-                  opacity: isSearching ? 0.0 : 1.0,
+                  opacity: shouldShowResults ? 0.0 : 1.0,
                   duration: const Duration(milliseconds: 300),
                   child: IgnorePointer(
-                    ignoring: isSearching,
-                    child: MediaQuery.of(context).viewInsets.bottom > 0
+                    ignoring: shouldShowResults,
+                    child: isKeyboardOpen
                         ? const DecorativeForeground(opacity: 0.2)
                         : const DecorativeForeground(opacity: 1.0),
                   ),
@@ -102,7 +99,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                 child: Stack(
                   children: [
                     AnimatedAlign(
-                      alignment: isSearching
+                      alignment: shouldShowResults
                           ? Alignment.topCenter
                           : Alignment.center,
                       duration: const Duration(milliseconds: 400),
@@ -122,15 +119,9 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                               children: [
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 300),
-                                  child: !isSearching
+                                  child: !shouldShowResults
                                       ? AnimatedScale(
-                                          scale:
-                                              MediaQuery.of(
-                                                    context,
-                                                  ).viewInsets.bottom >
-                                                  0
-                                              ? 0.7
-                                              : 1.0,
+                                          scale: isKeyboardOpen ? 0.7 : 1.0,
                                           duration: const Duration(
                                             milliseconds: 300,
                                           ),
@@ -141,14 +132,11 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                                 ),
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
-                                  height:
-                                      MediaQuery.of(context).viewInsets.bottom >
-                                          16
-                                      ? 0
-                                      : 10,
+                                  height: isKeyboardOpen ? 0 : 10,
                                 ),
                                 _buildSearchBar(provider),
-                                if (settings.showRandomShloka)
+                                if (settings.showRandomShloka &&
+                                    !shouldShowResults)
                                   _buildRandomShlokaCard(),
                               ],
                             ),
