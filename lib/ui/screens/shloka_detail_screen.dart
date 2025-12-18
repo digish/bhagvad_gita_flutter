@@ -84,27 +84,35 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
               final shloka = snapshot.data!;
               return Consumer2<AudioProvider, SettingsProvider>(
                 builder: (context, audio, settings, child) {
-                  return SingleChildScrollView(
-                    // Allow scrolling if card is long
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      kToolbarHeight + MediaQuery.of(context).padding.top + 16,
-                      16,
-                      16,
-                    ),
-                    child: FullShlokaCard(
-                      shloka: shloka,
-                      currentlyPlayingId: audio.currentPlayingShlokaId,
-                      config: FullShlokaCardConfig(
-                        baseFontSize: settings.fontSize,
-                        showAnvay: true,
-                        showBhavarth: true,
-                        showSeparator: true,
-                        showSpeaker: true,
-                        showShlokIndex: true,
-                        showColoredCard: true,
-                        showEmblem: false, // Don't need animation here
-                        isLightTheme: true,
+                  return SafeArea(
+                    left: true,
+                    top: false,
+                    right: true,
+                    bottom: true,
+                    child: SingleChildScrollView(
+                      // Allow scrolling if card is long
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        kToolbarHeight +
+                            MediaQuery.of(context).padding.top +
+                            16,
+                        16,
+                        16,
+                      ),
+                      child: FullShlokaCard(
+                        shloka: shloka,
+                        currentlyPlayingId: audio.currentPlayingShlokaId,
+                        config: FullShlokaCardConfig(
+                          baseFontSize: settings.fontSize,
+                          showAnvay: true,
+                          showBhavarth: true,
+                          showSeparator: true,
+                          showSpeaker: true,
+                          showShlokIndex: true,
+                          showColoredCard: true,
+                          showEmblem: false, // Don't need animation here
+                          isLightTheme: true,
+                        ),
                       ),
                     ),
                   );

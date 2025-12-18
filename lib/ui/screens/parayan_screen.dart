@@ -285,7 +285,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
-                    right: 50,
+                    right: 50 + MediaQuery.of(context).padding.right,
                     bottom: 8.0,
                   ),
                   itemBuilder: (context, index) {
@@ -374,7 +374,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             kToolbarHeight +
                             50; // Collapsed header height
                   return Positioned(
-                    right: 0,
+                    right: MediaQuery.of(context).padding.right,
                     top: topPadding,
                     bottom: 0,
                     child: CustomScrollIndicator(

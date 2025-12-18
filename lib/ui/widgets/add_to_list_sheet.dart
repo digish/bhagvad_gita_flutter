@@ -120,50 +120,84 @@ class _AddToListSheetState extends State<AddToListSheet> {
 
     final lists = Provider.of<BookmarkProvider>(context).lists;
 
-    return Container(
-      padding: const EdgeInsets.only(top: 16, bottom: 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+    final double width = MediaQuery.of(context).size.width;
+    final bool isLandscape = width > MediaQuery.of(context).size.height;
+    final bool hasRail = width > 600;
+
+    // Use a smaller padding or rely on SafeArea with minimums
+    final double railOffset = hasRail && isLandscape ? 150.0 : 0.0;
+    // Add some right padding in landscape to balance it (looks like a floating modal)
+    final double rightOffset = isLandscape ? 0.0 : 0.0;
+
+    return Padding(
+      // ✨ Shift the entire sheet "box" to avoid the rail
+      padding: EdgeInsets.only(left: railOffset, right: rightOffset),
+      child: Container(
+        padding: const EdgeInsets.only(
+          top: 16,
+          bottom: 0, // Let SafeArea handle bottom padding
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Save to List',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _createNewList,
-                  tooltip: 'Create New List',
-                ),
-              ],
-            ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
           ),
-          const Divider(),
-          if (lists.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('No lists created yet.'),
-            ),
-          ...lists.map((list) {
-            final isChecked = _selectedListIds.contains(list.id);
-            return CheckboxListTile(
-              title: Text(list.name),
-              value: isChecked,
-              onChanged: (val) => _toggleList(list.id, val),
-            );
-          }).toList(),
-        ],
+        ),
+        child: SafeArea(
+          // If we already applied a large left margin (railOffset), we don't need SafeArea left.
+          left: railOffset == 0,
+          top: false,
+          right: true,
+          bottom: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Save to List',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _createNewList,
+                      tooltip: 'Create New List',
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Flexible(
+                child: lists.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text('No lists created yet.'),
+                      )
+                    : ListView(
+                        shrinkWrap: true,
+                        children: lists.map((list) {
+                          final isChecked = _selectedListIds.contains(list.id);
+                          return CheckboxListTile(
+                            title: Text(list.name),
+                            value: isChecked,
+                            onChanged: (val) => _toggleList(list.id, val),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

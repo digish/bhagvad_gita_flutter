@@ -386,7 +386,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   // ✨ FIX: Only apply side padding for Search Results (chapterNumber == null)
                   // to avoid double padding in Chapter View (which handles it differently).
                   left: chapterNumber == null,
-                  right: chapterNumber == null,
+                  right: true,
                   child: Consumer2<ShlokaListProvider, AudioProvider>(
                     builder: (context, provider, audioProvider, child) {
                       if (provider.isLoading) {

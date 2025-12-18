@@ -318,145 +318,151 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ScrollablePositionedList.separated(
-              itemScrollController: _itemScrollController,
-              itemPositionsListener: _itemPositionsListener,
-              padding: const EdgeInsets.symmetric(vertical: _kPadding),
-              itemCount: _shlokas.length,
-              separatorBuilder: (context, index) => Divider(
-                color: separatorColor,
-                height: 48,
-                thickness: 1,
-                indent: _kPadding,
-                endIndent: _kPadding,
-              ),
-              itemBuilder: (context, index) {
-                final shloka = _shlokas[index];
-                final commentary = _getBestCommentary(
-                  shloka.commentaries,
-                  _selectedAuthor,
-                  settings.script,
-                  settings.language,
-                );
+      body: SafeArea(
+        left: true,
+        right: true,
+        bottom:
+            false, // Let the list handle bottom padding if needed, or keep true. Usually false for lists with bottom padding.
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ScrollablePositionedList.separated(
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
+                padding: const EdgeInsets.symmetric(vertical: _kPadding),
+                itemCount: _shlokas.length,
+                separatorBuilder: (context, index) => Divider(
+                  color: separatorColor,
+                  height: 48,
+                  thickness: 1,
+                  indent: _kPadding,
+                  endIndent: _kPadding,
+                ),
+                itemBuilder: (context, index) {
+                  final shloka = _shlokas[index];
+                  final commentary = _getBestCommentary(
+                    shloka.commentaries,
+                    _selectedAuthor,
+                    settings.script,
+                    settings.language,
+                  );
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: _kPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Shloka Number
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: accentColor.withOpacity(0.4),
-                              width: 1.5,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: _kPadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Shloka Number
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
                             ),
-                            borderRadius: BorderRadius.circular(20),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: accentColor.withOpacity(0.4),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              "${shloka.chapterNo}.${shloka.shlokNo}",
+                              style: GoogleFonts.notoSerif(
+                                fontSize: 14,
+                                color: accentColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Sanskrit Shloka
+                        Text(
+                          _processShlokaText(shloka.shlok),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.notoSerif(
+                            fontSize: 20,
+                            height: 1.8,
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Bhavarth (Summary) - Distinguished by style
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: textColor.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(color: accentColor, width: 3),
+                            ),
                           ),
                           child: Text(
-                            "${shloka.chapterNo}.${shloka.shlokNo}",
+                            shloka.bhavarth,
                             style: GoogleFonts.notoSerif(
-                              fontSize: 14,
-                              color: accentColor,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              height: 1.6,
+                              color: textColor.withOpacity(0.9),
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Sanskrit Shloka
-                      Text(
-                        _processShlokaText(shloka.shlok),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.notoSerif(
-                          fontSize: 20,
-                          height: 1.8,
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Bhavarth (Summary) - Distinguished by style
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: textColor.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border(
-                            left: BorderSide(color: accentColor, width: 3),
-                          ),
-                        ),
-                        child: Text(
-                          shloka.bhavarth,
-                          style: GoogleFonts.notoSerif(
-                            fontSize: 16,
-                            height: 1.6,
-                            color: textColor.withOpacity(0.9),
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      if (commentary != null &&
-                          commentary.content.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Text(
-                              "Commentary by $_selectedAuthor",
-                              style: GoogleFonts.cinzel(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: textColor.withOpacity(0.5),
-                                letterSpacing: 1.0,
+                        if (commentary != null &&
+                            commentary.content.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Text(
+                                "Commentary by $_selectedAuthor",
+                                style: GoogleFonts.cinzel(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor.withOpacity(0.5),
+                                  letterSpacing: 1.0,
+                                ),
                               ),
-                            ),
-                            const Spacer(),
-                            if (commentary.languageCode.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: textColor.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  commentary.languageCode.toUpperCase(),
-                                  style: GoogleFonts.notoSerif(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor.withOpacity(0.4),
+                              const Spacer(),
+                              if (commentary.languageCode.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: textColor.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    commentary.languageCode.toUpperCase(),
+                                    style: GoogleFonts.notoSerif(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor.withOpacity(0.4),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          commentary.content,
-                          style: GoogleFonts.notoSerif(
-                            fontSize: 17,
-                            height: 1.7,
-                            color: textColor.withOpacity(0.85),
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          Text(
+                            commentary.content,
+                            style: GoogleFonts.notoSerif(
+                              fontSize: 17,
+                              height: 1.7,
+                              color: textColor.withOpacity(0.85),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }

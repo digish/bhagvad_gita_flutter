@@ -48,7 +48,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
                 padding: EdgeInsets.fromLTRB(
                   MediaQuery.of(context).padding.left + 16,
                   kToolbarHeight + MediaQuery.of(context).padding.top + 16,
-                  16,
+                  MediaQuery.of(context).padding.right + 16,
                   100, // Space for FAB
                 ),
                 itemCount: totalCount,

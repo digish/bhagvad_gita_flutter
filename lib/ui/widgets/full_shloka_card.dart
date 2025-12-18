@@ -503,6 +503,7 @@ class FullShlokaCard extends StatelessWidget {
                                       onPressed: () {
                                         showModalBottomSheet(
                                           context: context,
+                                          backgroundColor: Colors.transparent,
                                           isScrollControlled: true,
                                           shape: const RoundedRectangleBorder(
                                             borderRadius: BorderRadius.vertical(
