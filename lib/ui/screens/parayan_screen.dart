@@ -486,7 +486,52 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    // ✨ FIX: Initialize label correctly based on current script
+    // We can set the initial label directly without setState since we are in initState.
+    // However, we rely on Provider to get data. If provider is empty, it returns default.
+    // We wrapped _getLabel with try-catch and empty check.
+    _currentLabel = _getLabel(
+      0,
+    ); // Initialize with Chapter 1, Shloka 1 (index 0)
     widget.itemPositionsListener.itemPositions.addListener(_scrollListener);
+  }
+
+  // ✨ REFACTORED: Helper to get localized label
+  String _getLabel(int index) {
+    if (!mounted) return _currentLabel;
+    try {
+      final parayanProvider = Provider.of<ParayanProvider>(
+        context,
+        listen: false,
+      );
+      if (parayanProvider.shlokas.isNotEmpty &&
+          index < parayanProvider.shlokas.length) {
+        final shloka = parayanProvider.shlokas[index];
+        final script = widget.settingsProvider.script;
+        final chapLabel = StaticData.getChapterLabel(script);
+        final chapNum = StaticData.localizeNumber(
+          int.tryParse(shloka.chapterNo) ?? 1,
+          script,
+        );
+        final shlokNum = StaticData.localizeNumber(
+          int.tryParse(shloka.shlokNo) ?? 1,
+          script,
+        );
+        // "Shloka" label localization - simple fallback
+        String shlokaLabel = 'Shloka';
+        if (script == 'gu')
+          shlokaLabel = 'શ્લોક';
+        else if (script == 'te')
+          shlokaLabel = 'శ్లోక';
+        else if (script == 'bn')
+          shlokaLabel = 'শ্লোক';
+        else if (script == 'hi' || script == 'dev' || script == 'mr')
+          shlokaLabel = 'श्लोक';
+
+        return '$chapLabel $chapNum, $shlokaLabel $shlokNum';
+      }
+    } catch (_) {}
+    return _currentLabel;
   }
 
   @override
@@ -551,36 +596,11 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
         : absoluteTopItem; // Fallback to the absolute top item if none are fully visible yet.
 
     if (topVisibleItem.index != _lastTopIndex) {
-      final parayanProvider = Provider.of<ParayanProvider>(
-        context,
-        listen: false,
-      );
-      if (parayanProvider.shlokas.isNotEmpty &&
-          topVisibleItem.index < parayanProvider.shlokas.length) {
-        final shloka = parayanProvider.shlokas[topVisibleItem.index];
-        final script = widget.settingsProvider.script;
-        final chapLabel = StaticData.getChapterLabel(script);
-        final chapNum = StaticData.localizeNumber(
-          int.tryParse(shloka.chapterNo) ?? 1,
-          script,
-        );
-        final shlokNum = StaticData.localizeNumber(
-          int.tryParse(shloka.shlokNo) ?? 1,
-          script,
-        );
-        // "Shloka" label localization - simple fallback
-        String shlokaLabel = 'Shloka';
-        if (script == 'gu')
-          shlokaLabel = 'શ્લોક';
-        else if (script == 'te')
-          shlokaLabel = 'శ్లోక';
-        else if (script == 'bn')
-          shlokaLabel = 'শ্লোক';
-        else if (script == 'hi' || script == 'dev' || script == 'mr')
-          shlokaLabel = 'श्लोक';
-
+      final newLabel = _getLabel(topVisibleItem.index);
+      // Only call setState if label or index actually changed
+      if (_currentLabel != newLabel || _lastTopIndex != topVisibleItem.index) {
         setState(() {
-          _currentLabel = '$chapLabel $chapNum, $shlokaLabel $shlokNum';
+          _currentLabel = newLabel;
           _lastTopIndex = topVisibleItem.index;
         });
       }
@@ -639,7 +659,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
             )!;
 
             final double maxTextTop = currentLotusTop + maxLotusSize + 8;
-            final double minTextTop = minLotusTop;
+            final double minTextTop = MediaQuery.of(
+              context,
+            ).padding.top; // ✨ FIX: Align with top for vertical centering
             final double currentTextTop = lerpDouble(
               maxTextTop,
               minTextTop,
@@ -793,12 +815,12 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                       ],
                     ),
                   ),
-                  // ✨ FIX: Back Button moved to end of Stack and spacing standardized
-                  // Only show on iOS and narrow screens (<= 600)
                   if (Theme.of(context).platform == TargetPlatform.iOS &&
                       MediaQuery.of(context).size.width <= 600)
                     Positioned(
-                      top: MediaQuery.of(context).padding.top + 60,
+                      top:
+                          MediaQuery.of(context).padding.top +
+                          4, // ✨ FIX: Standard toolbar position
                       left: 4,
                       child: const BackButton(color: Colors.black87),
                     ),
