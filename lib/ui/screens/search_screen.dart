@@ -364,12 +364,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       spacing: 12,
       children: [
         SpeedDialChild(
-          child: const Icon(Icons.auto_stories),
-          label: 'Full Parayan',
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          onTap: () => context.push(AppRoutes.parayan),
-        ),
-        SpeedDialChild(
           child: const Icon(Icons.menu_book),
           label: 'Browse Chapters',
           backgroundColor: Theme.of(context).colorScheme.surface,
@@ -381,7 +375,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           backgroundColor: Theme.of(context).colorScheme.surface,
           onTap: () => context.push(AppRoutes.bookmarks),
         ),
-        // In search_screen.dart's _buildSpeedDial method
+        SpeedDialChild(
+          child: const Icon(Icons.auto_stories),
+          label: 'Full Parayan',
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          onTap: () => context.push(AppRoutes.parayan),
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.settings),
+          label: 'Settings',
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          onTap: () => context.push(AppRoutes.settings),
+        ),
         if (defaultTargetPlatform != TargetPlatform.iOS)
           SpeedDialChild(
             child: const Icon(Icons.headset),
@@ -394,12 +399,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           label: 'Credits',
           backgroundColor: Theme.of(context).colorScheme.surface,
           onTap: () => context.push(AppRoutes.credits),
-        ),
-        SpeedDialChild(
-          child: const Icon(Icons.settings),
-          label: 'Settings',
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          onTap: () => context.push(AppRoutes.settings),
         ),
       ],
     );
