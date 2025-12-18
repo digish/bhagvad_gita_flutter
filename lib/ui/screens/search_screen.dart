@@ -473,7 +473,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       final db = Provider.of<DatabaseHelperInterface>(context, listen: false);
       ShlokaResult? result;
 
-      if (settings.randomShlokaSource == -1) {
+      final selectedSources = settings.randomShlokaSources;
+
+      if (selectedSources.contains(-1)) {
         // Entire Gita
         if (mounted) setState(() => _randomShlokaListName = 'Gita Wisdom');
         // Force database to give a random record. logic depends on DB implementation
@@ -482,28 +484,55 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           script: settings.script,
         );
       } else {
-        // Specific List
+        // Specific List(s)
         final bookmarks = Provider.of<BookmarkProvider>(context, listen: false);
+        // Store pair of <ListName, Shloka>
+        final allShlokasWithSource = <MapEntry<String, ShlokaResult>>[];
 
-        // Manually get list name
-        final lists = [...bookmarks.lists, ...bookmarks.predefinedLists];
-        final list = lists.firstWhere(
-          (l) => l.id == settings.randomShlokaSource,
-          orElse: () => ShlokaList(id: -999, name: 'Collection'),
+        final allLists = [...bookmarks.lists, ...bookmarks.predefinedLists];
+
+        // Fetch shlokas from all selected lists
+        for (final sourceId in selectedSources) {
+          // Resolve List Name
+          final listName = allLists
+              .firstWhere(
+                (l) => l.id == sourceId,
+                orElse: () => ShlokaList(id: -999, name: 'Collection'),
+              )
+              .name;
+
+          final shlokas = await bookmarks.getShlokasForList(
+            db,
+            sourceId,
+            language: settings.language,
+            script: settings.script,
+          );
+
+          debugPrint(
+            'Debug: Source $sourceId ($listName) brought ${shlokas.length} shlokas',
+          );
+
+          // Add to aggregation with source name
+          for (var s in shlokas) {
+            allShlokasWithSource.add(MapEntry(listName, s));
+          }
+        }
+
+        debugPrint(
+          'Debug: Total aggregated shlokas: ${allShlokasWithSource.length}',
         );
-        if (mounted) setState(() => _randomShlokaListName = list.name);
 
-        final shlokas = await bookmarks.getShlokasForList(
-          db,
-          settings.randomShlokaSource,
-          language: settings.language,
-          script: settings.script,
-        );
+        if (allShlokasWithSource.isNotEmpty) {
+          // Manually pick random from aggregated list
+          allShlokasWithSource.shuffle(); // Shuffle in place
+          final selection = allShlokasWithSource.first;
 
-        if (shlokas.isNotEmpty) {
-          // Manually pick random from list
-          shlokas.shuffle(); // Shuffle in place
-          result = shlokas.first;
+          result = selection.value;
+          if (mounted) {
+            setState(() {
+              _randomShlokaListName = selection.key;
+            });
+          }
         }
       }
 

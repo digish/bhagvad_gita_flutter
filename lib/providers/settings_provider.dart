@@ -13,6 +13,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/predefined_lists_data.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -112,6 +113,20 @@ class SettingsProvider extends ChangeNotifier {
     'en': 'English',
   };
 
+  // --- Random Shloka Settings ---
+  bool _showRandomShloka = true;
+  bool get showRandomShloka => _showRandomShloka;
+
+  // Ensure -1 is default if nothing is saved
+  Set<int> _randomShlokaSources = {-1}; // -1 for Entire Gita
+
+  // Getter for the set of sources
+  Set<int> get randomShlokaSources => _randomShlokaSources;
+
+  // Helper for single source compatibility (returns first or -1)
+  int get randomShlokaSource =>
+      _randomShlokaSources.isNotEmpty ? _randomShlokaSources.first : -1;
+
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
@@ -135,17 +150,31 @@ class SettingsProvider extends ChangeNotifier {
     _script = loadedScript;
 
     _showRandomShloka = prefs.getBool('show_random_shloka') ?? true;
-    _randomShlokaSource = prefs.getInt('random_shloka_source') ?? -1;
+
+    // Load multiple sources
+    final sourcesString = prefs.getString('random_shloka_sources');
+    if (sourcesString != null && sourcesString.isNotEmpty) {
+      _randomShlokaSources = sourcesString
+          .split(',')
+          .map((e) => int.tryParse(e))
+          .where((e) => e != null)
+          .cast<int>()
+          .toSet();
+    } else {
+      // Migration: Check for old single source
+      final oldSource = prefs.getInt('random_shloka_source');
+      if (oldSource != null) {
+        _randomShlokaSources = {oldSource};
+      } else {
+        // Default for new users: All Curated Lists
+        _randomShlokaSources = PredefinedListsData.lists
+            .map((l) => l.id)
+            .toSet();
+      }
+    }
 
     notifyListeners();
   }
-
-  // --- Random Shloka Settings ---
-  bool _showRandomShloka = true;
-  bool get showRandomShloka => _showRandomShloka;
-
-  int _randomShlokaSource = -1; // -1 for Entire Gita
-  int get randomShlokaSource => _randomShlokaSource;
 
   Future<void> setShowRandomShloka(bool value) async {
     if (_showRandomShloka == value) return;
@@ -155,11 +184,70 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setBool('show_random_shloka', value);
   }
 
-  Future<void> setRandomShlokaSource(int listId) async {
-    if (_randomShlokaSource == listId) return;
-    _randomShlokaSource = listId;
-    notifyListeners();
+  // --- Multi-select Logic ---
+
+  Future<void> setRandomShlokaSources(Set<int> sources) async {
+    _randomShlokaSources = sources;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('random_shloka_source', listId);
+    await prefs.setString(
+      'random_shloka_sources',
+      sources.join(','),
+    ); // Save as CSV
+    notifyListeners();
+  }
+
+  Future<void> toggleRandomShlokaSource(int listId) async {
+    final currentSources = Set<int>.from(_randomShlokaSources);
+
+    // If 'Entire Gita' (-1) is currently selected and we select something else,
+    // we might want to unselect -1, or vice versa.
+    // Logic:
+    // 1. If listId is -1: Clear everything else, set only {-1}.
+    // 2. If listId is NOT -1:
+    //    - If -1 was present, remove it.
+    //    - Toggle listId.
+    //    - If resulting set is empty, fallback to {-1}.
+
+    if (listId == -1) {
+      if (currentSources.contains(-1)) {
+        // Tapping -1 when it's already on -> Do nothing? Or allow unselect?
+        // Let's enforce at least one selection. Only allow unselect if we want to default to something else?
+        // Better: Tapping "Entire Gita" selects it and clears others.
+        // If it's already strictly {-1}, do nothing.
+        if (currentSources.length == 1 && currentSources.contains(-1)) {
+          return;
+        }
+        currentSources.clear();
+        currentSources.add(-1);
+      } else {
+        // Activate Entire Gita, clear others
+        currentSources.clear();
+        currentSources.add(-1);
+      }
+    } else {
+      // Toggling a specific list
+      if (currentSources.contains(-1)) {
+        currentSources.remove(-1); // Remove "Entire Gita" automatically
+      }
+
+      if (currentSources.contains(listId)) {
+        currentSources.remove(listId);
+      } else {
+        currentSources.add(listId);
+      }
+
+      // If nothing left, revert to Entire Gita
+      if (currentSources.isEmpty) {
+        currentSources.add(-1);
+      }
+    }
+
+    await setRandomShlokaSources(currentSources);
+  }
+
+  // Legacy/Compatibility method for single select (used by UI if not fully updated yet or for simple calls)
+  Future<void> setRandomShlokaSource(int listId) async {
+    // Treat as "Select Only This"
+    await setRandomShlokaSources({listId});
   }
 }

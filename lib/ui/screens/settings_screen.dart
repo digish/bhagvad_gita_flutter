@@ -45,7 +45,13 @@ class SettingsScreen extends StatelessWidget {
                             backgroundColor: Colors.black.withOpacity(0.3),
                             child: BackButton(
                               color: Colors.white,
-                              onPressed: () => context.pop(),
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/');
+                                }
+                              },
                             ),
                           ),
                         ),
@@ -299,78 +305,49 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 if (settings.showRandomShloka) ...[
                                   const Divider(height: 1, indent: 72),
-                                  ListTile(
-                                    leading: const SizedBox(
-                                      width: 40,
-                                      height: 40,
-                                    ), // Spacer for alignment
-                                    title: const Text(
-                                      'Source',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    subtitle: Consumer<BookmarkProvider>(
-                                      builder: (context, bookmarks, _) {
-                                        // Combine user lists and predefined lists
-                                        final List<Map<String, dynamic>>
-                                        allLists = [
-                                          {'id': -1, 'name': 'Entire Gita'},
-                                          ...bookmarks.lists.map(
-                                            (l) => {'id': l.id, 'name': l.name},
+                                  Consumer<SettingsProvider>(
+                                    builder: (context, settings, _) {
+                                      // Multi-selection UI
+                                      final selectedSources =
+                                          settings.randomShlokaSources;
+                                      String subtitleText;
+                                      if (selectedSources.contains(-1)) {
+                                        subtitleText = 'Entire Gita';
+                                      } else if (selectedSources.isEmpty) {
+                                        subtitleText = 'No sources selected';
+                                      } else {
+                                        subtitleText =
+                                            '${selectedSources.length} source(s) selected';
+                                      }
+
+                                      return ListTile(
+                                        leading: const SizedBox(
+                                          width: 40,
+                                          height: 40,
+                                        ), // Spacer for alignment
+                                        title: const Text(
+                                          'Source',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                          ...bookmarks.predefinedLists.map(
-                                            (l) => {'id': l.id, 'name': l.name},
+                                        ),
+                                        subtitle: Text(
+                                          subtitleText,
+                                          style: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
                                           ),
-                                        ];
-
-                                        // Ensure unique IDs (though lists should be unique by ID normally)
-                                        final uniqueLists =
-                                            <int, Map<String, dynamic>>{};
-                                        for (var l in allLists) {
-                                          uniqueLists[l['id'] as int] = l;
-                                        }
-                                        final uniqueListItems = uniqueLists
-                                            .values
-                                            .toList();
-
-                                        final currentValue =
-                                            settings.randomShlokaSource;
-                                        // If current value is not in validity set, fallback to -1
-                                        final effectiveValue =
-                                            uniqueLists.containsKey(
-                                              currentValue,
-                                            )
-                                            ? currentValue
-                                            : -1;
-
-                                        return DropdownButton<int>(
-                                          value: effectiveValue,
-                                          isExpanded: true,
-                                          underline: const SizedBox(),
-                                          onChanged: (int? newValue) {
-                                            if (newValue != null) {
-                                              settings.setRandomShlokaSource(
-                                                newValue,
-                                              );
-                                            }
-                                          },
-                                          items: uniqueListItems.map((list) {
-                                            return DropdownMenuItem<int>(
-                                              value: list['id'] as int,
-                                              child: Text(
-                                                list['name'] as String,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            );
-                                          }).toList(),
-                                        );
-                                      },
-                                    ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: const Icon(
+                                          Icons.arrow_drop_down,
+                                        ), // mimic dropdown
+                                        onTap: () {
+                                          _showSourceSelectionDialog(context);
+                                        },
+                                      );
+                                    },
                                   ),
                                 ],
                               ],
@@ -554,6 +531,112 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 8),
         ],
       ),
+    );
+  }
+
+  void _showSourceSelectionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Sources'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Consumer2<SettingsProvider, BookmarkProvider>(
+              builder: (context, settings, bookmarks, child) {
+                final seenIds = <int>{};
+                final selectedSources = settings.randomShlokaSources;
+
+                return ListView(
+                  shrinkWrap: true,
+                  children: [
+                    // 1. Entire Gita Option
+                    CheckboxListTile(
+                      title: const Text('Entire Gita'),
+                      value: selectedSources.contains(-1),
+                      onChanged: (bool? value) {
+                        settings.toggleRandomShlokaSource(-1);
+                      },
+                      activeColor: Theme.of(context).primaryColor,
+                    ),
+                    const Divider(),
+
+                    // 2. User Lists
+                    if (bookmarks.lists.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 16.0,
+                        ),
+                        child: Text(
+                          'MY COLLECTIONS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      ...bookmarks.lists.map((list) {
+                        if (seenIds.contains(list.id)) {
+                          return const SizedBox.shrink();
+                        }
+                        seenIds.add(list.id);
+                        return CheckboxListTile(
+                          title: Text(list.name),
+                          value: selectedSources.contains(list.id),
+                          onChanged: (bool? value) {
+                            settings.toggleRandomShlokaSource(list.id);
+                          },
+                          activeColor: Theme.of(context).primaryColor,
+                        );
+                      }),
+                    ],
+
+                    // 3. Curated Lists
+                    if (bookmarks.predefinedLists.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 16.0,
+                        ),
+                        child: Text(
+                          'CURATED LISTS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      ...bookmarks.predefinedLists.map((list) {
+                        if (seenIds.contains(list.id)) {
+                          return const SizedBox.shrink();
+                        }
+                        seenIds.add(list.id);
+                        return CheckboxListTile(
+                          title: Text(list.name),
+                          value: selectedSources.contains(list.id),
+                          onChanged: (bool? value) {
+                            settings.toggleRandomShlokaSource(list.id);
+                          },
+                          activeColor: Theme.of(context).primaryColor,
+                        );
+                      }),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

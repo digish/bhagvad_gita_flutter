@@ -3,7 +3,7 @@ import '../models/shloka_list.dart';
 class PredefinedListsData {
   static const List<Map<String, dynamic>> _data = [
     {
-      'id': -1,
+      'id': -11,
       'name': 'Assurance of Divine Care',
       'shlokas': [
         '9.22',
