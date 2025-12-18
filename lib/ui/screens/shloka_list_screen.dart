@@ -16,6 +16,7 @@ import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
@@ -348,6 +349,20 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               color: Colors.white,
                             ),
                             _buildPlaybackModeButton(isHeader: false),
+                            // ✨ NEW: Book Reading Mode Button
+                            if (chapterNumber != null)
+                              Tooltip(
+                                message: "Read as Book",
+                                child: IconButton(
+                                  icon: const Icon(Icons.menu_book_rounded),
+                                  color: Colors.white,
+                                  onPressed: () {
+                                    context.push(
+                                      '/book-reading/$chapterNumber',
+                                    );
+                                  },
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -779,6 +794,19 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                         color: Colors.black54,
                       ),
                       _buildPlaybackModeButtonForHeader(),
+                      // ✨ NEW: Book Reading Mode Button
+                      Tooltip(
+                        message: "Read as Book",
+                        child: IconButton(
+                          icon: const Icon(Icons.menu_book_rounded),
+                          color: Colors.black54,
+                          onPressed: () {
+                            GoRouter.of(
+                              context,
+                            ).push('/book-reading/$chapterNumber');
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 ),

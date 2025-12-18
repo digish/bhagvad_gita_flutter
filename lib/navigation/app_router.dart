@@ -28,6 +28,7 @@ import '../providers/settings_provider.dart'; // Import SettingsProvider
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
+import '../ui/screens/book_reading_screen.dart';
 
 class AppRoutes {
   static const String search = '/';
@@ -39,6 +40,7 @@ class AppRoutes {
   static const String credits = '/credits';
   static const String settings = '/settings';
   static const String bookmarks = '/bookmarks';
+  static const String bookReading = '/book-reading/:chapter';
 }
 
 final GoRouter router = GoRouter(
@@ -151,6 +153,21 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: AppRoutes.bookmarks,
           builder: (context, state) => const UserListsScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.bookReading,
+          pageBuilder: (context, state) {
+            final chapter = int.parse(state.pathParameters['chapter']!);
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: BookReadingScreen(chapterNumber: chapter),
+              transitionDuration: const Duration(milliseconds: 500),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+            );
+          },
         ),
       ],
     ),
