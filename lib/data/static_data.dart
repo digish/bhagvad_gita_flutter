@@ -180,6 +180,40 @@ class StaticData {
     'kn': _geetaAdhyayKn,
   };
 
+  // Terms Localization
+  static const Map<String, Map<String, String>> _localizedTerms = {
+    'anvay': {
+      'en': 'Anvay',
+      'gu': 'અન્વય',
+      'dev': 'अन्वय',
+      'hi': 'अन्वय',
+      'mr': 'अन्वय',
+      'bn': 'অন্বয়',
+      'te': 'అన్వయ',
+      'ta': 'அன்வயம்',
+      'kn': 'ಅನ್ವಯ',
+    },
+    'tika': {
+      'en': 'Meaning',
+      'gu': 'ભાવાર્થ',
+      'dev': 'भावार्थ',
+      'hi': 'भावार्थ',
+      'mr': 'भावार्थ',
+      'bn': 'ভাবার্থ',
+      'te': 'భావార్థం',
+      'ta': 'பொருள்',
+      'kn': 'ಭಾವಾರ್ಥ',
+    },
+  };
+
+  static String localizeTerm(String term, String script) {
+    if (!_localizedTerms.containsKey(term)) return term;
+    final map = _localizedTerms[term]!;
+    if (map.containsKey(script)) return map[script]!;
+    if (script == 'ro') return map['en']!;
+    return map['dev'] ?? map['en'] ?? term;
+  }
+
   // Speaker Localization
   // Keys are lowercase partial matches or standardization of DB values.
   static const Map<String, Map<String, String>> _localizedSpeakers = {

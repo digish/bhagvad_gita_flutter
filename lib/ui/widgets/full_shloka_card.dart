@@ -176,7 +176,9 @@ class FullShlokaCard extends StatelessWidget {
 
     // Speaker
     if (shloka.speaker != null && shloka.speaker!.isNotEmpty) {
-      buffer.writeln('${shloka.speaker}:');
+      buffer.writeln(
+        '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context, listen: false).script)}:',
+      );
     }
 
     // Shloka Text (Mandatory)
@@ -185,14 +187,18 @@ class FullShlokaCard extends StatelessWidget {
     // Anvay
     if (options.contains(ShareOption.anvay) && shloka.anvay.isNotEmpty) {
       buffer.writeln('\n---\n');
-      buffer.writeln('अन्वय:');
+      buffer.writeln(
+        '${StaticData.localizeTerm('anvay', Provider.of<SettingsProvider>(context, listen: false).script)}:',
+      );
       buffer.writeln(formatText(shloka.anvay));
     }
 
     // Tika/Bhavarth
     if (options.contains(ShareOption.tika) && shloka.bhavarth.isNotEmpty) {
       buffer.writeln('\n---\n'); // Separator
-      buffer.writeln('टिका:');
+      buffer.writeln(
+        '${StaticData.localizeTerm('tika', Provider.of<SettingsProvider>(context, listen: false).script)}:',
+      );
       buffer.writeln(shloka.bhavarth);
     }
 
@@ -564,7 +570,10 @@ class FullShlokaCard extends StatelessWidget {
                 if (config.showAnvay && shloka.anvay.isNotEmpty) ...[
                   Center(
                     child: Text(
-                      'अन्वय',
+                      StaticData.localizeTerm(
+                        'anvay',
+                        Provider.of<SettingsProvider>(context).script,
+                      ),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: accentColor,
                         fontWeight: FontWeight.bold,
@@ -604,7 +613,10 @@ class FullShlokaCard extends StatelessWidget {
                 if (config.showBhavarth && shloka.bhavarth.isNotEmpty) ...[
                   Center(
                     child: Text(
-                      'टिका',
+                      StaticData.localizeTerm(
+                        'tika',
+                        Provider.of<SettingsProvider>(context).script,
+                      ),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: accentColor,
                         fontWeight: FontWeight.bold,

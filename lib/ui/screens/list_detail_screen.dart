@@ -10,6 +10,7 @@ import '../../models/shloka_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/share_options_sheet.dart';
+import '../../data/static_data.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final ShlokaList list;
@@ -82,7 +83,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         buffer.writeln('Chapter ${shloka.chapterNo}.${shloka.shlokNo}');
 
         if (shloka.speaker != null && shloka.speaker!.isNotEmpty) {
-          buffer.writeln('${shloka.speaker}:');
+          buffer.writeln(
+            '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context, listen: false).script)}:',
+          );
         }
 
         // Shloka Text (Mandatory)
@@ -90,13 +93,17 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
         // Anvay
         if (options.contains(ShareOption.anvay) && shloka.anvay.isNotEmpty) {
-          buffer.writeln('\nअन्वय:');
+          buffer.writeln(
+            '\n${StaticData.localizeTerm('anvay', Provider.of<SettingsProvider>(context, listen: false).script)}:',
+          );
           buffer.writeln(formatText(shloka.anvay));
         }
 
         // Tika (Bhavarth)
         if (options.contains(ShareOption.tika) && shloka.bhavarth.isNotEmpty) {
-          buffer.writeln('\nटिका:');
+          buffer.writeln(
+            '\n${StaticData.localizeTerm('tika', Provider.of<SettingsProvider>(context, listen: false).script)}:',
+          );
           buffer.writeln(shloka.bhavarth);
         }
 
