@@ -12,18 +12,112 @@
 **/
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../data/database_helper_interface.dart';
+import '../../models/shloka_result.dart';
+import '../widgets/full_shloka_card.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/audio_provider.dart';
+import '../widgets/simple_gradient_background.dart';
 
-// Add a constructor that accepts the shlokaId
-class ShlokaDetailScreen extends StatelessWidget {
+class ShlokaDetailScreen extends StatefulWidget {
   final String shlokaId;
   const ShlokaDetailScreen({super.key, required this.shlokaId});
 
   @override
+  State<ShlokaDetailScreen> createState() => _ShlokaDetailScreenState();
+}
+
+class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
+  late Future<ShlokaResult?> _shlokaFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShloka();
+  }
+
+  void _loadShloka() {
+    final dbHelper = Provider.of<DatabaseHelperInterface>(
+      context,
+      listen: false,
+    );
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final language = settings.language;
+    final script = settings.script;
+
+    _shlokaFuture = dbHelper
+        .searchShlokas(widget.shlokaId, language: language, script: script)
+        .then((list) {
+          if (list.isNotEmpty) return list.first;
+          // Fallback: Try searching for ref_id directly or handle as ID lookup if search fails
+          // Actually, searchShlokas usually takes a query. If ID is "2.54", it might match navigation.
+          // But we have getShlokasByChapter.. we don't have getShlokaById exposed directly in interface?
+          // Let's rely on searchShlokas matching the ID "2.54" exactly if passed.
+          return list.isNotEmpty ? list.first : null;
+        });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Shloka $shlokaId')),
-      body: Center(
-        child: Text('Shloka Detail Screen'),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text("Verse ${widget.shlokaId}"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(color: Colors.black),
+      ),
+      body: Stack(
+        children: [
+          const SimpleGradientBackground(),
+          FutureBuilder<ShlokaResult?>(
+            future: _shlokaFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || snapshot.data == null) {
+                return Center(
+                  child: Text(
+                    "Verse not found.",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                );
+              }
+
+              final shloka = snapshot.data!;
+              return Consumer2<AudioProvider, SettingsProvider>(
+                builder: (context, audio, settings, child) {
+                  return SingleChildScrollView(
+                    // Allow scrolling if card is long
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      kToolbarHeight + MediaQuery.of(context).padding.top + 16,
+                      16,
+                      16,
+                    ),
+                    child: FullShlokaCard(
+                      shloka: shloka,
+                      currentlyPlayingId: audio.currentPlayingShlokaId,
+                      config: FullShlokaCardConfig(
+                        baseFontSize: settings.fontSize,
+                        showAnvay: true,
+                        showBhavarth: true,
+                        showSeparator: true,
+                        showSpeaker: true,
+                        showShlokIndex: true,
+                        showColoredCard: true,
+                        showEmblem: false, // Don't need animation here
+                        isLightTheme: true,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -13,25 +13,34 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../data/database_helper.dart';
+
 import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import '../data/database_helper_interface.dart';
 
 abstract class SearchResultItem {}
+
 class ShlokaItem extends SearchResultItem {
   final ShlokaResult shloka;
   ShlokaItem(this.shloka);
 }
+
 class WordItem extends SearchResultItem {
   final WordResult word;
   WordItem(this.word);
 }
 
+class HeaderItem extends SearchResultItem {
+  final String title;
+  HeaderItem(this.title);
+}
+
 class SearchProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
-  SearchProvider(this._dbHelper);
-  
+  final String _language;
+  final String _script; // NEW field
+  SearchProvider(this._dbHelper, this._language, this._script);
+
   String _searchQuery = '';
   List<SearchResultItem> _searchResults = [];
   Timer? _debounce;
@@ -47,14 +56,78 @@ class SearchProvider extends ChangeNotifier {
         _searchResults = [];
       } else {
         final words = await _dbHelper.searchWords(_searchQuery);
-        final shlokas = await _dbHelper.searchShlokas(_searchQuery);
-        _searchResults = [
-          ...words.map((w) => WordItem(w)),
-          ...shlokas.map((s) => ShlokaItem(s)),
+        final shlokas = await _dbHelper.searchShlokas(
+          _searchQuery,
+          language: _language,
+          script: _script, // Pass script
+        );
+
+        // Deduplication Logic
+        final uniqueShlokas = <String, ShlokaResult>{};
+        final categoryPriority = {
+          'navigation': 0,
+          'shloka': 1,
+          'anvay': 2,
+          'bhavarth': 3,
+          'meaning': 4,
+          'other': 5,
+        };
+
+        for (var s in shlokas) {
+          final id = s.id;
+          final cat = s.matchedCategory ?? 'other';
+
+          if (!uniqueShlokas.containsKey(id)) {
+            uniqueShlokas[id] = s;
+          } else {
+            final currentBest = uniqueShlokas[id]!.matchedCategory ?? 'other';
+            final currentPriority = categoryPriority[currentBest] ?? 99;
+            final newPriority = categoryPriority[cat] ?? 99;
+
+            if (newPriority < currentPriority) {
+              uniqueShlokas[id] = s; // Replace with better match
+            }
+          }
+        }
+
+        // Grouping Logic (using unique items)
+        final grouped = <String, List<ShlokaResult>>{};
+        for (var s in uniqueShlokas.values) {
+          final cat = s.matchedCategory ?? 'Other';
+          grouped.putIfAbsent(cat, () => []).add(s);
+        }
+
+        final orderedCategories = [
+          'navigation',
+          'shloka',
+          'anvay',
+          'bhavarth',
+          'meaning',
         ];
+        final newResults = <SearchResultItem>[];
+
+        // Add Words first (if implementation available)
+        newResults.addAll(words.map((w) => WordItem(w)));
+
+        // Add prioritized categories
+        for (var cat in orderedCategories) {
+          if (grouped.containsKey(cat)) {
+            newResults.add(HeaderItem(cat.toUpperCase()));
+            newResults.addAll(grouped[cat]!.map((s) => ShlokaItem(s)));
+            grouped.remove(cat);
+          }
+        }
+
+        // Add remaining items
+        grouped.forEach((cat, list) {
+          newResults.add(HeaderItem(cat.toUpperCase()));
+          newResults.addAll(list.map((s) => ShlokaItem(s)));
+        });
+
+        _searchResults = newResults;
       }
       notifyListeners();
     });
-    notifyListeners();
+    notifyListeners(); // Immediate notification for loading/clearing if needed
   }
 }

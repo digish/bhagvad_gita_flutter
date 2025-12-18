@@ -15,8 +15,10 @@ import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../data/static_data.dart';
 import '../../navigation/app_router.dart';
+import '../../providers/settings_provider.dart';
 import 'shloka_list_screen.dart';
 
 class ChaptersScreen extends StatefulWidget {
@@ -131,7 +133,10 @@ class _ChaptersScreenState extends State<ChaptersScreen>
 
   @override
   Widget build(BuildContext context) {
-    final chapters = StaticData.geetaAdhyay;
+    // Consume SettingsProvider to get current script
+    final settings = Provider.of<SettingsProvider>(context);
+    final script = settings.script;
+    final chapters = StaticData.geetaAdhyay; // Only for length count if needed
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -207,8 +212,17 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                               ),
                               itemCount: chapters.length,
                               itemBuilder: (context, index) {
-                                final chapterName = chapters[index];
                                 final chapterNumber = index + 1;
+                                final chapterName = StaticData.getChapterName(
+                                  chapterNumber,
+                                  script,
+                                );
+                                final localizedNum = StaticData.localizeNumber(
+                                  chapterNumber,
+                                  script,
+                                );
+                                final localizedLabel =
+                                    StaticData.getChapterLabel(script);
                                 final isSelected =
                                     chapterNumber == activeChapter;
 
@@ -220,6 +234,9 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                                 return _ChapterCard(
                                   chapterNumber: chapterNumber,
                                   chapterName: chapterName,
+                                  script: script, // Pass script if needed
+                                  localizedNumber: localizedNum,
+                                  localizedLabel: localizedLabel,
                                   isSelected: isSelected,
                                   isWideScreen: true,
                                   isCompact: isCompactMasterPane,
@@ -329,11 +346,24 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                         padding: const EdgeInsets.only(top: 16, bottom: 8.0),
                         itemCount: chapters.length,
                         itemBuilder: (context, index) {
-                          final chapterName = chapters[index];
                           final chapterNumber = index + 1;
+                          final chapterName = StaticData.getChapterName(
+                            chapterNumber,
+                            script,
+                          );
+                          final localizedNum = StaticData.localizeNumber(
+                            chapterNumber,
+                            script,
+                          );
+                          final localizedLabel = StaticData.getChapterLabel(
+                            script,
+                          );
                           return _ChapterCard(
                             chapterNumber: chapterNumber,
                             chapterName: chapterName,
+                            localizedNumber: localizedNum,
+                            localizedLabel: localizedLabel,
+                            script: script,
                             isSelected: false,
                             isWideScreen: false,
                             isCompact: false,
@@ -358,6 +388,9 @@ class _ChaptersScreenState extends State<ChaptersScreen>
 class _ChapterCard extends StatelessWidget {
   final int chapterNumber;
   final String chapterName;
+  final String localizedNumber;
+  final String localizedLabel;
+  final String script;
   final bool isSelected;
   final bool isWideScreen;
   final bool isCompact;
@@ -367,6 +400,9 @@ class _ChapterCard extends StatelessWidget {
   const _ChapterCard({
     required this.chapterNumber,
     required this.chapterName,
+    required this.localizedNumber,
+    required this.localizedLabel,
+    required this.script,
     required this.isSelected,
     required this.isWideScreen,
     required this.isCompact,
@@ -442,7 +478,7 @@ class _ChapterCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'अध्याय $chapterNumber',
+                              '$localizedLabel $localizedNumber',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.primary.withOpacity(
                                   0.9,
@@ -506,7 +542,7 @@ class _ChapterCard extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'अध्याय $chapterNumber',
+                                    '$localizedLabel $localizedNumber',
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.primary
                                           .withOpacity(0.9),

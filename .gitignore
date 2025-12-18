@@ -98,3 +98,7 @@ lib/secrets.dart
 # macOS generated files
 /macos/Flutter/ephemeral
 /macos/Flutter/GeneratedPlu*
+# Large database files
+assets/database/geeta_v1.db
+assets/database/geeta_v2.db
+test/test_geeta_v2.db

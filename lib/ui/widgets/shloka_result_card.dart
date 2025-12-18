@@ -19,16 +19,115 @@ import 'dart:ui';
 
 class ShlokaResultCard extends StatelessWidget {
   final ShlokaResult shloka;
+  final String searchQuery;
 
-  const ShlokaResultCard({super.key, required this.shloka});
+  const ShlokaResultCard({
+    super.key,
+    required this.shloka,
+    required this.searchQuery,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final displayShlok = shloka.shlok
+    String displayShlok = shloka.shlok;
+
+    // Contextual Display Logic
+    if (shloka.matchedCategory != null && shloka.matchSnippet != null) {
+      // If matched in Meaning or Bhavarth, show the snippet
+      if ([
+        'meaning',
+        'bhavarth',
+      ].contains(shloka.matchedCategory!.toLowerCase())) {
+        displayShlok = shloka.matchSnippet!;
+      }
+      // If matched in Anvay, show Anvay
+      else if (shloka.matchedCategory!.toLowerCase() == 'anvay') {
+        displayShlok = shloka.anvay;
+      }
+    }
+
+    // Cleanup cleaning logic
+    displayShlok = displayShlok
         .replaceAll(RegExp(r'<c>', caseSensitive: false), '')
         .replaceAll('*', ' ');
+
+    // Use matched words from DB if available, otherwise fallback to query
+    final termsToHighlight =
+        (shloka.matchedWords != null && shloka.matchedWords!.isNotEmpty)
+        ? shloka.matchedWords!
+        : [searchQuery];
+
+    List<TextSpan> buildHighlightedText(String text, List<String> terms) {
+      if (terms.isEmpty) return [TextSpan(text: text)];
+
+      final spans = <TextSpan>[];
+      final lowerText = text.toLowerCase();
+
+      // We need to find all occurrences of all terms and sort them by position
+      // List of (start, end) ranges
+      final ranges = <({int start, int end})>[];
+
+      for (final term in terms) {
+        final lowerTerm = term.toLowerCase();
+        if (lowerTerm.isEmpty) continue;
+
+        int start = 0;
+        while (true) {
+          final idx = lowerText.indexOf(lowerTerm, start);
+          if (idx == -1) break;
+          ranges.add((start: idx, end: idx + term.length));
+          start = idx + 1; // Overlap check? Let's just step 1 char
+        }
+      }
+
+      // Sort ranges by start position
+      ranges.sort((a, b) => a.start.compareTo(b.start));
+
+      // Merge overlapping ranges
+      final merged = <({int start, int end})>[];
+      for (final r in ranges) {
+        if (merged.isEmpty) {
+          merged.add(r);
+        } else {
+          final last = merged.last;
+          if (r.start < last.end) {
+            // Overlap
+            if (r.end > last.end) {
+              // Extend
+              merged[merged.length - 1] = (start: last.start, end: r.end);
+            }
+          } else {
+            merged.add(r);
+          }
+        }
+      }
+
+      // Build spans
+      int currentPos = 0;
+      for (final r in merged) {
+        if (r.start > currentPos) {
+          spans.add(TextSpan(text: text.substring(currentPos, r.start)));
+        }
+        spans.add(
+          TextSpan(
+            text: text.substring(r.start, r.end),
+            style: const TextStyle(
+              color: Color(0xFFFFD700),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+        currentPos = r.end;
+      }
+
+      if (currentPos < text.length) {
+        spans.add(TextSpan(text: text.substring(currentPos)));
+      }
+
+      return spans;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -71,15 +170,20 @@ class ShlokaResultCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      displayShlok,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontSize: 15,
-                        height: 1.4,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withOpacity(0.85),
+                    RichText(
+                      text: TextSpan(
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 15,
+                          height: 1.4,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withOpacity(0.85),
+                        ),
+                        children: buildHighlightedText(
+                          displayShlok,
+                          termsToHighlight,
+                        ),
                       ),
-                      maxLines: 2,
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

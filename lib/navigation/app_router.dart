@@ -24,6 +24,7 @@ import '../ui/screens/audio_management_screen.dart';
 import '../ui/screens/credits_screen.dart';
 import '../ui/screens/settings_screen.dart';
 import '../ui/screens/user_lists_screen.dart';
+import '../providers/settings_provider.dart'; // Import SettingsProvider
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
@@ -84,10 +85,12 @@ final GoRouter router = GoRouter(
             // 2. Read the globally provided dbHelper from the provider context.
             // This will now work because the type is known.
             final dbHelper = context.read<DatabaseHelperInterface>();
+            final language = context.read<SettingsProvider>().language;
+            final script = context.read<SettingsProvider>().script;
             return CustomTransitionPage(
               key: state.pageKey,
               child: ChangeNotifierProvider(
-                create: (_) => ParayanProvider(dbHelper),
+                create: (_) => ParayanProvider(dbHelper, language, script),
                 child: const ParayanScreen(),
               ),
               transitionDuration: const Duration(milliseconds: 700),
@@ -101,6 +104,7 @@ final GoRouter router = GoRouter(
         ),
         GoRoute(
           path: AppRoutes.shlokaList,
+          name: 'shloka-list',
           pageBuilder: (context, state) {
             final query = state.pathParameters['query']!;
             return CustomTransitionPage(

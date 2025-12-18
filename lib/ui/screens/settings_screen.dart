@@ -53,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
@@ -65,6 +65,197 @@ class SettingsScreen extends StatelessWidget {
                       return ListView(
                         padding: const EdgeInsets.all(16.0),
                         children: [
+                          // --- Language Section ---
+                          _buildSectionHeader('Language'),
+                          Card(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 8.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.1),
+                                    child: Icon(
+                                      Icons.abc,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Script (Lipi)',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          'For Shloka & Anvay',
+                                          style: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  DropdownButton<String>(
+                                    value: settings.script,
+                                    underline: const SizedBox(),
+                                    onChanged: (String? newValue) {
+                                      if (newValue != null) {
+                                        settings.setScript(newValue);
+                                      }
+                                    },
+                                    items: SettingsProvider
+                                        .supportedScripts
+                                        .entries
+                                        .map((entry) {
+                                          return DropdownMenuItem<String>(
+                                            value: entry.key,
+                                            child: Text(
+                                              entry.value,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        })
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16), // Spacing between cards
+                          // --- Translation Language Card (No Header) ---
+                          Card(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 8.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.1),
+                                    child: Icon(
+                                      Icons.translate,
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Meaning (Bhavarth)',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          settings.language == 'en'
+                                              ? 'In English'
+                                              : 'In Hindi (follows Lipi)',
+                                          style: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  DropdownButton<String>(
+                                    value: settings.language,
+                                    underline: const SizedBox(),
+                                    onChanged: (String? newValue) {
+                                      if (newValue != null) {
+                                        settings.setLanguage(newValue);
+                                      }
+                                    },
+                                    items: SettingsProvider
+                                        .supportedLanguages
+                                        .entries
+                                        .map((entry) {
+                                          return DropdownMenuItem<String>(
+                                            value: entry.key,
+                                            child: Text(entry.value),
+                                          );
+                                        })
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+
+                          // --- Content Section ---
+                          _buildSectionHeader('Content'),
+                          Card(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                            child: SwitchListTile(
+                              secondary: CircleAvatar(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).primaryColor.withOpacity(0.1),
+                                child: Icon(
+                                  Icons.history_edu,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                              title: const Text(
+                                'Classical Commentaries',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Show Big Three (Shankaracharya, Ramanujacharya, Madhvacharya)',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              value: settings.showClassicalCommentaries,
+                              onChanged: (bool value) {
+                                settings.setShowClassicalCommentaries(value);
+                              },
+                              activeColor: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
                           // --- Preferences Section ---
                           _buildSectionHeader('Preferences'),
                           _buildSettingCard(
@@ -230,11 +421,14 @@ class SettingsScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Colors.black87, // Changed from Colors.white
             ),
           ),
           const SizedBox(height: 4),
-          const Divider(color: Colors.white24, thickness: 1),
+          const Divider(
+            color: Colors.black12,
+            thickness: 1,
+          ), // Changed from Colors.white24
           const SizedBox(height: 8),
         ],
       ),

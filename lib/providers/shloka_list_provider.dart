@@ -12,13 +12,15 @@
 **/
 
 import 'package:flutter/material.dart';
-import '../data/database_helper.dart';
+
 import '../models/shloka_result.dart';
 import '../data/database_helper_interface.dart';
 
 class ShlokaListProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
   final String _searchQuery;
+  final String _language;
+  final String _script; // NEW field
 
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
@@ -30,7 +32,13 @@ class ShlokaListProvider extends ChangeNotifier {
   int? get initialScrollIndex => _initialScrollIndex;
   String? get lastScrolledId => _lastScrolledId;
 
-  ShlokaListProvider(this._searchQuery, this._dbHelper) {
+  // Updated constructor to accept script
+  ShlokaListProvider(
+    this._searchQuery,
+    this._dbHelper,
+    this._language,
+    this._script,
+  ) {
     _fetchShlokas();
   }
 
@@ -57,17 +65,32 @@ class ShlokaListProvider extends ChangeNotifier {
     final shlokaRefMatch = RegExp(r'^(\d+)[,.](\d+)$').firstMatch(_searchQuery);
 
     if (shlokaRefMatch != null) {
-      final chapter = shlokaRefMatch.group(1)!;
+      final chapterStr = shlokaRefMatch.group(1)!;
+      final chapter = int.tryParse(chapterStr);
       final shlokNum = int.tryParse(shlokaRefMatch.group(2)!);
-      _shlokas = await _dbHelper.getShlokasByChapter(chapter);
-      if (shlokNum != null) {
-        _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
-        _initialScrollIndex = null; // No scrolling needed for a single item.
+
+      if (chapter != null) {
+        _shlokas = await _dbHelper.getShlokasByChapter(
+          chapter,
+          language: _language,
+          script: _script, // Pass script
+        );
+        if (shlokNum != null) {
+          _shlokas = _shlokas
+              .where((s) => int.tryParse(s.shlokNo) == shlokNum)
+              .toList();
+          _initialScrollIndex = null; // No scrolling needed for a single item.
+        }
       }
     }
     // Case #1: Query is a single number (chapter search).
     else if (int.tryParse(_searchQuery) != null) {
-      _shlokas = await _dbHelper.getShlokasByChapter(_searchQuery);
+      final chapter = int.parse(_searchQuery);
+      _shlokas = await _dbHelper.getShlokasByChapter(
+        chapter,
+        language: _language,
+        script: _script, // Pass script
+      );
     }
     // Case #2 & #3: It's a text query.
     else {
@@ -80,25 +103,43 @@ class ShlokaListProvider extends ChangeNotifier {
         final parsedData = _parseSpecialFormat(stage1Result);
         if (parsedData != null) {
           // Case #3: Special format found. Fetch the chapter and set the scroll index.
-          final chapter = parsedData['chapter']!.toString();
+          final chapter = parsedData['chapter']!;
           final shlokNum = parsedData['shlok'];
-          _shlokas = await _dbHelper.getShlokasByChapter(chapter);
+          _shlokas = await _dbHelper.getShlokasByChapter(
+            chapter,
+            language: _language,
+            script: _script, // Pass script
+          );
           if (shlokNum != null) {
-            _shlokas = _shlokas.where((s) => int.tryParse(s.shlokNo) == shlokNum).toList();
+            _shlokas = _shlokas
+                .where((s) => int.tryParse(s.shlokNo) == shlokNum)
+                .toList();
             _initialScrollIndex = null;
           }
         } else {
           // Case #2 (continued): No special format, search for both terms.
           // We perform two separate searches and merge the results.
-          final results1 = await _dbHelper.searchShlokas(_searchQuery);
-          final results2 = await _dbHelper.searchShlokas(stage1Result);
-          
+          final results1 = await _dbHelper.searchShlokas(
+            _searchQuery,
+            language: _language,
+            script: _script, // Pass script
+          );
+          final results2 = await _dbHelper.searchShlokas(
+            stage1Result,
+            language: _language,
+            script: _script, // Pass script
+          );
+
           // Use a Set to automatically handle duplicates before converting to a List.
           _shlokas = {...results1, ...results2}.toList();
         }
       } else {
         // Case #2 (no lookup result): Just search for the original query.
-        _shlokas = await _dbHelper.searchShlokas(_searchQuery);
+        _shlokas = await _dbHelper.searchShlokas(
+          _searchQuery,
+          language: _language,
+          script: _script, // Pass script
+        );
       }
     }
 

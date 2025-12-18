@@ -68,6 +68,24 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _audioProvider?.addListener(_handleAudioChange);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = Provider.of<SettingsProvider>(context);
+    final parayanProvider = Provider.of<ParayanProvider>(
+      context,
+      listen: false,
+    );
+
+    // Defer the update to the next frame to avoid 'setState() or markNeedsBuild() called during build'
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      parayanProvider.updateSettings(
+        language: settings.language,
+        script: settings.script,
+      );
+    });
+  }
+
   // --- UPDATED: Listener to handle audio state changes ---
   void _handleAudioChange() {
     final audioProvider = _audioProvider;
@@ -286,19 +304,23 @@ class _ParayanScreenState extends State<ParayanScreen> {
                         previousShloka != null &&
                         previousShloka.speaker != shloka.speaker;
 
+                    final script = settingsProvider.script;
                     return Column(
                       children: [
                         if (isChapterStart)
                           _ChapterStartHeader(
                             chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                            script: script,
                           ),
                         if (speakerChanged || isChapterStart)
-                          _SpeakerHeader(speaker: shloka.speaker ?? "Uvacha"),
+                          _SpeakerHeader(
+                            speaker: shloka.speaker ?? "Uvacha",
+                            script: script,
+                          ),
                         FullShlokaCard(
                           shloka: shloka,
                           currentlyPlayingId: _currentlyPlayingId,
                           onPlayPause: () {
-                            // Manual play resets auto-play flag logic just in case, handled by provider listener usually
                             _audioProvider?.playOrPauseShloka(shloka);
                           },
                           config: cardConfig.copyWith(
@@ -309,16 +331,19 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             spacingCompact: true,
                             isLightTheme: true,
                           ),
+                          // ✨ Pass script to FullShlokaCard if needed for internal localization
+                          // (though speaker is hidden here, shloka index is shown. Index handles its own localization?)
+                          // FullShlokaCard should handle its own localization via SettingsProvider or params.
+                          // Check FullShlokaCard next.
                         ),
                         if (isChapterEnd)
                           _ChapterEndFooter(
                             chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
-                            chapterName:
-                                StaticData.geetaAdhyay[(int.tryParse(
-                                          shloka.chapterNo,
-                                        ) ??
-                                        1) -
-                                    1],
+                            chapterName: StaticData.getChapterName(
+                              int.tryParse(shloka.chapterNo) ?? 1,
+                              script,
+                            ),
+                            script: script,
                           ),
                       ],
                     );
@@ -533,8 +558,29 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
       if (parayanProvider.shlokas.isNotEmpty &&
           topVisibleItem.index < parayanProvider.shlokas.length) {
         final shloka = parayanProvider.shlokas[topVisibleItem.index];
+        final script = widget.settingsProvider.script;
+        final chapLabel = StaticData.getChapterLabel(script);
+        final chapNum = StaticData.localizeNumber(
+          int.tryParse(shloka.chapterNo) ?? 1,
+          script,
+        );
+        final shlokNum = StaticData.localizeNumber(
+          int.tryParse(shloka.shlokNo) ?? 1,
+          script,
+        );
+        // "Shloka" label localization - simple fallback
+        String shlokaLabel = 'Shloka';
+        if (script == 'gu')
+          shlokaLabel = 'શ્લોક';
+        else if (script == 'te')
+          shlokaLabel = 'శ్లోక';
+        else if (script == 'bn')
+          shlokaLabel = 'শ্লোক';
+        else if (script == 'hi' || script == 'dev' || script == 'mr')
+          shlokaLabel = 'श्लोक';
+
         setState(() {
-          _currentLabel = 'अध्याय ${shloka.chapterNo}, श्लोक ${shloka.shlokNo}';
+          _currentLabel = '$chapLabel $chapNum, $shlokaLabel $shlokNum';
           _lastTopIndex = topVisibleItem.index;
         });
       }
@@ -770,8 +816,12 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
 class _ChapterStartHeader extends StatelessWidget {
   final int chapterNumber;
+  final String script;
 
-  const _ChapterStartHeader({required this.chapterNumber});
+  const _ChapterStartHeader({
+    required this.chapterNumber,
+    required this.script,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -780,12 +830,15 @@ class _ChapterStartHeader extends StatelessWidget {
     // Using `geetaAdhyay` list directly with correct 0-based indexing is safer
     // and consistent with other parts of the app (e.g., _ChapterEndFooter).
     // We clamp the chapter number to be at least 1 to prevent negative indices.
-    String chapterName =
-        StaticData.geetaAdhyay[(chapterNumber > 0 ? chapterNumber : 1) - 1];
+    final safeChapterNum = chapterNumber < 1 ? 1 : chapterNumber;
+    final chapterLabel = StaticData.getChapterLabel(script);
+    final localNum = StaticData.localizeNumber(safeChapterNum, script);
+    final chapterName = StaticData.getChapterName(safeChapterNum, script);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32.0),
       child: Text(
-        'अध्याय $chapterNumber $chapterName',
+        '$chapterLabel $localNum $chapterName',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.bold,
@@ -847,29 +900,41 @@ class _FontSizeControl extends StatelessWidget {
 
 class _SpeakerHeader extends StatelessWidget {
   final String speaker;
-  const _SpeakerHeader({required this.speaker});
+  final String script;
+  const _SpeakerHeader({required this.speaker, required this.script});
 
   // ✨ Helper function to get the emblem asset path based on the speaker's name
   String? _getSpeakerEmblemPath(String speakerName) {
-    switch (speakerName) {
-      case 'श्री भगवान':
-        return 'assets/emblems/krishna.png';
-      case 'अर्जुन':
-        return 'assets/emblems/arjun.png';
-      case 'संजय':
-        return 'assets/emblems/sanjay.png';
-      case 'धृतराष्ट्र':
-        return 'assets/emblems/dhrutrashtra.png';
-      default:
-        // Return null if there's no emblem for the speaker
-        return null;
-    }
+    final lower = speakerName.toLowerCase();
+    if (lower.contains('bhagvan') ||
+        lower.contains('bhagavan') ||
+        lower.contains('krishna'))
+      return 'assets/emblems/krishna.png';
+    if (lower.contains('arjun')) return 'assets/emblems/arjun.png';
+    if (lower.contains('sanjay')) return 'assets/emblems/sanjay.png';
+    if (lower.contains('dhritarashtra'))
+      return 'assets/emblems/dhrutrashtra.png';
+    // Fallback for "Sri Bhagavan" logic in Hindi
+    if (speakerName.contains('श्री भगवान') || speakerName.contains('श्रीभगवान'))
+      return 'assets/emblems/krishna.png';
+    if (speakerName.contains('अर्जुन')) return 'assets/emblems/arjun.png';
+    if (speakerName.contains('संजय')) return 'assets/emblems/sanjay.png';
+    if (speakerName.contains('धृतराष्ट्र'))
+      return 'assets/emblems/dhrutrashtra.png';
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     // Get the path for the emblem, which might be null
     final String? emblemPath = _getSpeakerEmblemPath(speaker);
+    // Localized Speaker Name
+    final localizedSpeaker = StaticData.localizeSpeaker(speaker, script);
+    // Determine Uvacha label
+
+    // If "Uvaca" is already in the string (from StaticData), don't append.
+    // StaticData.localizeSpeaker returns map value e.g. "Arjuna Uvaca".
+    // So we just use that.
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
@@ -887,7 +952,7 @@ class _SpeakerHeader extends StatelessWidget {
 
           // The original speaker text
           Text(
-            '$speaker उवाच',
+            localizedSpeaker, // Using full localized string
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Theme.of(context).colorScheme.secondary,
@@ -903,15 +968,36 @@ class _SpeakerHeader extends StatelessWidget {
 class _ChapterEndFooter extends StatelessWidget {
   final int chapterNumber;
   final String chapterName;
+  final String script;
   const _ChapterEndFooter({
     required this.chapterNumber,
     required this.chapterName,
+    required this.script,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colophonText =
-        "ॐ तत्सदिति श्रीमद्भगवद्गीतासूपनिषत्सु\nब्रह्मविद्यायां योगशास्त्रे श्रीकृष्णार्जुनसंवादे\n$chapterName नाम अध्यायः $chapterNumber ॥";
+    final localNum = StaticData.localizeNumber(chapterNumber, script);
+
+    // Construct Colophon dynamically
+    // Keep Sanskrit structure but use localized numeric/names?
+    // User wants "Everything" in respective lipi.
+    // Ideally whole colophon should be transliterated.
+    // For now, I will keep standard Sanskrit but insert Localized Name/Number.
+    // Or simpler: Just "Chapter End: Name" if full Sanskrit is too hard to transliterate dynamically.
+    // I will stick to the existing format but simpler for non-Devanagari
+
+    String colophonText;
+    if (script == 'dev' || script == 'hi' || script == 'mr') {
+      colophonText =
+          "ॐ तत्सदिति श्रीमद्भगवद्गीतासूपनिषत्सु\nब्रह्मविद्यायां योगशास्त्रे श्रीकृष्णार्जुनसंवादे\n$chapterName नाम अध्यायः $localNum ॥";
+    } else {
+      // Simplified for others until full transliteration available
+      // Or just use English-ish format
+      colophonText =
+          "${StaticData.getChapterLabel(script)} $localNum: $chapterName\n(End of Chapter)";
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 16.0),
       child: Text(

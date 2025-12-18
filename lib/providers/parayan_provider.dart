@@ -12,13 +12,16 @@
 **/
 
 import 'package:flutter/material.dart';
-import '../data/database_helper.dart'; // Import the new conditional factory
+
 import '../models/shloka_result.dart';
 import '../data/database_helper_interface.dart';
 
 class ParayanProvider extends ChangeNotifier {
   // Receives an initialized DatabaseHelperInterface for platform-agnostic DB access.
+  // Receives an initialized DatabaseHelperInterface for platform-agnostic DB access.
   final DatabaseHelperInterface _dbHelper;
+  String _language;
+  String _script;
 
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
@@ -28,17 +31,34 @@ class ParayanProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   List<ShlokaResult> get shlokas => _shlokas;
 
-  ParayanProvider(this._dbHelper) {
+  ParayanProvider(this._dbHelper, this._language, this._script) {
     _fetchAllShlokas();
   }
 
+  Future<void> updateSettings({
+    required String language,
+    required String script,
+  }) async {
+    if (_language == language && _script == script) return;
+    _language = language;
+    _script = script;
+    await _fetchAllShlokas();
+  }
+
   Future<void> _fetchAllShlokas() async {
+    _isLoading = true;
+    notifyListeners();
+
     _chapterStartIndices = [];
-    _shlokas = (await _dbHelper.getAllShlokas()).where((shloka) {
-      final isValidChapter = int.tryParse(shloka.chapterNo) != null;
-      final isValidShlok = int.tryParse(shloka.shlokNo) != null;
-      return isValidChapter && isValidShlok;
-    }).toList();
+    _shlokas =
+        (await _dbHelper.getAllShlokas(
+          language: _language,
+          script: _script,
+        )).where((shloka) {
+          final isValidChapter = int.tryParse(shloka.chapterNo) != null;
+          final isValidShlok = int.tryParse(shloka.shlokNo) != null;
+          return isValidChapter && isValidShlok;
+        }).toList();
 
     for (int i = 0; i < _shlokas.length; i++) {
       if (i == 0 || _shlokas[i].chapterNo != _shlokas[i - 1].chapterNo) {

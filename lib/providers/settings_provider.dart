@@ -30,16 +30,10 @@ class SettingsProvider extends ChangeNotifier {
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Load the saved font size, or fall back to the default.
-    _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
-    // Load the saved background visibility, or fall back to the default.
-    _showBackground =
-        prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
-
-    notifyListeners();
-  }
+  /* 
+   * _loadSettings logic moved to the bottom of the class 
+   * to group all initialization together.
+   */
 
   Future<void> setFontSize(double newSize) async {
     _fontSize = newSize;
@@ -55,5 +49,91 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Save the new background visibility to persistent storage.
     await prefs.setBool(_showBackgroundKey, newValue);
+  }
+
+  // --- Language & Script Support ---
+  static const String _languageKey = 'language'; // 'hi' or 'en'
+  static const String _scriptKey = 'script'; // 'dev', 'gu', 'te', 'ro', etc.
+
+  static const String _defaultLanguage = 'hi';
+  static const String _defaultScript = 'dev';
+
+  String _language = _defaultLanguage; // Translation Language (Bhavarth)
+  String get language => _language;
+
+  String _script = _defaultScript; // Display Script (Lipi)
+  String get script => _script;
+
+  bool _showClassicalCommentaries = true;
+  bool get showClassicalCommentaries => _showClassicalCommentaries;
+
+  Future<void> setLanguage(String newLanguage) async {
+    if (_language == newLanguage) return;
+    _language = newLanguage;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_languageKey, newLanguage);
+  }
+
+  Future<void> setScript(String newScript) async {
+    if (_script == newScript) return;
+    _script = newScript;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_scriptKey, newScript);
+  }
+
+  Future<void> setShowClassicalCommentaries(bool value) async {
+    if (_showClassicalCommentaries == value) return;
+    _showClassicalCommentaries = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('show_classical_commentaries', value);
+  }
+
+  // Helper List for Scripts with their Display Names
+  static final Map<String, String> supportedScripts = {
+    'dev': 'Devanagari (देवनागरी)',
+    'en':
+        'Roman (ABCD)', // Using 'en' here to map to 'en' in shloka_scripts (Roman) and 'ro' in translations
+    'gu': 'Gujarati (ગુજરાતી)',
+    'te': 'Telugu (తెలుగు)',
+    'kn': 'Kannada (ಕನ್ನಡ)',
+    'ta': 'Tamil (தமிழ்)',
+    'bn': 'Bengali (বাংলা)',
+  };
+  // Note on Roman:
+  // In DB: Shloka uses 'en', Translations/Commentaries use 'ro'.
+  // We will store 'en' as the script key for Roman in settings for consistency with "Roman", and map it in helper.
+
+  // Helper List for Languages
+  static const Map<String, String> supportedLanguages = {
+    'hi': 'Hindi (हिन्दी)',
+    'en': 'English',
+  };
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
+    _showBackground =
+        prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
+    _showClassicalCommentaries =
+        prefs.getBool('show_classical_commentaries') ?? true;
+
+    // Validate Language
+    String loadedLanguage = prefs.getString(_languageKey) ?? _defaultLanguage;
+    if (!supportedLanguages.containsKey(loadedLanguage)) {
+      loadedLanguage = _defaultLanguage;
+    }
+    _language = loadedLanguage;
+
+    // Validate Script
+    String loadedScript = prefs.getString(_scriptKey) ?? _defaultScript;
+    if (!supportedScripts.containsKey(loadedScript)) {
+      loadedScript = _defaultScript;
+    }
+    _script = loadedScript;
+
+    notifyListeners();
   }
 }

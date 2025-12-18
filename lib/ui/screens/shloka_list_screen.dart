@@ -67,7 +67,17 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       context,
       listen: false,
     );
-    _shlokaProvider = ShlokaListProvider(widget.searchQuery, dbHelper);
+    final language = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    ).language;
+    final script = Provider.of<SettingsProvider>(context, listen: false).script;
+    _shlokaProvider = ShlokaListProvider(
+      widget.searchQuery,
+      dbHelper,
+      language,
+      script,
+    );
 
     // ✨ FIX: Get the provider once and store it.
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
@@ -277,6 +287,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       value: _shlokaProvider,
       child: Builder(
         builder: (context) {
+          // --- NEW: Calculate localized title ---
+          String title;
+          if (chapterNumber != null) {
+            final script = settingsProvider.script;
+            title =
+                '${StaticData.getChapterLabel(script)} ${StaticData.localizeNumber(chapterNumber, script)} – ${StaticData.getChapterName(chapterNumber, script)}';
+          } else {
+            title = StaticData.getQueryTitle(widget.searchQuery);
+          }
+
           return Scaffold(
             // ✨ FIX: Set background color based on settings.
             // This will be visible if the gradient is hidden.
@@ -286,7 +306,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             appBar: chapterNumber == null
                 ? AppBar(
                     title: Text(
-                      StaticData.getQueryTitle(widget.searchQuery),
+                      title, // Use localized title
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -454,9 +474,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               pinned: true,
                               delegate: _AnimatingHeaderDelegate(
                                 chapterNumber: chapterNumber,
-                                title: StaticData.getQueryTitle(
-                                  widget.searchQuery,
-                                ),
+                                title: title, // Use localized title
                                 playbackMode: _playbackMode,
                                 onPlaybackModePressed: _cyclePlaybackMode,
                                 currentFontSize: settingsProvider.fontSize,

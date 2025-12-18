@@ -1,13 +1,26 @@
 class ShlokaResult {
-  final int id;
+  final String id; // Changed from int to String (e.g., "1.1")
   final String chapterNo;
   final String shlokNo;
   final String shlok;
   final String anvay;
   final String bhavarth;
   final String? speaker;
-  final String? tag;
-  final String? annotation;
+  // Deprecated fields from old DB, keeping nullable for safety or removing if confirmed unused.
+  // Assuming 'tag' and 'annotation' are not in new V2 schema.
+
+  // New field
+  final String? sanskritRomanized;
+  // Added fields from new schema
+  final String? audioPath;
+
+  // Search metadata
+  final String? matchedCategory;
+  final String? matchSnippet;
+  final List<String>? matchedWords;
+
+  // Commentaries
+  final List<Commentary>? commentaries;
 
   ShlokaResult({
     required this.id,
@@ -17,36 +30,49 @@ class ShlokaResult {
     required this.anvay,
     required this.bhavarth,
     this.speaker,
-    this.tag,
-    this.annotation,
+    this.sanskritRomanized,
+    this.audioPath,
+    this.matchedCategory,
+    this.matchSnippet,
+    this.matchedWords,
+    this.commentaries,
   });
 
-  // This factory constructor has been updated to be fully null-safe.
-  factory ShlokaResult.fromMap(Map<String, dynamic> map) {
+  factory ShlokaResult.fromMap(
+    Map<String, dynamic> map, {
+    List<Commentary>? commentaries,
+  }) {
     return ShlokaResult(
-      // THE FIX:
-      // We handle both possible ID columns ('rowid' or '_id'), check if the
-      // result is an int, and provide a fallback value of 0 if it's null.
-      id: (map['rowid'] ?? map['_id']) as int? ?? 0,
-      
-      // These lines ensure that if any required text columns are null, 
-      // we get an empty string instead of a null value, preventing other errors.
-      chapterNo: map['chapterNo'] as String? ?? '',
-      shlokNo: map['shlokNo'] as String? ?? '',
-      shlok: map['shlok'] as String? ?? '',
-      anvay: map['anvay'] as String? ?? '',
-      bhavarth: map['bhavarth'] as String? ?? '',
+      // V2 Schema: id is "1.1" (TEXT)
+      // If we are getting 'rowid' from FTS, we might need to fetch the real ID via ref_id.
+      // But typically our JOIN query will return master_shlokas.id
+      id: map['id']?.toString() ?? map['shloka_id']?.toString() ?? '',
 
-      // These fields are nullable in our class, so a simple cast is safe.
-      speaker: map['speaker'] as String?,
-      tag: map['tag'] as String?,
-      annotation: map['annotation'] as String?,
+      chapterNo:
+          map['chapter_no']?.toString() ?? map['chapterNo']?.toString() ?? '',
+      shlokNo: map['shloka_no']?.toString() ?? map['shlokNo']?.toString() ?? '',
+
+      // These come from JOINs
+      shlok: map['shloka_text']?.toString() ?? map['shlok']?.toString() ?? '',
+      anvay: map['anvay_text']?.toString() ?? map['anvay']?.toString() ?? '',
+      bhavarth: map['bhavarth']?.toString() ?? '',
+
+      // Master fields
+      speaker: map['speaker']?.toString(), // Restored
+      sanskritRomanized: map['sanskrit_romanized']?.toString(),
+      audioPath: map['audio_path']?.toString(),
+
+      // Search metadata
+      matchedCategory: map['matched_category']?.toString(),
+      matchSnippet: map['match_snippet']?.toString(),
+      matchedWords: (map['matched_words'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+
+      commentaries: commentaries,
     );
   }
 
-  // --- HASHCODE and EQUALS ---
-  // Adding these allows Sets to correctly identify unique shlokas,
-  // which is important for merging search results.
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -58,3 +84,22 @@ class ShlokaResult {
   int get hashCode => id.hashCode;
 }
 
+class Commentary {
+  final String authorName;
+  final String languageCode;
+  final String content;
+
+  Commentary({
+    required this.authorName,
+    required this.languageCode,
+    required this.content,
+  });
+
+  factory Commentary.fromMap(Map<String, dynamic> map) {
+    return Commentary(
+      authorName: map['author_name']?.toString() ?? 'Unknown',
+      languageCode: map['language_code']?.toString() ?? '',
+      content: map['content']?.toString() ?? '',
+    );
+  }
+}

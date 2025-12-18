@@ -29,10 +29,16 @@ class SearchScreen extends StatelessWidget {
       context,
       listen: false,
     );
+    final language = Provider.of<SettingsProvider>(context).language;
+    final script = Provider.of<SettingsProvider>(context).script;
 
     // Pass the helper to the SearchProvider
     return ChangeNotifierProvider(
-      create: (_) => SearchProvider(dbHelper),
+      key: ValueKey(
+        '$language-$script',
+      ), // Force re-creation when language or script changes
+      create: (_) =>
+          SearchProvider(dbHelper, language, script), // Re-creates on change
       child: const _SearchScreenView(),
     );
   }
@@ -150,11 +156,59 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
                         child: ResponsiveWrapper(
                           maxWidth: 600,
                           child: ListView.builder(
-                            itemCount: provider.searchResults.length,
+                            itemCount:
+                                provider.searchResults.length +
+                                1, // +1 for "See all"
                             itemBuilder: (context, index) {
+                              if (index == provider.searchResults.length) {
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.search,
+                                    color: Colors.white70,
+                                  ),
+                                  title: Text(
+                                    "See all results for '${provider.searchQuery}'",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    context.pushNamed(
+                                      'shloka-list',
+                                      pathParameters: {
+                                        'query': provider.searchQuery,
+                                      },
+                                    );
+                                  },
+                                );
+                              }
+
                               final item = provider.searchResults[index];
+                              if (item is HeaderItem) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 16,
+                                    right: 16,
+                                    top: 20,
+                                    bottom: 8,
+                                  ),
+                                  child: Text(
+                                    item.title,
+                                    style: TextStyle(
+                                      color: Colors.amber.withOpacity(0.8),
+                                      fontSize: 11,
+                                      letterSpacing: 1.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }
                               if (item is ShlokaItem) {
-                                return ShlokaResultCard(shloka: item.shloka);
+                                return ShlokaResultCard(
+                                  shloka: item.shloka,
+                                  searchQuery: provider.searchQuery,
+                                );
                               }
                               if (item is WordItem) {
                                 return WordResultCard(word: item.word);
@@ -272,10 +326,14 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
           ),
           child: TextField(
             onChanged: (value) => provider.onSearchQueryChanged(value),
-            style: const TextStyle(
-              fontSize: 18,
-              color: Color.fromARGB(255, 255, 255, 255),
-            ),
+            onSubmitted: (value) {
+              if (value.isNotEmpty) {
+                context.pushNamed(
+                  'shloka-list', // Use name if defined or construct path
+                  pathParameters: {'query': value},
+                );
+              }
+            },
             decoration: const InputDecoration(
               hintText: 'Search the Gita...',
               hintStyle: TextStyle(color: Colors.white70),
