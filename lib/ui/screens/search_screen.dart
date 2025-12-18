@@ -18,6 +18,7 @@ import '../widgets/simple_gradient_background.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../widgets/liquid_reveal.dart';
 import '../../models/shloka_list.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/bookmark_provider.dart';
@@ -56,7 +57,73 @@ class _SearchScreenView extends StatefulWidget {
   State<_SearchScreenView> createState() => _SearchScreenViewState();
 }
 
-class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
+class _SearchScreenViewState extends State<_SearchScreenView>
+    with RouteAware, SingleTickerProviderStateMixin {
+  late AnimationController _revealController;
+  Offset _revealCenter = Offset.zero;
+  final GlobalKey _themeToggleKey = GlobalKey();
+  bool? _isBackgroundRequested;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    // Defer the random fetch until after the first frame to access providers context safely
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadRandomShloka();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _revealController.dispose();
+    super.dispose();
+  }
+
+  void _captureThemeTogglePosition() {
+    final RenderBox? renderBox =
+        _themeToggleKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      _revealCenter = renderBox.localToGlobal(
+        renderBox.size.center(Offset.zero),
+      );
+    }
+  }
+
+  Widget _buildBackgroundOnly({
+    required bool showBackground,
+    required bool isKeyboardOpen,
+    required bool shouldShowResults,
+  }) {
+    if (showBackground) {
+      return Stack(
+        children: [
+          DarkenedAnimatedBackground(opacity: isKeyboardOpen ? 1.0 : 0.2),
+          AnimatedOpacity(
+            opacity: shouldShowResults ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: shouldShowResults,
+              child: isKeyboardOpen
+                  ? const DecorativeForeground(opacity: 0.2)
+                  : const DecorativeForeground(opacity: 1.0),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return const SimpleGradientBackground(
+        startColor: Color(0xFFF48FB1),
+        showMandala: false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SearchProvider>(context);
@@ -76,183 +143,209 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
-          return Stack(
-            children: [
-              if (settings.showBackground) ...[
-                DarkenedAnimatedBackground(opacity: isKeyboardOpen ? 1.0 : 0.2),
-                AnimatedOpacity(
-                  opacity: shouldShowResults ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: IgnorePointer(
-                    ignoring: shouldShowResults,
-                    child: isKeyboardOpen
-                        ? const DecorativeForeground(opacity: 0.2)
-                        : const DecorativeForeground(opacity: 1.0),
-                  ),
-                ),
-              ] else
-                // Simple background (Dark Pink to White Pink Gradient)
-                const SimpleGradientBackground(startColor: Color(0xFFF48FB1)),
+          if (_isBackgroundRequested == null ||
+              !_revealController.isAnimating) {
+            _isBackgroundRequested = settings.showBackground;
+          }
 
-              // Wrap the interactive UI in a SafeArea
-              SafeArea(
-                child: Stack(
-                  children: [
-                    AnimatedAlign(
-                      alignment: shouldShowResults
-                          ? Alignment.topCenter
-                          : Alignment.center,
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                      child: Padding(
-                        // Removed hardcoded top padding, SafeArea handles it.
-                        padding: const EdgeInsets.only(
-                          top: 16.0,
-                          left: 16.0,
-                          right: 16.0,
-                        ),
-                        child: SingleChildScrollView(
-                          child: ResponsiveWrapper(
-                            maxWidth: 600,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  child: !shouldShowResults
-                                      ? AnimatedScale(
-                                          scale: isKeyboardOpen ? 0.7 : 1.0,
-                                          duration: const Duration(
-                                            milliseconds: 300,
-                                          ),
-                                          curve: Curves.easeInOut,
-                                          child: const Lotus(),
-                                        )
-                                      : const SizedBox.shrink(),
+          return AnimatedBuilder(
+            animation: _revealController,
+            builder: (context, _) {
+              return Stack(
+                children: [
+                  // Base Layer: Shown only during animation
+                  if (_revealController.isAnimating)
+                    _buildBackgroundOnly(
+                      showBackground: !_isBackgroundRequested!,
+                      isKeyboardOpen: isKeyboardOpen,
+                      shouldShowResults: shouldShowResults,
+                    ),
+
+                  // Top Layer: The current requested background (Revealing)
+                  LiquidReveal(
+                    progress: _revealController.isAnimating
+                        ? _revealController.value
+                        : 1.0,
+                    center: _revealCenter,
+                    child: _buildBackgroundOnly(
+                      showBackground: _isBackgroundRequested!,
+                      isKeyboardOpen: isKeyboardOpen,
+                      shouldShowResults: shouldShowResults,
+                    ),
+                  ),
+
+                  // Wrap the interactive UI in a SafeArea
+                  SafeArea(
+                    child: Stack(
+                      children: [
+                        AnimatedAlign(
+                          alignment: shouldShowResults
+                              ? Alignment.topCenter
+                              : Alignment.center,
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut,
+                          child: Padding(
+                            // Removed hardcoded top padding, SafeArea handles it.
+                            padding: const EdgeInsets.only(
+                              top: 16.0,
+                              left: 16.0,
+                              right: 16.0,
+                            ),
+                            child: SingleChildScrollView(
+                              child: ResponsiveWrapper(
+                                maxWidth: 600,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      child: !shouldShowResults
+                                          ? AnimatedScale(
+                                              scale: isKeyboardOpen ? 0.7 : 1.0,
+                                              duration: const Duration(
+                                                milliseconds: 300,
+                                              ),
+                                              curve: Curves.easeInOut,
+                                              child: const Lotus(),
+                                            )
+                                          : const SizedBox.shrink(),
+                                    ),
+                                    AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      height: isKeyboardOpen ? 0 : 10,
+                                    ),
+                                    _buildSearchBar(provider),
+                                    if (settings.showRandomShloka &&
+                                        !shouldShowResults)
+                                      _buildRandomShlokaCard(),
+                                  ],
                                 ),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  height: isKeyboardOpen ? 0 : 10,
-                                ),
-                                _buildSearchBar(provider),
-                                if (settings.showRandomShloka &&
-                                    !shouldShowResults)
-                                  _buildRandomShlokaCard(),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    if (isSearching)
-                      Padding(
-                        // Adjusted padding to position the list below the search bar area.
-                        padding: const EdgeInsets.only(top: 100.0),
-                        child: ResponsiveWrapper(
-                          maxWidth: 600,
-                          child: ListView.builder(
-                            itemCount:
-                                provider.searchResults.length +
-                                1, // +1 for "See all"
-                            itemBuilder: (context, index) {
-                              if (index == provider.searchResults.length) {
-                                return ListTile(
-                                  leading: Icon(
-                                    Icons.search,
-                                    color: !settings.showBackground
-                                        ? Colors.brown.withOpacity(0.7)
-                                        : Colors.white70,
-                                  ),
-                                  title: Text(
-                                    "See all results for '${provider.searchQuery}'",
-                                    style: TextStyle(
-                                      color: !settings.showBackground
-                                          ? Colors.brown.shade900
-                                          : Colors.white,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    context.pushNamed(
-                                      'shloka-list',
-                                      pathParameters: {
-                                        'query': provider.searchQuery,
+                        if (isSearching)
+                          Padding(
+                            // Adjusted padding to position the list below the search bar area.
+                            padding: const EdgeInsets.only(top: 100.0),
+                            child: ResponsiveWrapper(
+                              maxWidth: 600,
+                              child: ListView.builder(
+                                itemCount:
+                                    provider.searchResults.length +
+                                    1, // +1 for "See all"
+                                itemBuilder: (context, index) {
+                                  if (index == provider.searchResults.length) {
+                                    return ListTile(
+                                      leading: Icon(
+                                        Icons.search,
+                                        color: !settings.showBackground
+                                            ? Colors.brown.withOpacity(0.7)
+                                            : Colors.white70,
+                                      ),
+                                      title: Text(
+                                        "See all results for '${provider.searchQuery}'",
+                                        style: TextStyle(
+                                          color: !settings.showBackground
+                                              ? Colors.brown.shade900
+                                              : Colors.white,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        context.pushNamed(
+                                          'shloka-list',
+                                          pathParameters: {
+                                            'query': provider.searchQuery,
+                                          },
+                                        );
                                       },
                                     );
-                                  },
-                                );
-                              }
+                                  }
 
-                              final item = provider.searchResults[index];
-                              if (item is HeaderItem) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 16,
-                                    right: 16,
-                                    top: 20,
-                                    bottom: 8,
-                                  ),
-                                  child: Text(
-                                    item.title,
-                                    style: TextStyle(
-                                      color: !settings.showBackground
-                                          ? Colors.pink.shade900.withOpacity(
-                                              0.7,
-                                            )
-                                          : Colors.amber.withOpacity(0.8),
-                                      fontSize: 12,
-                                      letterSpacing: 1.8,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                );
-                              }
-                              if (item is ShlokaItem) {
-                                return ShlokaResultCard(
-                                  shloka: item.shloka,
-                                  searchQuery: provider.searchQuery,
-                                );
-                              }
-                              if (item is WordItem) {
-                                return WordResultCard(word: item.word);
-                              }
-                              return const SizedBox.shrink();
-                            },
+                                  final item = provider.searchResults[index];
+                                  if (item is HeaderItem) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16,
+                                        right: 16,
+                                        top: 20,
+                                        bottom: 8,
+                                      ),
+                                      child: Text(
+                                        item.title,
+                                        style: TextStyle(
+                                          color: !settings.showBackground
+                                              ? Colors.pink.shade900
+                                                    .withOpacity(0.7)
+                                              : Colors.amber.withOpacity(0.8),
+                                          fontSize: 12,
+                                          letterSpacing: 1.8,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  if (item is ShlokaItem) {
+                                    return ShlokaResultCard(
+                                      shloka: item.shloka,
+                                      searchQuery: provider.searchQuery,
+                                    );
+                                  }
+                                  if (item is WordItem) {
+                                    return WordResultCard(word: item.word);
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
 
-                    // Simple Theme Toggle Button (Bottom Left)
-                    if (MediaQuery.of(context).viewInsets.bottom == 0 &&
-                        MediaQuery.of(context).size.width <= 600)
-                      Positioned(
-                        left: 16,
-                        bottom: 16,
-                        child: FloatingActionButton(
-                          heroTag: 'simple_theme_toggle',
-                          mini: true,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).primaryColor.withOpacity(0.8),
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.onPrimary,
-                          onPressed: () {
-                            settings.setShowBackground(
-                              !settings.showBackground,
-                            );
-                          },
-                          child: Icon(
-                            settings.showBackground
-                                ? Icons.format_paint_outlined
-                                : Icons.format_paint,
+                        // Simple Theme Toggle Button (Bottom Left)
+                        if (MediaQuery.of(context).viewInsets.bottom == 0 &&
+                            MediaQuery.of(context).size.width <= 600)
+                          Positioned(
+                            left: 16,
+                            bottom: 16,
+                            child: FloatingActionButton(
+                              key: _themeToggleKey,
+                              heroTag: 'simple_theme_toggle',
+                              mini: true,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).primaryColor.withOpacity(0.8),
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary,
+                              onPressed: () {
+                                _captureThemeTogglePosition();
+                                setState(() {
+                                  _isBackgroundRequested =
+                                      !settings.showBackground;
+                                });
+                                _revealController.forward(from: 0).then((_) {
+                                  settings.setShowBackground(
+                                    _isBackgroundRequested!,
+                                  );
+                                });
+                              },
+                              child: Icon(
+                                settings.showBackground
+                                    ? Icons.format_paint_outlined
+                                    : Icons.format_paint,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -366,17 +459,6 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
   ShlokaResult? _randomShloka;
   String _randomShlokaListName = '';
   bool _loadingRandom = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Defer the random fetch until after the first frame to access providers context safely
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadRandomShloka();
-      }
-    });
-  }
 
   Future<void> _loadRandomShloka() async {
     final settings = Provider.of<SettingsProvider>(context, listen: false);

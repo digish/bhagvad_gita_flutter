@@ -19,8 +19,13 @@ import './glowing_lotus.dart';
 
 class SimpleGradientBackground extends StatefulWidget {
   final Color? startColor;
+  final bool? showMandala;
 
-  const SimpleGradientBackground({super.key, this.startColor});
+  const SimpleGradientBackground({
+    super.key,
+    this.startColor,
+    this.showMandala,
+  });
 
   @override
   State<SimpleGradientBackground> createState() =>
@@ -48,10 +53,10 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
 
   @override
   Widget build(BuildContext context) {
-    // Watch the SettingsProvider
-    final showBackground = context.select<SettingsProvider, bool>(
-      (settings) => settings.showBackground,
-    );
+    // Watch the SettingsProvider only if showMandala is not explicitly provided
+    final settings = Provider.of<SettingsProvider>(context);
+    final bool effectiveShowMandala =
+        widget.showMandala ?? settings.showBackground;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -59,7 +64,7 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
         // Use the provided start color for the gradient, or default to white if null.
         final gradientStartColor = widget.startColor ?? Colors.white;
 
-        if (!showBackground) {
+        if (!effectiveShowMandala) {
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
