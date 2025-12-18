@@ -91,8 +91,8 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                   ),
                 ),
               ] else
-                // Simple background
-                const SimpleGradientBackground(startColor: Colors.black),
+                // Simple background (Dark Pink to White Pink Gradient)
+                const SimpleGradientBackground(startColor: Color(0xFFF48FB1)),
 
               // Wrap the interactive UI in a SafeArea
               SafeArea(
@@ -191,7 +191,9 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                                   child: Text(
                                     item.title,
                                     style: TextStyle(
-                                      color: Colors.amber.withOpacity(0.8),
+                                      color: !settings.showBackground
+                                          ? Colors.brown
+                                          : Colors.amber.withOpacity(0.8),
                                       fontSize: 11,
                                       letterSpacing: 1.5,
                                       fontWeight: FontWeight.bold,
@@ -305,6 +307,17 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
   }
 
   Widget _buildSearchBar(SearchProvider provider) {
+    final settings = Provider.of<SettingsProvider>(context);
+    final isLightMode = !settings.showBackground;
+    final textColor = isLightMode ? Colors.black87 : Colors.white;
+    final hintColor = isLightMode ? Colors.black54 : Colors.white70;
+    final fillColor = isLightMode
+        ? Colors.black.withOpacity(0.05)
+        : Colors.white.withOpacity(0.15);
+    final borderColor = isLightMode
+        ? Colors.black.withOpacity(0.1)
+        : Colors.amberAccent.withOpacity(0.6);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(50.0),
       child: BackdropFilter(
@@ -312,14 +325,12 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 500),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: fillColor,
             borderRadius: BorderRadius.circular(50.0),
-            border: Border.all(
-              color: Colors.amberAccent.withOpacity(0.6),
-              width: 1.2,
-            ),
+            border: Border.all(color: borderColor, width: 1.2),
           ),
           child: TextField(
+            style: TextStyle(color: textColor),
             onChanged: (value) => provider.onSearchQueryChanged(value),
             onSubmitted: (value) {
               if (value.isNotEmpty) {
@@ -329,12 +340,12 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                 );
               }
             },
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Search the Gita...',
-              hintStyle: TextStyle(color: Colors.white70),
-              prefixIcon: Icon(Icons.search, color: Colors.white70),
+              hintStyle: TextStyle(color: hintColor),
+              prefixIcon: Icon(Icons.search, color: hintColor),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 14,
               ),

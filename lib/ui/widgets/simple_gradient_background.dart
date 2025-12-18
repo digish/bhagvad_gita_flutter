@@ -63,9 +63,9 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [gradientStartColor.withOpacity(1.0), Colors.white],
+                colors: [gradientStartColor, const Color(0xFFFCE4EC)],
                 begin: Alignment.topCenter,
-                end: Alignment.center,
+                end: Alignment.bottomCenter,
               ),
             ),
           );
