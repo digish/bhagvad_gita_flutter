@@ -32,7 +32,14 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   void _loadShlokas() {
     final provider = Provider.of<BookmarkProvider>(context, listen: false);
     final db = Provider.of<DatabaseHelperInterface>(context, listen: false);
-    _shlokasFuture = provider.getShlokasForList(db, widget.list.id);
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    _shlokasFuture = provider.getShlokasForList(
+      db,
+      widget.list.id,
+      language: settings.language,
+      script: settings.script,
+    );
   }
 
   Future<void> _shareList(BuildContext context) async {

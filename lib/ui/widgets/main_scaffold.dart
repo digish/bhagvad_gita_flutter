@@ -89,7 +89,7 @@ class MainScaffold extends StatelessWidget {
                     color: Colors.black54,
                   ),
                   selectedIcon: const Icon(Icons.bookmark, color: Colors.black),
-                  label: const Text('My Lists'),
+                  label: const Text('Collections'),
                 ),
                 NavigationRailDestination(
                   icon: const Icon(

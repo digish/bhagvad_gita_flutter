@@ -18,7 +18,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('My Lists'),
+        title: const Text('Collections'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -32,10 +32,18 @@ class _UserListsScreenState extends State<UserListsScreen> {
           const SimpleGradientBackground(),
           Consumer<BookmarkProvider>(
             builder: (context, provider, child) {
-              final lists = provider.lists;
-              if (lists.isEmpty) {
-                return const Center(child: Text('No lists yet. Create one!'));
+              final userLists = provider.lists;
+              final predefinedLists = provider.predefinedLists;
+
+              if (userLists.isEmpty && predefinedLists.isEmpty) {
+                return const Center(child: Text('No lists found.'));
               }
+
+              final totalCount =
+                  userLists.length +
+                  predefinedLists.length +
+                  (predefinedLists.isNotEmpty ? 1 : 0); // +1 for header
+
               return ListView.builder(
                 padding: EdgeInsets.fromLTRB(
                   MediaQuery.of(context).padding.left + 16,
@@ -43,73 +51,99 @@ class _UserListsScreenState extends State<UserListsScreen> {
                   16,
                   100, // Space for FAB
                 ),
-                itemCount: lists.length,
+                itemCount: totalCount,
                 itemBuilder: (context, index) {
-                  final list = lists[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      title: Text(
-                        list.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'rename') {
-                            _renameList(list);
-                          } else if (value == 'delete') {
-                            _deleteList(list);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'rename',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 20),
-                                SizedBox(width: 8),
-                                Text('Rename'),
-                              ],
+                  // 1. User Lists
+                  if (index < userLists.length) {
+                    final list = userLists[index];
+                    return _buildListCard(context, list, isUserList: true);
+                  }
+
+                  // 2. Predefined Lists Header
+                  if (index == userLists.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 8),
+                      child: Text(
+                        "Curated Lists",
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black54,
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ListDetailScreen(list: list),
-                          ),
-                        );
-                      },
-                    ),
-                  );
+                    );
+                  }
+
+                  // 3. Predefined Lists
+                  // Index offset: userLists.length + 1 (header)
+                  final predefinedIndex = index - (userLists.length + 1);
+                  final list = predefinedLists[predefinedIndex];
+                  return _buildListCard(context, list, isUserList: false);
                 },
               );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildListCard(
+    BuildContext context,
+    ShlokaList list, {
+    required bool isUserList,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text(
+          list.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        trailing: isUserList
+            ? PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'rename') {
+                    _renameList(list);
+                  } else if (value == 'delete') {
+                    _deleteList(list);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'rename',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20),
+                        SizedBox(width: 8),
+                        Text('Rename'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red, size: 20),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : null,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ListDetailScreen(list: list),
+            ),
+          );
+        },
       ),
     );
   }

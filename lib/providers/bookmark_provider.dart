@@ -3,6 +3,7 @@ import '../data/user_database_helper.dart';
 import '../models/shloka_list.dart';
 import '../data/database_helper_interface.dart';
 import '../models/shloka_result.dart';
+import '../data/predefined_lists_data.dart';
 
 class BookmarkProvider extends ChangeNotifier {
   List<ShlokaList> _lists = [];
@@ -13,6 +14,7 @@ class BookmarkProvider extends ChangeNotifier {
   final Map<String, Set<int>> _shlokaStateCache = {};
 
   List<ShlokaList> get lists => _lists;
+  List<ShlokaList> get predefinedLists => PredefinedListsData.lists;
   bool get isLoading => _isLoading;
 
   BookmarkProvider() {
@@ -113,22 +115,35 @@ class BookmarkProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Fetch details using the new List system
   Future<List<ShlokaResult>> getShlokasForList(
     DatabaseHelperInterface mainDb,
-    int listId,
-  ) async {
-    final savedItems = await UserDatabaseHelper.instance.getShlokasInList(
-      listId,
+    int listId, {
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    Set<String> savedKeys = {};
+
+    if (listId < 0) {
+      // Predefined List
+      final items = PredefinedListsData.getShlokasForList(listId);
+      savedKeys = items.map((s) => s.replaceAll('.', ':')).toSet();
+    } else {
+      final savedItems = await UserDatabaseHelper.instance.getShlokasInList(
+        listId,
+      );
+      if (savedItems.isEmpty) return [];
+      savedKeys = savedItems
+          .map((i) => '${i['chapter_no']}:${i['shlok_no']}')
+          .toSet();
+    }
+
+    if (savedKeys.isEmpty) return [];
+
+    // Pass localization params to getAllShlokas
+    final allShlokas = await mainDb.getAllShlokas(
+      language: language,
+      script: script,
     );
-    if (savedItems.isEmpty) return [];
-
-    final allShlokas = await mainDb.getAllShlokas();
-
-    // Create a set of keys for O(1) lookup
-    final savedKeys = savedItems
-        .map((i) => '${i['chapter_no']}:${i['shlok_no']}')
-        .toSet();
 
     return allShlokas.where((s) {
       return savedKeys.contains('${s.chapterNo}:${s.shlokNo}');

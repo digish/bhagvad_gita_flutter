@@ -281,7 +281,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> {
         ),
         SpeedDialChild(
           child: const Icon(Icons.bookmark),
-          label: 'My Lists',
+          label: 'Collections',
           backgroundColor: Theme.of(context).colorScheme.surface,
           onTap: () => context.push(AppRoutes.bookmarks),
         ),
