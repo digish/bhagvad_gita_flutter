@@ -171,6 +171,19 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     if (maps.isEmpty) return null;
     return ShlokaResult.fromMap(maps.first);
   }
+
+  @override
+  Future<ShlokaResult?> getShlokaById(
+    String id, {
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    final sql = _buildQuery(language, script, whereClause: "m.id = ?");
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(sql, [id]);
+
+    if (maps.isEmpty) return null;
+    return ShlokaResult.fromMap(maps.first);
+  }
 }
 
 Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {

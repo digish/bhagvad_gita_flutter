@@ -395,6 +395,32 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
 
     return ShlokaResult.fromMap(m, commentaries: commentaries);
   }
+
+  @override
+  Future<ShlokaResult?> getShlokaById(
+    String id, {
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    final sql = _buildQuery(language, script, whereClause: "m.id = ?");
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(sql, [id]);
+
+    if (maps.isEmpty) return null;
+
+    final m = maps.first;
+
+    // Fetch commentaries for this specific shloka
+    final comms = await _db.rawQuery(
+      "SELECT * FROM commentaries WHERE shloka_id = ?",
+      [id],
+    );
+
+    final List<Commentary> commentaries = comms
+        .map((c) => Commentary.fromMap(c))
+        .toList();
+
+    return ShlokaResult.fromMap(m, commentaries: commentaries);
+  }
 }
 
 // Top-level function for conditional import

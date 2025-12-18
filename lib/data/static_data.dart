@@ -204,6 +204,28 @@ class StaticData {
       'ta': 'பொருள்',
       'kn': 'ಭಾವಾರ್ಥ',
     },
+    'parayan': {
+      'en': 'Parayan',
+      'gu': 'પારાયણ',
+      'dev': 'पारायण',
+      'hi': 'पारायण',
+      'mr': 'पारायण',
+      'bn': 'পারায়ণ',
+      'te': 'పారాయణం',
+      'ta': 'பாராயணம்',
+      'kn': 'ಪಾರಾಯಣ',
+    },
+    'adhyay': {
+      'en': 'Chapters',
+      'gu': 'અધ્યાય',
+      'dev': 'अध्याय',
+      'hi': 'अध्याय',
+      'mr': 'अध्याय',
+      'bn': 'অধ্যায়',
+      'te': 'అధ్యాయం',
+      'ta': 'அத்தியாயம்',
+      'kn': 'ಅಧ್ಯಾಯ',
+    },
   };
 
   static String localizeTerm(String term, String script) {

@@ -46,16 +46,11 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
     final language = settings.language;
     final script = settings.script;
 
-    _shlokaFuture = dbHelper
-        .searchShlokas(widget.shlokaId, language: language, script: script)
-        .then((list) {
-          if (list.isNotEmpty) return list.first;
-          // Fallback: Try searching for ref_id directly or handle as ID lookup if search fails
-          // Actually, searchShlokas usually takes a query. If ID is "2.54", it might match navigation.
-          // But we have getShlokasByChapter.. we don't have getShlokaById exposed directly in interface?
-          // Let's rely on searchShlokas matching the ID "2.54" exactly if passed.
-          return list.isNotEmpty ? list.first : null;
-        });
+    _shlokaFuture = dbHelper.getShlokaById(
+      widget.shlokaId,
+      language: language,
+      script: script,
+    );
   }
 
   @override

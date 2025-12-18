@@ -17,8 +17,11 @@ import 'dart:ui';
 // ✨ ADD THIS IMPORT for the rotation animation
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:bhagvadgeeta/navigation/app_router.dart';
 import 'centered_spinner.dart';
+import '../../data/static_data.dart';
+import '../../providers/settings_provider.dart';
 
 class DecorativeForeground extends StatelessWidget {
   final double opacity;
@@ -131,10 +134,32 @@ class DecorativeForeground extends StatelessWidget {
                 onTap: () => context.push(AppRoutes.chapters),
                 size: lotusSize,
               ),
-              child: Image.asset(
-                'assets/images/adhyay_label.png',
+              child: SizedBox(
                 width: ringDimension,
                 height: ringDimension,
+                child: Center(
+                  child: Transform.translate(
+                    offset: const Offset(0, 55), // Shift text below the lotus
+                    child: Text(
+                      StaticData.localizeTerm(
+                        'adhyay',
+                        Provider.of<SettingsProvider>(context).script,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFFD700),
+                        shadows: [
+                          Shadow(
+                            blurRadius: 2,
+                            color: Colors.black,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -155,10 +180,32 @@ class DecorativeForeground extends StatelessWidget {
                 onTap: () => context.push(AppRoutes.parayan),
                 size: lotusSize,
               ),
-              child: Image.asset(
-                'assets/images/parayan_label.png',
+              child: SizedBox(
                 width: ringDimension,
                 height: ringDimension,
+                child: Center(
+                  child: Transform.translate(
+                    offset: const Offset(0, 55), // Shift text below the lotus
+                    child: Text(
+                      StaticData.localizeTerm(
+                        'parayan',
+                        Provider.of<SettingsProvider>(context).script,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFFD700),
+                        shadows: [
+                          Shadow(
+                            blurRadius: 2,
+                            color: Colors.black,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

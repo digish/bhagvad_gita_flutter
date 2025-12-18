@@ -37,4 +37,9 @@ abstract class DatabaseHelperInterface {
     String language = 'hi',
     String script = 'dev',
   });
+  Future<ShlokaResult?> getShlokaById(
+    String id, {
+    String language = 'hi',
+    String script = 'dev',
+  });
 }
