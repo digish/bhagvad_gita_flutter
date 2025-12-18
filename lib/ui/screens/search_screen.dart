@@ -157,14 +157,18 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                             itemBuilder: (context, index) {
                               if (index == provider.searchResults.length) {
                                 return ListTile(
-                                  leading: const Icon(
+                                  leading: Icon(
                                     Icons.search,
-                                    color: Colors.white70,
+                                    color: !settings.showBackground
+                                        ? Colors.brown.withOpacity(0.7)
+                                        : Colors.white70,
                                   ),
                                   title: Text(
                                     "See all results for '${provider.searchQuery}'",
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: !settings.showBackground
+                                          ? Colors.brown.shade900
+                                          : Colors.white,
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -192,11 +196,13 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
                                     item.title,
                                     style: TextStyle(
                                       color: !settings.showBackground
-                                          ? Colors.brown
+                                          ? Colors.pink.shade900.withOpacity(
+                                              0.7,
+                                            )
                                           : Colors.amber.withOpacity(0.8),
-                                      fontSize: 11,
-                                      letterSpacing: 1.5,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      letterSpacing: 1.8,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 );
@@ -459,11 +465,11 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
     final isSimpleTheme = !settings.showBackground;
 
     final cardColor = isSimpleTheme
-        ? Colors.white.withOpacity(0.3)
+        ? Colors.white.withOpacity(0.6)
         : Colors.black.withOpacity(0.3);
 
     final borderColor = isSimpleTheme
-        ? Colors.white.withOpacity(0.6)
+        ? Colors.pink.withOpacity(0.2)
         : Colors.white.withOpacity(0.1);
 
     final titleColor = isSimpleTheme
@@ -471,7 +477,7 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
         : Colors.amberAccent.withOpacity(0.8);
 
     final speakerColor = isSimpleTheme
-        ? Colors.black54
+        ? Colors.brown.shade700.withOpacity(0.7)
         : Colors.white.withOpacity(0.6);
 
     final textColor = isSimpleTheme
@@ -482,119 +488,128 @@ class _SearchScreenViewState extends State<_SearchScreenView> with RouteAware {
         ? Colors.brown.shade800.withOpacity(0.6)
         : Colors.white.withOpacity(0.5);
 
-    final iconColor = isSimpleTheme ? Colors.black45 : Colors.white70;
+    final iconColor = isSimpleTheme
+        ? Colors.pink.shade700.withOpacity(0.7)
+        : Colors.white70;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.0),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                context.push(
-                  AppRoutes.shlokaDetail.replaceFirst(
-                    ':id',
-                    _randomShloka!.id.toString(),
+      padding: const EdgeInsets.only(top: 24.0, left: 16.0, right: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          boxShadow: isSimpleTheme
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
                   ),
-                );
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(16.0),
-                  border: Border.all(color: borderColor, width: 1),
-                  boxShadow: isSimpleTheme
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _randomShlokaListName.toUpperCase(),
-                            style: TextStyle(
-                              color: titleColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              StaticData.localizeSpeaker(
-                                _randomShloka!.speaker,
-                                Provider.of<SettingsProvider>(context).script,
-                              ).toUpperCase(),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.0),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20.0),
+                onTap: () {
+                  context.push(
+                    AppRoutes.shlokaDetail.replaceFirst(
+                      ':id',
+                      _randomShloka!.id.toString(),
+                    ),
+                  );
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: borderColor, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _randomShlokaListName.toUpperCase(),
                               style: TextStyle(
-                                color: speakerColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                color: titleColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                icon: Icon(
-                                  Icons.refresh,
-                                  size: 16,
-                                  color: iconColor,
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                StaticData.localizeSpeaker(
+                                  _randomShloka!.speaker,
+                                  Provider.of<SettingsProvider>(context).script,
+                                ).toUpperCase(),
+                                style: TextStyle(
+                                  color: speakerColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                onPressed: _loadRandomShloka,
-                                tooltip: 'Refresh Insight',
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Text(
-                        _processShlokaText(_randomShloka!.shlok),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
-                          height: 1.5,
-                          fontWeight: FontWeight.w600,
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: Icon(
+                                    Icons.refresh,
+                                    size: 18,
+                                    color: iconColor,
+                                  ),
+                                  onPressed: _loadRandomShloka,
+                                  tooltip: 'Refresh Insight',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: Text(
+                          _processShlokaText(_randomShloka!.shlok),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 17,
+                            height: 1.6,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'Ch ${_randomShloka!.chapterNo}.${_randomShloka!.shlokNo}',
-                        style: TextStyle(
-                          color: subtitleColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          'Chapter ${_randomShloka!.chapterNo}, Shloka ${_randomShloka!.shlokNo}',
+                          style: TextStyle(
+                            color: subtitleColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
