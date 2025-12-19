@@ -76,7 +76,7 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
                           sigmaY: 12.0,
                         ),
                         child: Image.asset(
-                          'assets/images/leaves_background.png',
+                          'assets/images/leaf.png',
                           fit: BoxFit.fitWidth,
                           alignment: Alignment.bottomCenter,
                         ),
@@ -85,7 +85,7 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
                   ),
                   // Crisp leaves image
                   Image.asset(
-                    'assets/images/leaves_background.png',
+                    'assets/images/leaf.png',
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.bottomCenter,
                   ),

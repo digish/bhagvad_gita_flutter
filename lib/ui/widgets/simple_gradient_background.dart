@@ -111,7 +111,7 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
                           sigmaY: 12.0,
                         ),
                         child: Image.asset(
-                          'assets/images/leaves_background.png',
+                          'assets/images/leaf.png',
                           fit: BoxFit.fitWidth,
                           alignment: Alignment.bottomCenter,
                         ),
@@ -120,7 +120,7 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
                   ),
                   // Crisp leaves image
                   Image.asset(
-                    'assets/images/leaves_background.png',
+                    'assets/images/leaf.png',
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.bottomCenter,
                   ),
