@@ -49,6 +49,8 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app requires microphone access for audio playback features.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
