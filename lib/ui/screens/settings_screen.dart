@@ -416,7 +416,7 @@ class SettingsScreen extends StatelessWidget {
                                       innerContext.findRenderObject()
                                           as RenderBox?;
                                   Share.share(
-                                    'Check out this Shrimad Bhagavad Gita app:\nhttps://play.google.com/store/apps/details?id=org.komal.bhagvadgeeta',
+                                    'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita',
                                     sharePositionOrigin: box != null
                                         ? box.localToGlobal(Offset.zero) &
                                               box.size

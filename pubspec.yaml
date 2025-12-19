@@ -2,7 +2,7 @@ name: bhagvadgeeta
 description: "A comprehensive guide to the Bhagavad Gita with recitation and meaning."
 publish_to: 'none' 
 
-version: 24.0.1+2401
+version: 25.0.1+1
 
 environment:
   sdk: ^3.9.0
@@ -67,9 +67,6 @@ dependencies:
   audio_session: ^0.1.19 
   just_audio_background: ^0.0.1-beta.11
   asset_delivery: ^1.1.0
-  sqlite3_flutter_libs: ^0.5.39
-  sqflite_common_ffi: ^2.3.2+1
-  sqflite_common_ffi_web: ^1.0.1+1
 
 dev_dependencies:
   flutter_test:
