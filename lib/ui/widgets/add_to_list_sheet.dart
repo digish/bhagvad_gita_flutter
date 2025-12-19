@@ -111,6 +111,7 @@ class _AddToListSheetState extends State<AddToListSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // If loading, show spinner (keep logic)
     if (_isLoading) {
       return const SizedBox(
         height: 200,
@@ -118,85 +119,189 @@ class _AddToListSheetState extends State<AddToListSheet> {
       );
     }
 
+    final theme = Theme.of(context);
     final lists = Provider.of<BookmarkProvider>(context).lists;
 
-    final double width = MediaQuery.of(context).size.width;
-    final bool isLandscape = width > MediaQuery.of(context).size.height;
-    final bool hasRail = width > 600;
-
-    // Use a smaller padding or rely on SafeArea with minimums
-    final double railOffset = hasRail && isLandscape ? 150.0 : 0.0;
-    // Add some right padding in landscape to balance it (looks like a floating modal)
-    final double rightOffset = isLandscape ? 0.0 : 0.0;
-
-    return Padding(
-      // ✨ Shift the entire sheet "box" to avoid the rail
-      padding: EdgeInsets.only(left: railOffset, right: rightOffset),
-      child: Container(
-        padding: const EdgeInsets.only(
-          top: 16,
-          bottom: 0, // Let SafeArea handle bottom padding
-        ),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
+    // ✨ REWRITE: Exact Copy of ShareOptionsSheet Layout
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.dark
+                ? Colors.grey[900]
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-        ),
-        child: SafeArea(
-          // If we already applied a large left margin (railOffset), we don't need SafeArea left.
-          left: railOffset == 0,
-          top: false,
-          right: true,
-          bottom: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: SafeArea(
+            top: false,
+            left: false, // Prevent system rail padding issues
+            right: false,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Save to List',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.dividerColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _createNewList,
-                      tooltip: 'Create New List',
+                    // Title (Centered, Bold)
+                    Text(
+                      'Save to List',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 20),
+
+                    // Lists
+                    if (lists.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Text(
+                          'No lists created yet.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.hintColor,
+                          ),
+                        ),
+                      )
+                    else
+                      ...lists.map((list) {
+                        final isChecked = _selectedListIds.contains(list.id);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: _buildListRow(list.id, list.name, isChecked),
+                        );
+                      }).toList(),
+
+                    // "Create New List" Action Row
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _buildCreateListRow(theme),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // "Done" Button (Matches Share Button)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                          backgroundColor: theme.colorScheme.primaryContainer,
+                          foregroundColor: theme.colorScheme.onPrimaryContainer,
+                        ),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-              const Divider(),
-              Flexible(
-                child: lists.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text('No lists created yet.'),
-                      )
-                    : ListView(
-                        shrinkWrap: true,
-                        children: lists.map((list) {
-                          final isChecked = _selectedListIds.contains(list.id);
-                          return CheckboxListTile(
-                            title: Text(list.name),
-                            value: isChecked,
-                            onChanged: (val) => _toggleList(list.id, val),
-                          );
-                        }).toList(),
-                      ),
-              ),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // Helper for List Item Rows (Matches _buildOptionRow)
+  Widget _buildListRow(int listId, String title, bool isSelected) {
+    return InkWell(
+      onTap: () => _toggleList(listId, !isSelected),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withOpacity(0.2),
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: isSelected,
+                onChanged: (v) => _toggleList(listId, v!),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper for "Create New List" Row
+  Widget _buildCreateListRow(ThemeData theme) {
+    return InkWell(
+      onTap: _createNewList,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: theme.colorScheme.primary.withOpacity(0.5),
+            style: BorderStyle.solid,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          color: theme.colorScheme.primary.withOpacity(0.05),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.add_rounded, color: theme.colorScheme.primary, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Create New List',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

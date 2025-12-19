@@ -143,8 +143,56 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
-          if (_isBackgroundRequested == null ||
+          // Initialize local state if first run
+          if (_isBackgroundRequested == null) {
+            _isBackgroundRequested = settings.showBackground;
+          }
+
+          // Check if setting changed externally (e.g. from Navigation Rail)
+          // and we are not currently animating a change we initiated locally.
+          if (settings.showBackground != _isBackgroundRequested &&
               !_revealController.isAnimating) {
+            final width = MediaQuery.of(context).size.width;
+            final isLandscape = width > MediaQuery.of(context).size.height;
+            final showRail = width > 600;
+
+            // If change came from Rail (iPad/Tablet), start animation from likely button position
+            if (showRail) {
+              final double railWidth = isLandscape ? 220.0 : 100.0;
+              final double bottomPadding = MediaQuery.of(
+                context,
+              ).padding.bottom;
+              // Approximate center of the button in the rail
+              final double buttonX = railWidth / 2;
+              final double buttonY =
+                  MediaQuery.of(context).size.height - bottomPadding - 40;
+
+              _revealCenter = Offset(buttonX, buttonY);
+
+              // Update our local tracking to match new target
+              // We need to trigger the animation "backwards" or "forwards" depending on state?
+              // The logic below assumes we want to reveal the NEW state.
+              // So we set _isBackgroundRequested to the OLD state (what is currently visible),
+              // then start animation to reveal the NEW state (settings.showBackground).
+
+              // Actually, the LiquidReveal reveals the *child* (which is the requested state).
+              // So we want to reveal 'settings.showBackground'.
+              // The 'background' (base layer) should be inputs that match !_isBackgroundRequested.
+
+              // Let's defer to the standard flow:
+              // 1. We acknowledge the change is happening.
+              // 2. We start the animation.
+              _isBackgroundRequested = settings.showBackground;
+              _revealController.forward(from: 0);
+            } else {
+              // Phone/Narrow layout - just sync state without animation if we can't determine source,
+              // or maybe we should just snap?
+              // Ideally this case doesn't happen often as the FAB is the only changer,
+              // but if it did, we just update local state.
+              _isBackgroundRequested = settings.showBackground;
+            }
+          } else if (!_revealController.isAnimating) {
+            // Ensure strict sync when idle
             _isBackgroundRequested = settings.showBackground;
           }
 

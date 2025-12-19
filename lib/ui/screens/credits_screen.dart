@@ -13,6 +13,7 @@
 
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
+import '../widgets/responsive_wrapper.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -130,93 +131,119 @@ class CreditsScreen extends StatelessWidget {
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      const SizedBox(
-                        height: 24,
-                      ), // Adjusted padding after SafeArea
-                      Stack(
-                        alignment: Alignment.center,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 32.0),
+                    child: ResponsiveWrapper(
+                      maxWidth:
+                          450, // ✨ Tighter constraint for clear sidebar look
+                      alignment: Alignment.topRight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment
+                            .end, // ✨ Align text/children to right
                         children: [
-                          // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
-                          if (Theme.of(context).platform ==
-                                  TargetPlatform.iOS &&
-                              MediaQuery.of(context).size.width <= 600)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 16.0),
-                                child: BackButton(color: Colors.brown.shade800),
+                          const SizedBox(
+                            height: 24,
+                          ), // Adjusted padding after SafeArea
+                          Stack(
+                            alignment:
+                                Alignment.centerRight, // ✨ Align Lotus to right
+                            children: [
+                              // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
+                              if (Theme.of(context).platform ==
+                                      TargetPlatform.iOS &&
+                                  MediaQuery.of(context).size.width <= 600)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 16.0),
+                                    child: BackButton(
+                                      color: Colors.brown.shade800,
+                                    ),
+                                  ),
+                                ),
+                              GestureDetector(
+                                onTap: MediaQuery.of(context).size.width > 600
+                                    ? null
+                                    : () {
+                                        if (context.canPop()) {
+                                          context.pop();
+                                        } else {
+                                          context.go('/');
+                                        }
+                                      },
+                                child: Hero(
+                                  tag: 'creditsLotusHero', // A new unique tag
+                                  child: Image.asset(
+                                    'assets/images/lotus_gold.png', // A new golden lotus asset
+                                    height: 120,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
-                            ),
-                          GestureDetector(
-                            onTap: MediaQuery.of(context).size.width > 600
-                                ? null
-                                : () {
-                                    if (context.canPop()) {
-                                      context.pop();
-                                    } else {
-                                      context.go('/');
-                                    }
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Credits & Acknowledgements',
+                            textAlign: TextAlign.right, // ✨ Right align text
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: Colors.brown.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 24),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 0.0,
+                            ), // Remove horiz padding to align with edge
+                            child: Wrap(
+                              spacing: 16,
+                              runSpacing: 12,
+                              alignment:
+                                  WrapAlignment.end, // ✨ Align buttons to right
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    _launchUrl(
+                                      'https://digish.github.io/project/',
+                                    );
                                   },
-                            child: Hero(
-                              tag: 'creditsLotusHero', // A new unique tag
-                              child: Image.asset(
-                                'assets/images/lotus_gold.png', // A new golden lotus asset
-                                height: 120,
-                                fit: BoxFit.contain,
-                              ),
+                                  icon: const Icon(Icons.shop_2_outlined),
+                                  label: const Text('More Apps'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.brown.shade700,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => _shareApp(context),
+                                  icon: const Icon(Icons.share_outlined),
+                                  label: const Text('Share App'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.brown.shade700,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(height: 24),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Credits & Acknowledgements',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: Colors.brown.shade800,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Wrap(
-                          spacing: 16,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                _launchUrl('https://digish.github.io/project/');
-                              },
-                              icon: const Icon(Icons.shop_2_outlined),
-                              label: const Text('More Apps'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.brown.shade700,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => _shareApp(context),
-                              icon: const Icon(Icons.share_outlined),
-                              label: const Text('Share App'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.brown.shade700,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
                   ),
                 ),
                 SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    return _CreditCard(item: creditsData[index]);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 32.0),
+                      child: ResponsiveWrapper(
+                        maxWidth: 450, // ✨ Match tighter width
+                        alignment: Alignment.topRight,
+                        child: _CreditCard(item: creditsData[index]),
+                      ),
+                    );
                   }, childCount: creditsData.length),
                 ),
 

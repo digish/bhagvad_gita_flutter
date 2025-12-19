@@ -26,78 +26,108 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final double width = MediaQuery.of(context).size.width;
-    final bool isLandscape = width > MediaQuery.of(context).size.height;
-    final bool hasRail = width > 600;
-    // Use a smaller padding or rely on SafeArea with minimums
-    final double railOffset = hasRail && isLandscape ? 150.0 : 0.0;
-    // Add some right padding in landscape to balance it (looks like a floating modal)
-    final double rightOffset = isLandscape ? 0.0 : 0.0;
 
-    return Padding(
-      // ✨ Shift the entire sheet "box" to avoid the rail
-      padding: EdgeInsets.only(left: railOffset, right: rightOffset),
-      child: Container(
-        padding: const EdgeInsets.only(
-          top: 20,
-          bottom: 0, // Handled by SafeArea
-          left: 16,
-          right: 16,
-        ),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        decoration: BoxDecoration(
-          color: theme.brightness == Brightness.dark
-              ? Colors.grey[900]
-              : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          // If we already applied a large left margin (railOffset), we don't need SafeArea left.
-          left: railOffset == 0,
-          top: false,
-          right: true,
-          bottom: true,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Share Options',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+    // ✨ REWRITE: Simplified structure.
+    // 1. Align(bottomCenter) -> Sticks to bottom.
+    // 2. ConstrainedBox(maxWidth: 600) -> Handles iPad width.
+    // 3. Container -> The actual visual sheet (color, rounded corners).
+    // 4. SafeArea -> SingleChildScrollView -> Column -> Content.
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.dark
+                ? Colors.grey[900]
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            top: false,
+            left:
+                false, // ✨ FIX: Prevent system rail padding from shifting centered content
+            right: false,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
                 ),
-                const SizedBox(height: 16),
-                _buildOptionTile(
-                  'Shloka',
-                  ShareOption.shloka,
-                  isMandatory: true,
-                ),
-                _buildOptionTile('Anvay', ShareOption.anvay),
-                _buildOptionTile('Tika (Meaning)', ShareOption.tika),
-                if (widget.showAudioOption)
-                  _buildOptionTile('Audio', ShareOption.audio),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onShare(_selectedOptions);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.dividerColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: const Text('Share', style: TextStyle(fontSize: 16)),
+                    // Title (Centered, Bold)
+                    Text(
+                      'Share Options',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Options List
+                    // Using a simple Column for options to avoid complex nested padding
+                    _buildOptionRow(
+                      'Shloka',
+                      ShareOption.shloka,
+                      isMandatory: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildOptionRow('Anvay', ShareOption.anvay),
+                    const SizedBox(height: 12),
+                    _buildOptionRow('Tika (Meaning)', ShareOption.tika),
+                    if (widget.showAudioOption) ...[
+                      const SizedBox(height: 12),
+                      _buildOptionRow('Audio', ShareOption.audio),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    // Share Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          widget.onShare(_selectedOptions);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                          backgroundColor: theme.colorScheme.primaryContainer,
+                          foregroundColor: theme.colorScheme.onPrimaryContainer,
+                        ),
+                        child: const Text(
+                          'Share',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-                // Add some bottom padding for the scroll view
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
           ),
         ),
@@ -105,30 +135,72 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
     );
   }
 
-  Widget _buildOptionTile(
+  // ✨ REWRITE: Simplified Option Row to avoid CheckboxListTile padding issues
+  Widget _buildOptionRow(
     String title,
     ShareOption option, {
     bool isMandatory = false,
   }) {
     final isSelected = _selectedOptions.contains(option);
-    return CheckboxListTile(
-      title: Text(title),
-      value: isSelected,
-      onChanged: isMandatory
-          ? null // Disable interaction for mandatory field
-          : (bool? value) {
+    return InkWell(
+      onTap: isMandatory
+          ? null
+          : () {
               setState(() {
-                if (value == true) {
-                  _selectedOptions.add(option);
-                } else {
+                if (isSelected) {
                   _selectedOptions.remove(option);
+                } else {
+                  _selectedOptions.add(option);
                 }
               });
             },
-      activeColor: Theme.of(context).colorScheme.primary,
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).cardColor, // Distinct card-like bg for each option? Or just transparent?
+          // Let's keep it simple: clear background, border maybe?
+          // User said "plain". Let's stick to a clean row with checkbox.
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withOpacity(0.2),
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: isSelected,
+                onChanged: isMandatory
+                    ? null
+                    : (v) {
+                        setState(() {
+                          if (v == true) {
+                            _selectedOptions.add(option);
+                          } else {
+                            _selectedOptions.remove(option);
+                          }
+                        });
+                      },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -146,6 +146,7 @@ class FullShlokaCard extends StatelessWidget {
     // Show the options sheet first
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true, // ✨ Ensure it overlays the rail
       backgroundColor: Colors.transparent,
       builder: (context) => ShareOptionsSheet(
         showAudioOption: true, // Allow audio for individual shloka
@@ -448,91 +449,108 @@ class FullShlokaCard extends StatelessWidget {
                           const SizedBox(height: 16),
 
                           // 4. Action Row (Bottom)
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isLightTheme
-                                  ? Colors.grey.withOpacity(0.1)
-                                  : Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                // Play Audio
-                                _buildAudioActionButton(
-                                  context: context,
-                                  shloka: shloka,
-                                  isPlayingThis: isPlayingThisShloka,
-                                  playbackState: playbackState,
-                                  downloadStatus: downloadStatus,
-                                  audioProvider: audioProvider,
-                                ),
-
-                                // Commentary
-                                if (shloka.commentaries != null &&
-                                    shloka.commentaries!.isNotEmpty)
-                                  _ActionButton(
-                                    icon: Icons.menu_book_rounded,
-                                    onPressed: () {
-                                      showModalBottomSheet(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (context) => CommentarySheet(
-                                          commentaries: shloka.commentaries!,
-                                          chapterNo: shloka.chapterNo,
-                                          shlokNo: shloka.shlokNo,
-                                        ),
-                                      );
-                                    },
+                          // 4. Action Row (Bottom)
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 6,
+                                horizontal: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isLightTheme
+                                    ? Colors.grey.withOpacity(0.1)
+                                    : Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Row(
+                                mainAxisSize:
+                                    MainAxisSize.min, // ✨ Compact width
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Play Audio
+                                  _buildAudioActionButton(
+                                    context: context,
+                                    shloka: shloka,
+                                    isPlayingThis: isPlayingThisShloka,
+                                    playbackState: playbackState,
+                                    downloadStatus: downloadStatus,
+                                    audioProvider: audioProvider,
                                   ),
-
-                                // Bookmark
-                                Consumer<BookmarkProvider>(
-                                  builder: (context, bookmarkProvider, _) {
-                                    final isBookmarked = bookmarkProvider
-                                        .isBookmarked(
-                                          shloka.chapterNo,
-                                          shloka.shlokNo,
-                                        );
-                                    return _ActionButton(
-                                      icon: isBookmarked
-                                          ? Icons.bookmark
-                                          : Icons.bookmark_outline,
+                                  const SizedBox(width: 16), // ✨ Gap
+                                  // Commentary
+                                  if (shloka.commentaries != null &&
+                                      shloka.commentaries!.isNotEmpty) ...[
+                                    _ActionButton(
+                                      icon: Icons.menu_book_rounded,
                                       onPressed: () {
                                         showModalBottomSheet(
                                           context: context,
-                                          backgroundColor: Colors.transparent,
                                           isScrollControlled: true,
-                                          shape: const RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.vertical(
-                                              top: Radius.circular(16),
-                                            ),
-                                          ),
-                                          builder: (context) => AddToListSheet(
+                                          useRootNavigator:
+                                              true, // ✨ Ensure it overlays the rail
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => CommentarySheet(
+                                            commentaries: shloka.commentaries!,
                                             chapterNo: shloka.chapterNo,
                                             shlokNo: shloka.shlokNo,
                                           ),
                                         );
                                       },
-                                      color: isBookmarked
-                                          ? theme.colorScheme.primary
-                                          : null,
-                                    );
-                                  },
-                                ),
+                                    ),
+                                    const SizedBox(width: 16), // ✨ Gap
+                                  ],
 
-                                // Share
-                                Builder(
-                                  builder: (btnContext) {
-                                    return _ActionButton(
-                                      icon: Icons.share_outlined,
-                                      onPressed: () => _shareShloka(btnContext),
-                                    );
-                                  },
-                                ),
-                              ],
+                                  // Bookmark
+                                  Consumer<BookmarkProvider>(
+                                    builder: (context, bookmarkProvider, _) {
+                                      final isBookmarked = bookmarkProvider
+                                          .isBookmarked(
+                                            shloka.chapterNo,
+                                            shloka.shlokNo,
+                                          );
+                                      return _ActionButton(
+                                        icon: isBookmarked
+                                            ? Icons.bookmark
+                                            : Icons.bookmark_outline,
+                                        onPressed: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            useRootNavigator:
+                                                true, // ✨ Ensure it overlays the rail
+                                            backgroundColor: Colors.transparent,
+                                            isScrollControlled: true,
+                                            shape: const RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.vertical(
+                                                    top: Radius.circular(16),
+                                                  ),
+                                            ),
+                                            builder: (context) =>
+                                                AddToListSheet(
+                                                  chapterNo: shloka.chapterNo,
+                                                  shlokNo: shloka.shlokNo,
+                                                ),
+                                          );
+                                        },
+                                        color: isBookmarked
+                                            ? theme.colorScheme.primary
+                                            : null,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(width: 16), // ✨ Gap
+                                  // Share
+                                  Builder(
+                                    builder: (btnContext) {
+                                      return _ActionButton(
+                                        icon: Icons.share_outlined,
+                                        onPressed: () =>
+                                            _shareShloka(btnContext),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],

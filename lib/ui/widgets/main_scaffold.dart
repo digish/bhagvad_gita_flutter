@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../navigation/app_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/settings_provider.dart';
 import 'glass_navigation_rail.dart';
 
 class MainScaffold extends StatelessWidget {
@@ -44,6 +46,31 @@ class MainScaffold extends StatelessWidget {
               selectedIndex: _calculateSelectedIndex(context),
               onDestinationSelected: (int index) =>
                   _onItemTapped(index, context),
+              trailing: FloatingActionButton(
+                heroTag: 'rail_theme_toggle',
+                mini: true,
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor.withOpacity(0.8),
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                elevation: 0,
+                onPressed: () {
+                  final settings = Provider.of<SettingsProvider>(
+                    context,
+                    listen: false,
+                  );
+                  settings.setShowBackground(!settings.showBackground);
+                },
+                child: Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    return Icon(
+                      settings.showBackground
+                          ? Icons.format_paint_outlined
+                          : Icons.format_paint,
+                    );
+                  },
+                ),
+              ),
               destinations: <NavigationRailDestination>[
                 NavigationRailDestination(
                   icon: _buildLotusIcon('assets/images/lotus_top.png', false),

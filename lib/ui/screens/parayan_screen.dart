@@ -275,6 +275,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
               // ✨ FIX: Revert to ScrollablePositionedList
               return ResponsiveWrapper(
+                maxWidth: 1200, // ✨ NEW: Increased width for iPad
                 child: ScrollablePositionedList.builder(
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
@@ -286,7 +287,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
-                    right: 50 + MediaQuery.of(context).padding.right,
+                    right:
+                        50 +
+                        MediaQuery.of(context).padding.right +
+                        24.0, // Added SafeMargin to Right
                     bottom: 8.0,
                   ),
                   itemBuilder: (context, index) {
@@ -375,7 +379,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             kToolbarHeight +
                             50; // Collapsed header height
                   return Positioned(
-                    right: MediaQuery.of(context).padding.right,
+                    right:
+                        MediaQuery.of(context).padding.right +
+                        24.0, // Added SafeMargin to Right
                     top: topPadding,
                     bottom: 0,
                     child: CustomScrollIndicator(
