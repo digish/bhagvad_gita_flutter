@@ -369,8 +369,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   final double topPadding = isAtTop
                       ? 340.0 // Expanded header height
                       : MediaQuery.of(context).padding.top +
-                            kToolbarHeight +
-                            50; // Collapsed header height
+                            150; // Collapsed header height
                   return Positioned(
                     right:
                         MediaQuery.of(context).padding.right +
@@ -605,8 +604,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
   Widget build(BuildContext context) {
     // These values are now static within the build method.
     const double maxHeaderHeight = 340; // Increased height to prevent overlap
-    final double minHeaderHeight =
-        MediaQuery.of(context).padding.top + kToolbarHeight + 90;
+    final double minHeaderHeight = MediaQuery.of(context).padding.top + 150;
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -629,7 +627,10 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
             // Center Lotus with Island: Island Bottom = 16, Island Height = 104 -> Center = 16+52=68 from bottom.
             // Lotus Center = 68 from bottom. Lotus Top = 68 + (40/2) = 88 from bottom.
             // Top = Height - 88.
-            final double minLotusTop = minHeaderHeight - 88.0;
+            // Center Lotus with Island: Island Bottom = 16, Island Height = 110 -> Center = 16+55=71 from bottom.
+            // Lotus Center = 71 from bottom. Lotus Top = 71 + (40/2) = 91 from bottom.
+            // Top = Height - 91.
+            final double minLotusTop = minHeaderHeight - 91.0;
             final double currentLotusTop = lerpDouble(
               maxLotusTop,
               minLotusTop,
@@ -658,7 +659,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
             return Container(
               height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
-              color: Colors.indigo.shade50.withOpacity(t * 0.95),
+              color: Colors.transparent,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -702,8 +703,8 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
+                                horizontal: 10.0,
+                                vertical: 8.0,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -754,12 +755,13 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                     ),
                                   ),
 
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 8),
 
                                   // 2. Right Content (Title + Controls)
                                   Expanded(
                                     child: SizedBox(
-                                      height: 80, // Rigid height
+                                      height:
+                                          110, // Increased height for 3 rows
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment:
@@ -769,7 +771,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                         children: [
                                           // Line 1: Title
                                           SizedBox(
-                                            height: 24,
+                                            height: 20,
                                             child: Center(
                                               child: Text(
                                                 _currentLabel,
@@ -783,7 +785,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                       color: Colors.black87,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      fontSize: 16,
+                                                      fontSize: 15,
                                                       height: 1.2,
                                                     ),
                                               ),
@@ -792,52 +794,25 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
                                           const SizedBox(height: 4),
 
-                                          // Line 2: Controls
+                                          // Line 2: Playback & Display Layout
                                           SizedBox(
-                                            height: 48,
+                                            height: 40,
                                             child: Row(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
                                               children: [
-                                                _FontSizeControl(
-                                                  currentSize: widget
-                                                      .settingsProvider
-                                                      .fontSize,
-                                                  onDecrement: () {
-                                                    if (widget
-                                                            .settingsProvider
-                                                            .fontSize >
-                                                        16.0) {
-                                                      widget.settingsProvider
-                                                          .setFontSize(
-                                                            widget
-                                                                    .settingsProvider
-                                                                    .fontSize -
-                                                                2.0,
-                                                          );
-                                                    }
-                                                  },
-                                                  onIncrement: () {
-                                                    if (widget
-                                                            .settingsProvider
-                                                            .fontSize <
-                                                        32.0) {
-                                                      widget.settingsProvider
-                                                          .setFontSize(
-                                                            widget
-                                                                    .settingsProvider
-                                                                    .fontSize +
-                                                                2.0,
-                                                          );
-                                                    }
-                                                  },
-                                                  color: Colors.black87,
-                                                ),
+                                                (context
+                                                        .findAncestorStateOfType<
+                                                          _ParayanScreenState
+                                                        >()!)
+                                                    ._buildPlaybackModeButton(),
 
                                                 const SizedBox(width: 8),
                                                 Container(
                                                   width: 1,
-                                                  height: 24,
+                                                  height: 20,
                                                   color: Colors.black12,
                                                 ),
                                                 const SizedBox(width: 8),
@@ -847,21 +822,50 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                           _ParayanScreenState
                                                         >()!)
                                                     ._buildDisplayModeButton(),
-
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  width: 1,
-                                                  height: 24,
-                                                  color: Colors.black12,
-                                                ),
-                                                const SizedBox(width: 8),
-
-                                                (context
-                                                        .findAncestorStateOfType<
-                                                          _ParayanScreenState
-                                                        >()!)
-                                                    ._buildPlaybackModeButton(),
                                               ],
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 2),
+
+                                          // Line 3: Font Controls (Centered)
+                                          SizedBox(
+                                            height: 36,
+                                            child: Center(
+                                              child: _FontSizeControl(
+                                                currentSize: widget
+                                                    .settingsProvider
+                                                    .fontSize,
+                                                onDecrement: () {
+                                                  if (widget
+                                                          .settingsProvider
+                                                          .fontSize >
+                                                      16.0) {
+                                                    widget.settingsProvider
+                                                        .setFontSize(
+                                                          widget
+                                                                  .settingsProvider
+                                                                  .fontSize -
+                                                              2.0,
+                                                        );
+                                                  }
+                                                },
+                                                onIncrement: () {
+                                                  if (widget
+                                                          .settingsProvider
+                                                          .fontSize <
+                                                      32.0) {
+                                                    widget.settingsProvider
+                                                        .setFontSize(
+                                                          widget
+                                                                  .settingsProvider
+                                                                  .fontSize +
+                                                              2.0,
+                                                        );
+                                                  }
+                                                },
+                                                color: Colors.black87,
+                                              ),
                                             ),
                                           ),
                                         ],

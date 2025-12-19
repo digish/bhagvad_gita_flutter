@@ -711,7 +711,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 
         return Container(
           // ✨ FIX: Animate the background color to become less transparent as it collapses.
-          color: Colors.white.withOpacity(lerpDouble(0.0, 0.85, t)!),
+          color: Colors.transparent,
           child: Stack(
             fit: StackFit.expand,
             children: [
