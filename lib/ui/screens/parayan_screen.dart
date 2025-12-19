@@ -178,37 +178,30 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   Widget _buildPlaybackModeButton() {
     IconData icon;
-    String label;
+    String tooltip;
 
     switch (_playbackMode) {
       case PlaybackMode.single:
         icon = Icons.play_arrow;
-        label = 'Single';
+        tooltip = 'Single Play';
         break;
       case PlaybackMode.continuous:
         icon = Icons.playlist_play;
-        label = 'Continue';
+        tooltip = 'Continuous Play';
         break;
       case PlaybackMode.repeatOne:
         icon = Icons.repeat_one;
-        label = 'Repeat';
+        tooltip = 'Repeat';
         break;
     }
 
-    return OutlinedButton.icon(
+    return IconButton(
       onPressed: _cyclePlaybackMode,
-      icon: Icon(icon, color: Colors.black54, size: 20),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: BorderSide(color: Colors.black.withOpacity(0.2)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
-      ),
+      icon: Icon(icon, color: Colors.black87),
+      tooltip: tooltip,
+      iconSize: 24,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
     );
   }
 
@@ -283,7 +276,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 240,
+                    top: MediaQuery.of(context).padding.top + 340,
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
@@ -374,7 +367,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       (positions.first.index == 0 &&
                           positions.first.itemLeadingEdge >= 0);
                   final double topPadding = isAtTop
-                      ? 240.0 // Expanded header height
+                      ? 340.0 // Expanded header height
                       : MediaQuery.of(context).padding.top +
                             kToolbarHeight +
                             50; // Collapsed header height
@@ -430,37 +423,31 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   Widget _buildDisplayModeButton() {
     IconData icon;
-    String label;
+    String tooltip;
 
     switch (_displayMode) {
       case ParayanDisplayMode.shlokOnly:
         icon = Icons.article_outlined;
-        label = 'Shlok Only';
+        tooltip = 'Shlok Only';
         break;
       case ParayanDisplayMode.shlokAndAnvay:
         icon = Icons.segment;
-        label = 'Shlok & Anvay';
+        tooltip = 'Shlok & Anvay';
         break;
       case ParayanDisplayMode.all:
         icon = Icons.view_headline;
-        label = 'Show All';
+        tooltip = 'Show All';
         break;
     }
 
-    return OutlinedButton.icon(
+    // Returning an IconButton for compact layout in the island
+    return IconButton(
       onPressed: _cycleDisplayMode,
-      icon: Icon(icon, color: Colors.black54, size: 20),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: BorderSide(color: Colors.black.withOpacity(0.2)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
-      ),
+      icon: Icon(icon, color: Colors.black87),
+      tooltip: tooltip,
+      iconSize: 24,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
     );
   }
 }
@@ -568,10 +555,10 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
       // Define the scroll range for the animation
       // Start: Item is at its initial padded position (Expanded Header)
-      final startY = paddingTop + 240.0;
+      final startY = paddingTop + 340.0;
 
       // End: Item is at the bottom of the collapsed header (Collapsed Header)
-      final endY = paddingTop + kToolbarHeight + 50;
+      final endY = paddingTop + kToolbarHeight + 90;
 
       // Calculate progress t: 0.0 at startY, 1.0 at endY
       // As itemY goes down (scrolling up), t should go to 0? No, itemY goes UP when scrolling DOWN.
@@ -587,8 +574,8 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
     // --- Shloka Count Logic ---
     // ✨ FIX: Find the first item that is visible *below* the header.
     final double headerHeight = lerpDouble(
-      240.0,
-      MediaQuery.of(context).padding.top + kToolbarHeight + 50,
+      340.0,
+      MediaQuery.of(context).padding.top + kToolbarHeight + 90,
       _animationController.value,
     )!;
     final visibleBelowHeader = positions.where(
@@ -617,9 +604,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
   @override
   Widget build(BuildContext context) {
     // These values are now static within the build method.
-    const double maxHeaderHeight = 240;
+    const double maxHeaderHeight = 340; // Increased height to prevent overlap
     final double minHeaderHeight =
-        MediaQuery.of(context).padding.top + kToolbarHeight + 50;
+        MediaQuery.of(context).padding.top + kToolbarHeight + 90;
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -638,26 +625,30 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
               minLotusSize,
               t,
             )!;
-            final double maxLotusTop = MediaQuery.of(context).padding.top + 20;
-            final double minLotusTop =
-                MediaQuery.of(context).padding.top +
-                (kToolbarHeight - minLotusSize) / 2;
+            final double maxLotusTop = MediaQuery.of(context).padding.top;
+            // Center Lotus with Island: Island Bottom = 16, Island Height = 104 -> Center = 16+52=68 from bottom.
+            // Lotus Center = 68 from bottom. Lotus Top = 68 + (40/2) = 88 from bottom.
+            // Top = Height - 88.
+            final double minLotusTop = minHeaderHeight - 88.0;
             final double currentLotusTop = lerpDouble(
               maxLotusTop,
               minLotusTop,
               t,
             )!;
-            // ✨ Widget is now positioned AFTER the rail, so we work in local coordinates.
-            // Width is already reduced by paddingLeft.
 
             final double paddingRight = 50.0; // Matches list padding
-
             // Center in the available local width (excluding list padding)
             final double maxLotusLeft =
                 (width - paddingRight - maxLotusSize) / 2;
 
-            final double minLotusLeft =
-                56.0; // Fixed offset from local left edge in collapsed state
+            // For the floating animation target, we want it to move towards the docked position.
+            // The Button Island is centered with constraints.
+            // Island Width = (width - 32).clamp(300.0, 700.0);
+            // Island Left Offset = (width - Island Width) / 2;
+            // Target Lotus Left = Island Left Offset + 16 (padding) + 24 (icon) + 8 (gap).
+            final double islandWidth = (width - 32.0).clamp(300.0, 700.0);
+            final double islandLeftOffset = (width - islandWidth) / 2;
+            final double minLotusLeft = islandLeftOffset + 16.0 + 24.0 + 8.0;
 
             final double currentLotusLeft = lerpDouble(
               maxLotusLeft,
@@ -665,177 +656,267 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
               t,
             )!;
 
-            final double maxTextTop = currentLotusTop + maxLotusSize + 8;
-            final double minTextTop = MediaQuery.of(
-              context,
-            ).padding.top; // ✨ FIX: Align with top for vertical centering
-            final double currentTextTop = lerpDouble(
-              maxTextTop,
-              minTextTop,
-              t,
-            )!;
-
-            // Text Alignment
-            final double maxTextLeft =
-                0.0; // Starts at local 0 (which is rail edge)
-            final double minTextLeft = minLotusLeft + minLotusSize + 16;
-
-            final double currentTextLeft = lerpDouble(
-              maxTextLeft,
-              minTextLeft,
-              t,
-            )!;
-
-            // ✨ Matches list padding (50.0) in expanded state, 0 in collapsed
-            final double currentTextRight = lerpDouble(50.0, 0.0, t)!;
-
-            final double textOpacity = lerpDouble(
-              1.0,
-              0.0,
-              t.clamp(0.0, 0.5) * 2,
-            )!;
-            final double collapsedTextOpacity = t;
-
             return Container(
               height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
               color: Colors.indigo.shade50.withOpacity(t * 0.95),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Back Button (always visible)
+                  // Back Button (Removed - integrated into island)
 
                   // Expanded Controls (unchanged)
                   // Collapsed Controls (unchanged)
+                  // --- Button Island (Docked Controls & Title) ---
                   Positioned(
-                    top: MediaQuery.of(context).padding.top + kToolbarHeight,
+                    bottom: 16, // Float near bottom
                     left: 0,
                     right: 0,
-                    height: 50,
-                    child: Opacity(
-                      opacity: collapsedTextOpacity,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _FontSizeControl(
-                            currentSize: widget.settingsProvider.fontSize,
-                            onDecrement: () {
-                              if (widget.settingsProvider.fontSize > 16.0) {
-                                widget.settingsProvider.setFontSize(
-                                  widget.settingsProvider.fontSize - 2.0,
-                                );
-                              }
-                            },
-                            onIncrement: () {
-                              if (widget.settingsProvider.fontSize < 32.0) {
-                                widget.settingsProvider.setFontSize(
-                                  widget.settingsProvider.fontSize + 2.0,
-                                );
-                              }
-                            },
-                            color: Colors.black54,
-                          ),
-                          // Display Mode Button
-                          (context
-                                  .findAncestorStateOfType<
-                                    _ParayanScreenState
-                                  >()!)
-                              ._buildDisplayModeButton(),
-                          // Playback Mode Button
-                          (context
-                                  .findAncestorStateOfType<
-                                    _ParayanScreenState
-                                  >()!)
-                              ._buildPlaybackModeButton(),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Animating Lotus (unchanged)
-                  Positioned(
-                    top: currentLotusTop,
-                    left: currentLotusLeft,
-                    child: GestureDetector(
-                      onTap: MediaQuery.of(context).size.width > 600
-                          ? null
-                          : () {
-                              if (context.canPop()) {
-                                context.pop();
-                              } else {
-                                context.go('/');
-                              }
-                            },
-                      child: Hero(
-                        tag: 'blueLotusHero',
-                        flightShuttleBuilder:
-                            (
-                              flightContext,
-                              animation,
-                              flightDirection,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) {
-                              final rotationAnimation = animation.drive(
-                                Tween<double>(begin: 0.0, end: 1.0),
-                              );
-                              return RotationTransition(
-                                turns: rotationAnimation,
-                                child: (toHeroContext.widget as Hero).child,
-                              );
-                            },
-                        child: Image.asset(
-                          'assets/images/lotus_blue12.png',
-                          height: currentLotusSize,
-                          fit: BoxFit.contain,
+                    child: Center(
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxWidth: 700,
+                          minWidth: 300,
                         ),
-                      ),
-                    ),
-                  ),
-
-                  // Animating Text Label (now uses state variable)
-                  Positioned(
-                    top: currentTextTop,
-                    left: currentTextLeft,
-                    right: currentTextRight, // ✨ Use dynamic right padding
-                    height: kToolbarHeight,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Opacity(
-                          opacity: textOpacity,
-                          child: Text(
-                            _currentLabel,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(
+                            0.4,
+                          ), // Semi-transparent for glass effect
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.4),
+                            width: 1.5,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 16,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                        Opacity(
-                          opacity: collapsedTextOpacity,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              _currentLabel,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 12.0,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // 1. Back Button & Docked Lotus Group
+                                  GestureDetector(
+                                    onTap:
+                                        MediaQuery.of(context).size.width > 600
+                                        ? null
+                                        : () {
+                                            if (context.canPop()) {
+                                              context.pop();
+                                            } else {
+                                              context.go('/');
+                                            }
+                                          },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Back Icon
+                                        // Only show back icon if relevant (not tablet split view?)
+                                        // User asked for it, so we show it.
+                                        if (MediaQuery.of(context).size.width <=
+                                            600) ...[
+                                          const Icon(
+                                            Icons.arrow_back_ios_new,
+                                            size: 20,
+                                            color: Colors.black87,
+                                          ),
+                                          const SizedBox(width: 8),
+                                        ],
+
+                                        // Lotus Slot
+                                        if (t > 0.95)
+                                          Hero(
+                                            tag: 'blueLotusHero',
+                                            child: Image.asset(
+                                              'assets/images/lotus_blue12.png',
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.contain,
+                                            ),
+                                          )
+                                        else
+                                          const SizedBox(width: 50, height: 50),
+                                      ],
+                                    ),
                                   ),
-                              overflow: TextOverflow.ellipsis,
+
+                                  const SizedBox(width: 16),
+
+                                  // 2. Right Content (Title + Controls)
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 80, // Rigid height
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // Line 1: Title
+                                          SizedBox(
+                                            height: 24,
+                                            child: Center(
+                                              child: Text(
+                                                _currentLabel,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      color: Colors.black87,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 16,
+                                                      height: 1.2,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          // Line 2: Controls
+                                          SizedBox(
+                                            height: 48,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                _FontSizeControl(
+                                                  currentSize: widget
+                                                      .settingsProvider
+                                                      .fontSize,
+                                                  onDecrement: () {
+                                                    if (widget
+                                                            .settingsProvider
+                                                            .fontSize >
+                                                        16.0) {
+                                                      widget.settingsProvider
+                                                          .setFontSize(
+                                                            widget
+                                                                    .settingsProvider
+                                                                    .fontSize -
+                                                                2.0,
+                                                          );
+                                                    }
+                                                  },
+                                                  onIncrement: () {
+                                                    if (widget
+                                                            .settingsProvider
+                                                            .fontSize <
+                                                        32.0) {
+                                                      widget.settingsProvider
+                                                          .setFontSize(
+                                                            widget
+                                                                    .settingsProvider
+                                                                    .fontSize +
+                                                                2.0,
+                                                          );
+                                                    }
+                                                  },
+                                                  color: Colors.black87,
+                                                ),
+
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  width: 1,
+                                                  height: 24,
+                                                  color: Colors.black12,
+                                                ),
+                                                const SizedBox(width: 8),
+
+                                                (context
+                                                        .findAncestorStateOfType<
+                                                          _ParayanScreenState
+                                                        >()!)
+                                                    ._buildDisplayModeButton(),
+
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  width: 1,
+                                                  height: 24,
+                                                  color: Colors.black12,
+                                                ),
+                                                const SizedBox(width: 8),
+
+                                                (context
+                                                        .findAncestorStateOfType<
+                                                          _ParayanScreenState
+                                                        >()!)
+                                                    ._buildPlaybackModeButton(),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  if (Theme.of(context).platform == TargetPlatform.iOS &&
-                      MediaQuery.of(context).size.width <= 600)
+
+                  // --- Floating Lotus (Visible when expanded/animating) ---
+                  if (t <= 0.95)
                     Positioned(
-                      top:
-                          MediaQuery.of(context).padding.top +
-                          4, // ✨ FIX: Standard toolbar position
-                      left: 4,
-                      child: const BackButton(color: Colors.black87),
+                      top: currentLotusTop,
+                      left: currentLotusLeft,
+                      child: GestureDetector(
+                        onTap: MediaQuery.of(context).size.width > 600
+                            ? null
+                            : () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/');
+                                }
+                              },
+                        child: Hero(
+                          tag: 'blueLotusHero',
+                          flightShuttleBuilder:
+                              (
+                                flightContext,
+                                animation,
+                                flightDirection,
+                                fromHeroContext,
+                                toHeroContext,
+                              ) {
+                                final rotationAnimation = animation.drive(
+                                  Tween<double>(begin: 0.0, end: 1.0),
+                                );
+                                return RotationTransition(
+                                  turns: rotationAnimation,
+                                  child: (toHeroContext.widget as Hero).child,
+                                );
+                              },
+                          child: Image.asset(
+                            'assets/images/lotus_blue12.png',
+                            height: currentLotusSize,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
                     ),
                 ],
               ),

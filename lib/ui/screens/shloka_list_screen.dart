@@ -514,7 +514,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 minExtent:
                                     MediaQuery.of(context).padding.top +
                                     kToolbarHeight +
-                                    50, // Increased for the second row
+                                    100, // Tightened to reduce top margin while fitting 3 rows
                                 // Further increase maxExtent to ensure title and switches are visible initially
                                 maxExtent:
                                     MediaQuery.of(context).padding.top + 350,
@@ -667,53 +667,47 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 
         // Emblem properties
         const double maxSize = 160.0;
-        const double minSize = 40.0;
+        const double minSize = 50.0; // Larger for the side-by-side view
         final double currentSize = lerpDouble(maxSize, minSize, t)!;
         // final double currentRadius = lerpDouble(16.0, minSize / 2, t)!; // Unused
 
         // Emblem position
-        final double maxLeft = (width - maxSize) / 2; // ✨ Use local width
-        final double minLeft = showBackButton
-            ? 56.0
-            : 16.0; // Adjust if back button is hidden
+        final double maxLeft = (width - maxSize) / 2;
+
+        // Target Left Logic:
+        // The Button Island is centered with constraints (maxWidth: 700).
+        // It has a horizontal margin of 16 on both sides.
+        // So visually: ScreenEdge -> Margin(16) -> FlexibleSpace -> Island -> FlexibleSpace -> Margin(16).
+        // Actually the margin is on the Container inside Center.
+        // Island Width = (width - 32).clamp(300.0, 700.0);
+        // Island Left Offset = (width - Island Width) / 2;
+        // Inside Island: Padding(horizontal: 16).
+        // Target Emblem Left = Island Left Offset + 16.
+        final double islandWidth = (width - 32.0).clamp(300.0, 700.0);
+        final double islandLeftOffset = (width - islandWidth) / 2;
+        // Target Emblem Left calculation:
+        // Island padding (16) + (Back Button Width (20) + Gap (8) IF shown).
+        final double backButtonOffset = showBackButton ? (20.0 + 8.0) : 0.0;
+        final double minLeft = islandLeftOffset + 16.0 + backButtonOffset;
+
         final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
 
+        // Calculate minTop to align with the center of the Button Island
+        // Island is at bottom 16.
+        // Island Content Height: Title(24) + Gap(8) + Controls(48) = 80.
+        // Island Vertical Padding: 12*2 = 24.
+        // Total Height = 104 + 16 (bottom) = 120.
+        // Top of Island = minExtent - 120.
+        // Top of Row = minExtent - 108.
+        // Center of Row = minExtent - 68.
+        // Emblem Top = minExtent - 68 - 25 = minExtent - 93.
+        // Island Bottom (16) + Height (~124)/2 = Center Y from bottom (78).
+        // Emblem Top from bottom = 78 + 25 = 103.
+        // minTop = minExtent - 103.
+        final double minTop = minExtent - 103;
         final double maxTop = paddingTop + 20; // Start near the top
-        final double minTop = paddingTop + (kToolbarHeight - minSize) / 2;
+
         final double currentTop = lerpDouble(maxTop, minTop, t)!;
-
-        // --- NEW: Title animation ---
-        // Position
-        final double titleMaxTop =
-            maxTop + maxSize + 8; // Positioned right below the large emblem
-        final double titleMinTop = paddingTop;
-        final double titleCurrentTop = lerpDouble(titleMaxTop, titleMinTop, t)!;
-
-        final double titleMaxHorizontalPadding = 16.0;
-        final double titleMinHorizontalPadding = showBackButton
-            ? 100.0
-            : 60.0; // Adjust
-        final double titleCurrentHorizontalPadding = lerpDouble(
-          titleMaxHorizontalPadding,
-          titleMinHorizontalPadding,
-          t,
-        )!;
-
-        // Font size
-        final double titleMaxFontSize =
-            Theme.of(context).textTheme.headlineSmall?.fontSize ?? 24.0;
-        final double titleMinFontSize =
-            Theme.of(context).textTheme.titleLarge?.fontSize ?? 20.0;
-        final double titleCurrentFontSize = lerpDouble(
-          titleMaxFontSize,
-          titleMinFontSize,
-          t,
-        )!;
-
-        // Opacity for elements that appear when collapsed
-        // Let's make the controls visible from the start by changing the opacity logic
-
-        final double collapsedHeaderOpacity = t;
 
         return Container(
           // ✨ FIX: Animate the background color to become less transparent as it collapses.
@@ -721,54 +715,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Title (fades in)
-              Positioned(
-                top: titleCurrentTop,
-                left: titleCurrentHorizontalPadding,
-                right: titleCurrentHorizontalPadding,
-                height: kToolbarHeight,
-                child: Opacity(
-                  opacity: lerpDouble(
-                    1.0,
-                    0.0,
-                    t.clamp(0.0, 0.5) * 2,
-                  )!, // Fade out the large title
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.bold,
-                      fontSize: titleCurrentFontSize,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-
-              // A separate title that fades in when collapsed
-              Positioned(
-                top: paddingTop,
-                left: titleMinHorizontalPadding,
-                right: titleMinHorizontalPadding,
-                height: kToolbarHeight,
-                child: Opacity(
-                  opacity: collapsedHeaderOpacity,
-                  child: Center(
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Actions (fades in)
               Positioned(
                 top: paddingTop,
                 right: 0,
@@ -777,79 +723,239 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                     Container(), // This space is now empty, actions are moved below
               ),
 
-              // --- NEW: Positioned controls row ---
+              // --- NEW: Button Island ---
               Positioned(
-                top:
-                    paddingTop +
-                    kToolbarHeight, // Positioned below the main app bar area
+                bottom: 16, // Float near bottom
                 left: 0,
                 right: 0,
-                height: 50, // The height we added to minExtent
-                child: Opacity(
-                  // Fades in with the rest of the collapsed header
-                  opacity: collapsedHeaderOpacity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _FontSizeControl(
-                        currentSize: currentFontSize,
-                        onDecrement: onFontSizeDecrement,
-                        onIncrement: onFontSizeIncrement,
-                        color: Colors.black54,
+                child: Center(
+                  child: Container(
+                    // height: 56, // removed fixed height
+                    // width:  constraints.maxWidth * 0.9, // Constrain width or let it hug content
+                    constraints: BoxConstraints(maxWidth: 700, minWidth: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(
+                        0.4,
+                      ), // Semi-transparent for glass effect
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
                       ),
-                      _buildPlaybackModeButtonForHeader(),
-                      // ✨ NEW: Book Reading Mode Button
-                      Tooltip(
-                        message: "Read as Book",
-                        child: IconButton(
-                          icon: const Icon(Icons.menu_book_rounded),
-                          color: Colors.black54,
-                          onPressed: () {
-                            GoRouter.of(
-                              context,
-                            ).push('/book-reading/$chapterNumber');
-                          },
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 16,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: 16,
+                          sigmaY: 16,
+                        ), // Stronger blur
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 12.0,
+                          ),
+                          child: Row(
+                            // Main Layout: Left Image, Right Content
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 1. Back Button & Docked Emblem Group
+                              GestureDetector(
+                                onTap: showBackButton
+                                    ? () => context.pop()
+                                    : null,
+                                behavior: HitTestBehavior.opaque,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (showBackButton) ...[
+                                      const Icon(
+                                        Icons.arrow_back_ios_new,
+                                        size: 20,
+                                        color: Colors.black87,
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    if (t > 0.95)
+                                      Hero(
+                                        tag: 'chapterEmblem_$chapterNumber',
+                                        child: _buildEmblemContent(
+                                          minSize,
+                                          1.0,
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(width: 50, height: 50),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(width: 16),
+
+                              // 2. Right Content (Title + Controls Lines)
+                              Expanded(
+                                child: SizedBox(
+                                  height: 110, // Increased height for 3 rows
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Line 1: Title
+                                      SizedBox(
+                                        height: 20, // Compact title slot
+                                        child: Center(
+                                          child: Text(
+                                            title,
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  color: Colors.black87,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      15, // Slightly smaller
+                                                  height: 1.2,
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 4),
+
+                                      // Line 2: Font & Playback Controls
+                                      SizedBox(
+                                        height: 40,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            _FontSizeControl(
+                                              currentSize: currentFontSize,
+                                              onDecrement: onFontSizeDecrement,
+                                              onIncrement: onFontSizeIncrement,
+                                              color: Colors.black87,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _VerticalDivider(),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              onPressed: onPlaybackModePressed,
+                                              icon: Icon(
+                                                playbackMode ==
+                                                        PlaybackMode.single
+                                                    ? Icons.play_arrow
+                                                    : playbackMode ==
+                                                          PlaybackMode
+                                                              .continuous
+                                                    ? Icons.playlist_play
+                                                    : Icons.repeat_one,
+                                                color: Colors.black87,
+                                              ),
+                                              tooltip: 'Playback Mode',
+                                              padding: EdgeInsets.zero,
+                                              constraints:
+                                                  const BoxConstraints(),
+                                              iconSize: 24,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 2),
+
+                                      // Line 3: Read Mode Button (Centered)
+                                      SizedBox(
+                                        height: 36,
+                                        child: Center(
+                                          child: FilledButton.icon(
+                                            onPressed: () {
+                                              context.push(
+                                                '/book-reading/$chapterNumber',
+                                              );
+                                            },
+                                            icon: const Icon(
+                                              Icons.menu_book_rounded,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              "Commentry Book",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.deepOrange,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
 
-              // The animating emblem
-              Positioned(
-                top: currentTop,
-                left: currentLeft,
-                child: delayEmblem
-                    ? TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 600),
-                        curve: const Interval(
-                          0.5,
-                          1.0,
-                          curve: Curves.easeIn,
-                        ), // Delay start
-                        builder: (context, value, child) {
-                          return Opacity(opacity: value, child: child);
-                        },
-                        child: _buildEmblemContent(currentSize, t),
-                      )
-                    : Hero(
-                        tag: 'chapterEmblem_$chapterNumber',
-                        child: _buildEmblemContent(currentSize, t),
-                      ),
-              ),
+              // The animating emblem (Only visible during transition)
+              if (t <= 0.95)
+                Positioned(
+                  top: currentTop,
+                  left: currentLeft,
+                  child: delayEmblem
+                      ? TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 600),
+                          curve: const Interval(
+                            0.5,
+                            1.0,
+                            curve: Curves.easeIn,
+                          ), // Delay start
+                          builder: (context, value, child) {
+                            return Opacity(opacity: value, child: child);
+                          },
+                          child: _buildEmblemContent(currentSize, t),
+                        )
+                      : Hero(
+                          tag: 'chapterEmblem_$chapterNumber',
+                          child: _buildEmblemContent(currentSize, t),
+                        ),
+                ),
 
               // ✨ FIX: Moved Back Button to the end of Stack to ensure it's on top
               // Added some vertical spacing to avoid iPad multitasking controls
-              if (showBackButton)
-                Positioned(
-                  top:
-                      paddingTop +
-                      60, // Standardized spacing matching Credits Screen
-                  left: 4,
-                  child: const BackButton(color: Colors.black87),
-                ),
             ],
           ),
         );
@@ -878,42 +984,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
       child: Image.asset(
         'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
         fit: BoxFit.cover,
-      ),
-    );
-  }
-
-  Widget _buildPlaybackModeButtonForHeader() {
-    IconData icon;
-    String tooltip;
-
-    switch (playbackMode) {
-      case PlaybackMode.single:
-        icon = Icons.play_arrow;
-        tooltip = 'Single Play';
-        break;
-      case PlaybackMode.continuous:
-        icon = Icons.playlist_play;
-        tooltip = 'Continuous Play';
-        break;
-      case PlaybackMode.repeatOne:
-        icon = Icons.repeat_one;
-        tooltip = 'Repeat Shloka';
-        break;
-    }
-
-    return OutlinedButton.icon(
-      onPressed: onPlaybackModePressed,
-      icon: Icon(icon, color: Colors.black54, size: 20),
-      label: Text(
-        tooltip,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: BorderSide(color: Colors.black.withOpacity(0.2)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
       ),
     );
   }
@@ -979,6 +1049,18 @@ class _FontSizeControl extends StatelessWidget {
           constraints: const BoxConstraints(),
         ),
       ],
+    );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 24,
+      width: 1,
+      color: Colors.grey.withOpacity(0.3),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
 }
