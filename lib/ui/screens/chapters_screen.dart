@@ -158,15 +158,16 @@ class _ChaptersScreenState extends State<ChaptersScreen>
         if (isWideScreen) {
           return Scaffold(
             backgroundColor: Colors.black,
-            body: Row(
+            body: Stack(
               children: [
-                // MASTER PANE
-                SizedBox(
-                  width: masterPaneWidth,
-                  child: Stack(
-                    children: [
-                      const SimpleGradientBackground(startColor: Colors.white),
-                      Column(
+                // ✨ Unified Background for Split View
+                const SimpleGradientBackground(startColor: Colors.white),
+                Row(
+                  children: [
+                    // MASTER PANE
+                    SizedBox(
+                      width: masterPaneWidth,
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // Header
@@ -263,21 +264,24 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                // DIVIDER
-                const VerticalDivider(width: 1, thickness: 1),
-                // DETAIL PANE
-                Expanded(
-                  child: ClipRect(
-                    child: ShlokaListScreen(
-                      key: ValueKey(activeChapter), // Force rebuild on change
-                      searchQuery: activeChapter.toString(),
-                      showBackButton: false,
-                      delayEmblem: _shouldDelayEmblem, // Pass flag
                     ),
-                  ),
+                    // DIVIDER
+                    const VerticalDivider(width: 1, thickness: 1),
+                    // DETAIL PANE
+                    Expanded(
+                      child: ClipRect(
+                        child: ShlokaListScreen(
+                          key: ValueKey(
+                            activeChapter,
+                          ), // Force rebuild on change
+                          searchQuery: activeChapter.toString(),
+                          showBackButton: false,
+                          delayEmblem: _shouldDelayEmblem, // Pass flag
+                          isEmbedded: true, // ✨ Use shared background
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

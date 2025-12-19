@@ -14,8 +14,13 @@ import '../../data/static_data.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final ShlokaList list;
+  final bool isEmbedded;
 
-  const ListDetailScreen({super.key, required this.list});
+  const ListDetailScreen({
+    super.key,
+    required this.list,
+    this.isEmbedded = false,
+  });
 
   @override
   State<ListDetailScreen> createState() => _ListDetailScreenState();
@@ -131,9 +136,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: widget.isEmbedded ? Colors.transparent : null,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.list.name),
+        title: Text(
+          widget.isEmbedded ? '' : widget.list.name,
+        ), // Hide title if embedded as header might be elsewhere? No, keep title but maybe adjust. User lists screen has NO header for right pane? It has "Collections" for left. Let's keep title.
+        // Actually, if embedded, we might want to hide the AppBar if the parent handles it?
+        // But the parent UserListsScreen just puts it in valid area.
+        // Let's keep title.
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -151,7 +162,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       ),
       body: Stack(
         children: [
-          const SimpleGradientBackground(),
+          if (!widget.isEmbedded) const SimpleGradientBackground(),
           FutureBuilder<List<ShlokaResult>>(
             future: _shlokasFuture,
             builder: (context, snapshot) {

@@ -33,12 +33,14 @@ class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
   final bool showBackButton; // ✨ NEW parameter
   final bool delayEmblem; // ✨ NEW parameter for animation
+  final bool isEmbedded; // ✨ NEW parameter for unified background
 
   const ShlokaListScreen({
     super.key,
     required this.searchQuery,
     this.showBackButton = true, // Default to true
     this.delayEmblem = false,
+    this.isEmbedded = false,
   });
 
   @override
@@ -300,10 +302,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
           return Scaffold(
             // ✨ FIX: Set background color based on settings.
-            // This will be visible if the gradient is hidden.
-            backgroundColor: settingsProvider.showBackground
-                ? null // Let the gradient handle it
-                : Colors.grey.shade200,
+            // If embedded, force transparent.
+            backgroundColor: widget.isEmbedded
+                ? Colors.transparent
+                : (settingsProvider.showBackground
+                      ? null // Let the gradient handle it
+                      : Colors.grey.shade200),
             appBar: chapterNumber == null
                 ? AppBar(
                     title: Text(
@@ -372,7 +376,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             extendBodyBehindAppBar: true,
             body: Stack(
               children: [
-                if (settingsProvider.showBackground)
+                if (!widget.isEmbedded && settingsProvider.showBackground)
                   SimpleGradientBackground(
                     startColor: chapterNumber == null
                         ? Colors
