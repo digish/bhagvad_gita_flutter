@@ -40,7 +40,9 @@ class _UserListsScreenState extends State<UserListsScreen> {
               children: [
                 // 1. Master Pane (Left)
                 SizedBox(
-                  width: 350 + railPadding, // ✨ Increase width to include rail
+                  width:
+                      280 +
+                      railPadding, // ✨ Reduced width to give more space to detail pane
                   child: Padding(
                     padding: EdgeInsets.only(
                       left: railPadding,
