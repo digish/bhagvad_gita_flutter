@@ -526,6 +526,23 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
     });
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> getEmbeddings() async {
+    // Determine which table has embeddings. Assuming 'translations'.
+    // We fetch shloka_id, bhavarth, and embedding.
+    // Ensure we only get rows with embeddings.
+    try {
+      return await _db.query(
+        'translations',
+        columns: ['shloka_id', 'bhavarth', 'embedding'],
+        where: 'embedding IS NOT NULL AND embedding != ""',
+      );
+    } catch (e) {
+      print("Error fetching embeddings: $e");
+      return [];
+    }
+  }
 }
 
 // Top-level function for conditional import
