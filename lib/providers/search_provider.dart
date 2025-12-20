@@ -18,11 +18,14 @@ import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import '../data/database_helper_interface.dart';
 
+import '../services/ai/similarity_search.dart';
+
 abstract class SearchResultItem {}
 
 class ShlokaItem extends SearchResultItem {
   final ShlokaResult shloka;
-  ShlokaItem(this.shloka);
+  final double? score; // Match score
+  ShlokaItem(this.shloka, {this.score});
 }
 
 class WordItem extends SearchResultItem {
@@ -38,96 +41,158 @@ class HeaderItem extends SearchResultItem {
 class SearchProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
   final String _language;
-  final String _script; // NEW field
-  SearchProvider(this._dbHelper, this._language, this._script);
+  final String _script;
+  late final SimilaritySearch _aiSearch;
+
+  SearchProvider(this._dbHelper, this._language, this._script) {
+    _aiSearch = SimilaritySearch(_dbHelper);
+  }
 
   String _searchQuery = '';
+  bool _isAiMode = false;
   List<SearchResultItem> _searchResults = [];
   Timer? _debounce;
+  bool _isLoading = false;
 
   String get searchQuery => _searchQuery;
+  bool get isAiMode => _isAiMode;
+  bool get isLoading => _isLoading;
   List<SearchResultItem> get searchResults => _searchResults;
+
+  void toggleAiMode(bool value) {
+    _isAiMode = value;
+    // Retrigger search if query exists
+    if (_searchQuery.isNotEmpty) {
+      onSearchQueryChanged(_searchQuery);
+    } else {
+      notifyListeners();
+    }
+  }
 
   void onSearchQueryChanged(String query) {
     _searchQuery = query;
     if (_debounce?.isActive ?? false) _debounce?.cancel();
+
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (_searchQuery.isEmpty) {
         _searchResults = [];
-      } else {
-        final words = await _dbHelper.searchWords(_searchQuery);
-        final shlokas = await _dbHelper.searchShlokas(
-          _searchQuery,
-          language: _language,
-          script: _script, // Pass script
-        );
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
 
-        // Deduplication Logic
-        final uniqueShlokas = <String, ShlokaResult>{};
-        final categoryPriority = {
-          'navigation': 0,
-          'shloka': 1,
-          'anvay': 2,
-          'bhavarth': 3,
-          'meaning': 4,
-          'other': 5,
-        };
+      _isLoading = true;
+      notifyListeners();
 
-        for (var s in shlokas) {
-          final id = s.id;
-          final cat = s.matchedCategory ?? 'other';
+      try {
+        if (_isAiMode) {
+          // --- AI SEMANTIC SEARCH ---
+          final matches = await _aiSearch.search(_searchQuery);
 
-          if (!uniqueShlokas.containsKey(id)) {
-            uniqueShlokas[id] = s;
-          } else {
-            final currentBest = uniqueShlokas[id]!.matchedCategory ?? 'other';
-            final currentPriority = categoryPriority[currentBest] ?? 99;
-            final newPriority = categoryPriority[cat] ?? 99;
+          // Fetch full details for matched results
+          final List<SearchResultItem> aiResults = [];
+          if (matches.isNotEmpty) {
+            aiResults.add(HeaderItem("AI Matches"));
 
-            if (newPriority < currentPriority) {
-              uniqueShlokas[id] = s; // Replace with better match
+            for (var match in matches) {
+              final shloka = await _dbHelper.getShlokaById(
+                match.shlokaId,
+                language: _language,
+                script: _script,
+              );
+              if (shloka != null) {
+                // Attach the matched bhavarth snippet for context
+                shloka.matchSnippet = match.bhavarth;
+                aiResults.add(ShlokaItem(shloka, score: match.score));
+              }
             }
           }
-        }
+          _searchResults = aiResults;
+        } else {
+          // --- EXISTING FTS SEARCH ---
+          final words = await _dbHelper.searchWords(_searchQuery);
+          final shlokas = await _dbHelper.searchShlokas(
+            _searchQuery,
+            language: _language,
+            script: _script,
+          );
 
-        // Grouping Logic (using unique items)
-        final grouped = <String, List<ShlokaResult>>{};
-        for (var s in uniqueShlokas.values) {
-          final cat = s.matchedCategory ?? 'Other';
-          grouped.putIfAbsent(cat, () => []).add(s);
-        }
+          // Deduplication Logic
+          final uniqueShlokas = <String, ShlokaResult>{};
+          final categoryPriority = {
+            'navigation': 0,
+            'shloka': 1,
+            'anvay': 2,
+            'bhavarth': 3,
+            'meaning': 4,
+            'other': 5,
+          };
 
-        final orderedCategories = [
-          'navigation',
-          'shloka',
-          'anvay',
-          'bhavarth',
-          'meaning',
-        ];
-        final newResults = <SearchResultItem>[];
+          for (var s in shlokas) {
+            final id = s.id;
+            final cat = s.matchedCategory ?? 'other';
 
-        // Add Words first (if implementation available)
-        newResults.addAll(words.map((w) => WordItem(w)));
+            if (!uniqueShlokas.containsKey(id)) {
+              uniqueShlokas[id] = s;
+            } else {
+              final currentBest = uniqueShlokas[id]!.matchedCategory ?? 'other';
+              final currentPriority = categoryPriority[currentBest] ?? 99;
+              final newPriority = categoryPriority[cat] ?? 99;
 
-        // Add prioritized categories
-        for (var cat in orderedCategories) {
-          if (grouped.containsKey(cat)) {
-            newResults.add(HeaderItem(cat.toUpperCase()));
-            newResults.addAll(grouped[cat]!.map((s) => ShlokaItem(s)));
-            grouped.remove(cat);
+              if (newPriority < currentPriority) {
+                uniqueShlokas[id] = s; // Replace with better match
+              }
+            }
           }
+
+          // Grouping Logic (using unique items)
+          final grouped = <String, List<ShlokaResult>>{};
+          for (var s in uniqueShlokas.values) {
+            final cat = s.matchedCategory ?? 'Other';
+            grouped.putIfAbsent(cat, () => []).add(s);
+          }
+
+          final orderedCategories = [
+            'navigation',
+            'shloka',
+            'anvay',
+            'bhavarth',
+            'meaning',
+          ];
+          final newResults = <SearchResultItem>[];
+
+          // Add Words first (if implementation available)
+          newResults.addAll(words.map((w) => WordItem(w)));
+
+          // Add prioritized categories
+          for (var cat in orderedCategories) {
+            if (grouped.containsKey(cat)) {
+              newResults.add(HeaderItem(cat.toUpperCase()));
+              newResults.addAll(grouped[cat]!.map((s) => ShlokaItem(s)));
+              grouped.remove(cat);
+            }
+          }
+
+          // Add remaining items
+          grouped.forEach((cat, list) {
+            newResults.add(HeaderItem(cat.toUpperCase()));
+            newResults.addAll(list.map((s) => ShlokaItem(s)));
+          });
+
+          _searchResults = newResults;
         }
-
-        // Add remaining items
-        grouped.forEach((cat, list) {
-          newResults.add(HeaderItem(cat.toUpperCase()));
-          newResults.addAll(list.map((s) => ShlokaItem(s)));
-        });
-
-        _searchResults = newResults;
+      } catch (e) {
+        debugPrint("Search Error: $e");
+      } finally {
+        _isLoading = false;
+        notifyListeners();
       }
-      notifyListeners();
     });
-    notifyListeners(); // Immediate notification for loading/clearing if needed
+
+    // Immediate notification set loading state
+    if (query.isNotEmpty) {
+      _isLoading = true;
+      notifyListeners();
+    }
   }
 }

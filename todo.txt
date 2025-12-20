@@ -1,0 +1,133 @@
+Prompts:
+
+Step 1: Update the Database (Python Script)
+
+I have a SQLite database at `../../../assets/database/geeta_v2.db`.
+
+Here is the schema for the `translations` table:
+Table: translations
+Columns: shloka_id (TEXT), language_code (TEXT), author (TEXT), bhavarth (TEXT)
+
+I need to enable "Multilingual Semantic Search" (Hindi & English).
+Please write a Python script (`generate_embeddings.py`) that does the following:
+
+1. Setup:
+   - Use the `sentence-transformers` library.
+   - Load the multilingual model: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'.
+   - Connect to the SQLite database.
+
+2. Prepare Table:
+   - Check if a column named `embedding` exists in the `translations` table.
+   - If not, add it. (Note: It should store TEXT or JSON data).
+
+3. Generate Embeddings:
+   - Select rows from `translations` WHERE `language_code` IN ('en', 'hi').
+   - Iterate through these rows.
+   - Generate a vector embedding for the `bhavarth` text.
+   - Convert the vector to a JSON string.
+   - Update the row's `embedding` column with this JSON string.
+
+4. Requirements:
+   - Show a progress counter (e.g., "Processed 100/1400...") so I know it's running.
+   - Provide the code and a `requirements.txt` file.
+
+Note: I am running this on a Mac, so ensure the code is standard Python 3.
+
+
+
+Step 2: Flutter Dependencies & Assets
+Goal: Set up the environment to run TensorFlow Lite models.
+
+Prompt for AI:
+
+"I am moving to the Flutter app now. I need to add support for running TFLite models and handling vectors.
+
+Please update my pubspec.yaml to include tflite_flutter (for running the model) and sqlite3 or sqflite (whichever is already in use).
+
+Ensure the assets section in pubspec.yaml includes:
+
+assets/text_embedder.tflite
+
+assets/vocab.txt
+
+assets/gita.db
+
+Do not change any UI code yet. Just help me configure the project dependencies and assets."
+
+Step 3: The Tokenizer (The Tricky Part)
+Goal: The model doesn't read text; it reads numbers (tokens). We need a Dart class to convert "Krishna" into [101, 4567, 102].
+
+Prompt for AI:
+
+"I need a helper class to tokenize text for the BERT model (all-MiniLM-L6-v2).
+
+Create a file named bert_tokenizer.dart. Implement a class BertTokenizer that:
+
+Loads a vocab.txt file from assets into a Map<String, int>.
+
+Implements a tokenize(String text) method that performs 'WordPiece' tokenization (standard BERT logic).
+
+Implements an idsFromTokens method that converts tokens to IDs, adds the [CLS] (start) and [SEP] (end) tokens, and pads the list to a fixed length (e.g., 256).
+
+The output should be the input format required by the TFLite model (usually a List<int> of IDs)."
+
+Step 4: The Embedding Service
+Goal: Create the service that runs the TFLite model on the user's search query.
+
+Prompt for AI:
+
+"Create a new service class called EmbeddingService.
+
+It should:
+
+Initialize the Interpreter from tflite_flutter using assets/text_embedder.tflite.
+
+Use the BertTokenizer we just created to process a raw string (user query).
+
+Run the interpreter to generate an output vector (embedding).
+
+Note: The model output shape is typically [1, 384].
+
+Return the List<double> representing the embedding.
+
+Please include error handling for initialization."
+
+Step 5: The Search Logic (Vector Math)
+Goal: Compare the User Query Vector vs. the Database Vectors.
+
+Prompt for AI:
+
+"Now, let's implement the semantic search logic in my existing Database Helper class.
+
+Add a method searchByMeaning(String query).
+
+Inside this method, first use EmbeddingService to get the vector for the query.
+
+Query the SQL database to fetch id, shlok_text, and the embedding column for all rows.
+
+Deserialize the embedding column (from JSON/Blob to List<double>).
+
+Implement a helper function cosineSimilarity(List<double> a, List<double> b) to calculate the score.
+
+Iterate through all rows, calculate the similarity score between the query vector and the row vector.
+
+Sort the results by score (descending) and return the top 10 matches.
+
+Keep the code efficient."
+
+Step 6: UI Integration
+Goal: Connect this to your UI.
+
+Prompt for AI:
+
+"Finally, let's update the Search Screen.
+
+Modify the existing onSearch method.
+
+If the user toggles a 'Smart Search' switch (or just by default), call databaseHelper.searchByMeaning(query).
+
+Display the results in the list.
+
+Since the results are sorted by relevance, maybe add a small text indicator next to the result showing 'Relevance: 85%' (based on the cosine score).
+
+Ensure the search runs asynchronously so it doesn't block the UI."

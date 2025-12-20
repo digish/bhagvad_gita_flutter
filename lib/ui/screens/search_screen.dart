@@ -267,6 +267,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       height: isKeyboardOpen ? 0 : 10,
                                     ),
                                     _buildSearchBar(provider),
+
                                     if (settings.showRandomShloka &&
                                         !shouldShowResults)
                                       _buildRandomShlokaCard(),
@@ -342,6 +343,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                     return ShlokaResultCard(
                                       shloka: item.shloka,
                                       searchQuery: provider.searchQuery,
+                                      score: item.score,
                                     );
                                   }
                                   if (item is WordItem) {
@@ -490,6 +492,31 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               hintText: 'Search the Gita...',
               hintStyle: TextStyle(color: hintColor),
               prefixIcon: Icon(Icons.search, color: hintColor),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "AI",
+                      style: TextStyle(
+                        color: provider.isAiMode ? Colors.amber : hintColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Transform.scale(
+                      scale: 0.7,
+                      child: Switch(
+                        value: provider.isAiMode,
+                        onChanged: provider.toggleAiMode,
+                        activeColor: Colors.amber,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,

@@ -13,7 +13,7 @@ import '../models/word_result.dart';
 import 'database_helper_interface.dart';
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 2; // Increment this to force DB update
+  static const int DB_VERSION = 3; // Increment this to force DB update
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
@@ -420,6 +420,23 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         .toList();
 
     return ShlokaResult.fromMap(m, commentaries: commentaries);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getEmbeddings() async {
+    // Determine which table has embeddings. Assuming 'translations'.
+    // We fetch shloka_id, bhavarth, and embedding.
+    // Ensure we only get rows with embeddings.
+    try {
+      return await _db.query(
+        'translations',
+        columns: ['shloka_id', 'bhavarth', 'embedding'],
+        where: 'embedding IS NOT NULL AND embedding != ""',
+      );
+    } catch (e) {
+      print("Error fetching embeddings: $e");
+      return [];
+    }
   }
 }
 

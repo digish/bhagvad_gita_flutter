@@ -42,4 +42,7 @@ abstract class DatabaseHelperInterface {
     String language = 'hi',
     String script = 'dev',
   });
+
+  /// Fetches all embeddings for AI Search
+  Future<List<Map<String, dynamic>>> getEmbeddings();
 }

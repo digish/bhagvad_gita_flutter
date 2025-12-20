@@ -16,7 +16,7 @@ class ShlokaResult {
 
   // Search metadata
   final String? matchedCategory;
-  final String? matchSnippet;
+  String? matchSnippet; // Mutable for post-search context injection
   final List<String>? matchedWords;
 
   // Commentaries

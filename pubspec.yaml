@@ -67,6 +67,7 @@ dependencies:
   audio_session: ^0.1.19 
   just_audio_background: ^0.0.1-beta.11
   asset_delivery: ^1.1.0
+  tflite_flutter: ^0.12.1
 
 dev_dependencies:
   flutter_test:
@@ -99,6 +100,7 @@ flutter:
     - assets/emblems/chapter/
     - assets/emblems/authors/
     - assets/database/
+    - assets/mobile_assets/
     - assets/fonts/
     - assets/audio/Chapter1_audio/
     - assets/audio/Chapter2_audio/

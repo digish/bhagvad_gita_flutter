@@ -1,0 +1,5 @@
+tensorflow-macos
+optimum[exporters-tflite]
+transformers
+sentence-transformers
+huggingface_hub

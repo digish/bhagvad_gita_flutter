@@ -22,11 +22,13 @@ import 'dart:ui';
 class ShlokaResultCard extends StatelessWidget {
   final ShlokaResult shloka;
   final String searchQuery;
+  final double? score;
 
   const ShlokaResultCard({
     super.key,
     required this.shloka,
     required this.searchQuery,
+    this.score,
   });
 
   @override
@@ -180,13 +182,39 @@ class ShlokaResultCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: titleColor,
-                          letterSpacing: 0.5,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: titleColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (score != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSimpleTheme
+                                    ? Colors.black.withOpacity(0.05)
+                                    : Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${(score! * 100).toStringAsFixed(0)}%',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: titleColor.withOpacity(0.8),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       RichText(
