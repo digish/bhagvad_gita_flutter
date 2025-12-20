@@ -102,3 +102,5 @@ lib/secrets.dart
 assets/database/geeta_v1.db
 assets/database/geeta_v2.db
 test/test_geeta_v2.db
+assets/mobile_assets/model.tflite
+assets/mobile_assets/vocab.txt
