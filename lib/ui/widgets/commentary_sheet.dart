@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../models/shloka_result.dart';
+import '../../data/database_helper.dart';
 
 class CommentarySheet extends StatefulWidget {
   final List<Commentary> commentaries;
@@ -22,9 +23,57 @@ class CommentarySheet extends StatefulWidget {
 
 class _CommentarySheetState extends State<CommentarySheet> {
   int _selectedIndex = 0;
+  bool _isLoading = false;
+  late List<Commentary> _effectiveCommentaries;
+
+  @override
+  void initState() {
+    super.initState();
+    _effectiveCommentaries = widget.commentaries;
+    if (_effectiveCommentaries.isEmpty) {
+      _fetchCommentaries();
+    }
+  }
+
+  Future<void> _fetchCommentaries() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final db = await getInitializedDatabaseHelper();
+      final fetched = await db.getCommentariesForShloka(
+        widget.chapterNo,
+        widget.shlokNo,
+      );
+      if (mounted) {
+        setState(() {
+          _effectiveCommentaries = fetched;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching commentaries: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Container(
+        height: 300,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -36,7 +85,7 @@ class _CommentarySheetState extends State<CommentarySheet> {
     // --- NEW: Group and Select Best Commentary ---
     // 1. Group by Author Name
     final Map<String, List<Commentary>> groupedByAuthor = {};
-    for (var c in widget.commentaries) {
+    for (var c in _effectiveCommentaries) {
       if (c.content.isNotEmpty) {
         groupedByAuthor.putIfAbsent(c.authorName, () => []).add(c);
       }

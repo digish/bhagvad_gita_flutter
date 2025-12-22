@@ -482,7 +482,7 @@ class FullShlokaCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 16), // ✨ Gap
                                   // Commentary
-                                  if (shloka.commentaries != null &&
+                                  if (shloka.commentaries == null ||
                                       shloka.commentaries!.isNotEmpty) ...[
                                     _ActionButton(
                                       icon: Icons.menu_book_rounded,
@@ -494,7 +494,8 @@ class FullShlokaCard extends StatelessWidget {
                                               true, // ✨ Ensure it overlays the rail
                                           backgroundColor: Colors.transparent,
                                           builder: (context) => CommentarySheet(
-                                            commentaries: shloka.commentaries!,
+                                            commentaries:
+                                                shloka.commentaries ?? [],
                                             chapterNo: shloka.chapterNo,
                                             shlokNo: shloka.shlokNo,
                                           ),

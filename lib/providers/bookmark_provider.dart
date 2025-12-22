@@ -121,32 +121,34 @@ class BookmarkProvider extends ChangeNotifier {
     String language = 'hi',
     String script = 'dev',
   }) async {
-    Set<String> savedKeys = {};
+    List<Map<String, dynamic>> references = [];
 
     if (listId < 0) {
       // Predefined List
       final items = PredefinedListsData.getShlokasForList(listId);
-      savedKeys = items.map((s) => s.replaceAll('.', ':')).toSet();
+      for (var item in items) {
+        final parts = item.split('.');
+        if (parts.length == 2) {
+          references.add({'chapter_no': parts[0], 'shlok_no': parts[1]});
+        }
+      }
     } else {
       final savedItems = await UserDatabaseHelper.instance.getShlokasInList(
         listId,
       );
       if (savedItems.isEmpty) return [];
-      savedKeys = savedItems
-          .map((i) => '${i['chapter_no']}:${i['shlok_no']}')
-          .toSet();
+      // savedItems is List<Map<String, Object?>>, we cast or use as is if keys match
+      // UserDatabaseHelper uses 'chapter_no' and 'shlok_no' which matches what we need
+      references = List<Map<String, dynamic>>.from(savedItems);
     }
 
-    if (savedKeys.isEmpty) return [];
+    if (references.isEmpty) return [];
 
-    // Pass localization params to getAllShlokas
-    final allShlokas = await mainDb.getAllShlokas(
+    return await mainDb.getShlokasByReferences(
+      references,
       language: language,
       script: script,
+      includeCommentaries: false, // Optimize memory
     );
-
-    return allShlokas.where((s) {
-      return savedKeys.contains('${s.chapterNo}:${s.shlokNo}');
-    }).toList();
   }
 }
