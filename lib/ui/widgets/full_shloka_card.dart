@@ -720,7 +720,15 @@ class FullShlokaCard extends StatelessWidget {
       if (playbackState == PlaybackState.playing) {
         return _ActionButton(
           icon: Icons.pause_circle_filled,
-          onPressed: () => audioProvider.playOrPauseShloka(shloka),
+          // MODIFIED: If onPlayPause is provided, delegate to it.
+          // Otherwise fall back to simple toggle.
+          onPressed: () {
+            if (onPlayPause != null) {
+              onPlayPause!();
+            } else {
+              audioProvider.playOrPauseShloka(shloka);
+            }
+          },
           color: Theme.of(context).colorScheme.primary,
         );
       }
@@ -728,10 +736,13 @@ class FullShlokaCard extends StatelessWidget {
     return _ActionButton(
       icon: Icons.play_circle_outline,
       onPressed: () {
-        // Call the provider to play the audio
-        audioProvider.playOrPauseShloka(shloka);
-        // Notify the parent screen that a manual play was initiated
-        onPlayPause?.call();
+        // MODIFIED: If onPlayPause is provided, delegate to it fully.
+        // The parent is responsible for calling the appropriate provider method.
+        if (onPlayPause != null) {
+          onPlayPause!();
+        } else {
+          audioProvider.playOrPauseShloka(shloka);
+        }
       },
     );
   }

@@ -29,8 +29,7 @@ import '../widgets/responsive_wrapper.dart';
 // --- NEW: Enum to manage the content display modes ---
 enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
 
-// --- NEW: Enum for Playback Mode ---
-enum PlaybackMode { single, continuous, repeatOne }
+// PlaybackMode is now imported from audio_provider.dart
 
 class ParayanScreen extends StatefulWidget {
   const ParayanScreen({super.key});
@@ -48,8 +47,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
   ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
 
   // --- NEW: Playback Mode State ---
-  PlaybackMode _playbackMode = PlaybackMode.single;
-  bool _hasPlaybackStarted = false;
+  PlaybackMode _playbackMode =
+      PlaybackMode.continuous; // Changed default to continuous
 
   final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
     // This is not used anymore but kept for potential future use.
@@ -98,57 +97,23 @@ class _ParayanScreenState extends State<ParayanScreen> {
       setState(() {
         _currentlyPlayingId = audioProvider.currentPlayingShlokaId;
       });
-    }
 
-    final currentPlaybackState = audioProvider.playbackState;
-
-    if (currentPlaybackState == PlaybackState.playing) {
-      if (_currentlyPlayingId != null) _hasPlaybackStarted = true;
-      return;
-    }
-
-    // --- NEW: Handle Auto-Advance Logic ---
-    if (currentPlaybackState == PlaybackState.stopped) {
-      if (!_hasPlaybackStarted) return;
-      if (_currentlyPlayingId == null) return;
-
-      final parayanProvider = Provider.of<ParayanProvider>(
-        context,
-        listen: false,
-      );
-      final shlokas = parayanProvider.shlokas;
-
-      final lastPlayedIndex = shlokas.indexWhere(
-        (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
-      );
-
-      if (lastPlayedIndex == -1) {
-        _hasPlaybackStarted = false;
-        return;
+      // Auto-scroll when ID changes (triggered by playlist auto-advance)
+      if (_currentlyPlayingId != null) {
+        final parayanProvider = Provider.of<ParayanProvider>(
+          context,
+          listen: false,
+        );
+        final index = parayanProvider.shlokas.indexWhere(
+          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
+        );
+        if (index != -1) {
+          _scrollToIndex(index);
+        }
       }
-
-      switch (_playbackMode) {
-        case PlaybackMode.single:
-          // Do nothing
-          break;
-        case PlaybackMode.continuous:
-          if (lastPlayedIndex < shlokas.length - 1) {
-            final nextShloka = shlokas[lastPlayedIndex + 1];
-            // Fix: remove manual assignment, let listener handle state update to trigger rebuild
-            audioProvider.playOrPauseShloka(nextShloka);
-
-            // Auto-scroll to the next item
-            _scrollToIndex(lastPlayedIndex + 1);
-          }
-          break;
-        case PlaybackMode.repeatOne:
-          final currentShloka = shlokas[lastPlayedIndex];
-          audioProvider.playOrPauseShloka(currentShloka);
-          break;
-      }
-
-      _hasPlaybackStarted = false;
     }
+
+    // Legacy auto-advance logic removed - handled by AudioProvider playlist.
   }
 
   @override
@@ -174,6 +139,31 @@ class _ParayanScreenState extends State<ParayanScreen> {
       final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
       _playbackMode = PlaybackMode.values[nextIndex];
     });
+
+    // ✨ NEW: If playback is active, reload with the new mode seamlessly
+    if (_audioProvider != null &&
+        (_audioProvider!.playbackState == PlaybackState.playing ||
+            _audioProvider!.playbackState == PlaybackState.paused)) {
+      if (_currentlyPlayingId != null) {
+        // Find the index of the currently playing shloka
+        final parayanProvider = Provider.of<ParayanProvider>(
+          context,
+          listen: false,
+        );
+        final index = parayanProvider.shlokas.indexWhere(
+          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
+        );
+
+        if (index != -1) {
+          _audioProvider!.playChapter(
+            shlokas: parayanProvider.shlokas,
+            initialIndex: index,
+            playbackMode: _playbackMode,
+            initialPosition: _audioProvider!.position,
+          );
+        }
+      }
+    }
   }
 
   Widget _buildPlaybackModeButton() {
@@ -183,11 +173,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
     switch (_playbackMode) {
       case PlaybackMode.single:
         icon = Icons.play_arrow;
-        tooltip = 'Single Play';
+        tooltip = 'Single';
         break;
       case PlaybackMode.continuous:
         icon = Icons.playlist_play;
-        tooltip = 'Continuous Play';
+        tooltip = 'Continuous';
         break;
       case PlaybackMode.repeatOne:
         icon = Icons.repeat_one;
@@ -195,13 +185,22 @@ class _ParayanScreenState extends State<ParayanScreen> {
         break;
     }
 
-    return IconButton(
+    return TextButton.icon(
       onPressed: _cyclePlaybackMode,
-      icon: Icon(icon, color: Colors.black87),
-      tooltip: tooltip,
-      iconSize: 24,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(),
+      icon: Icon(icon, color: Colors.black87, size: 20),
+      label: Text(
+        tooltip,
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
     );
   }
 
@@ -319,7 +318,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           shloka: shloka,
                           currentlyPlayingId: _currentlyPlayingId,
                           onPlayPause: () {
-                            _audioProvider?.playOrPauseShloka(shloka);
+                            _audioProvider?.playChapter(
+                              shlokas: shlokas,
+                              initialIndex: index,
+                              playbackMode: _playbackMode,
+                            );
                           },
                           config: cardConfig.copyWith(
                             showSpeaker: false,

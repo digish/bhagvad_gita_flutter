@@ -33,21 +33,49 @@ Future<void> main() async {
     androidNotificationChannelName: 'Audio Playback',
     androidNotificationOngoing: true,
   );
-  // --- END BLOCK ---
 
-  final dbHelper = await getInitializedDatabaseHelper();
+  runApp(const AppInitializer());
+}
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => AudioProvider()),
-        ChangeNotifierProvider(create: (_) => BookmarkProvider()),
-        Provider<DatabaseHelperInterface>.value(value: dbHelper),
-      ],
-      child: const MyApp(),
-    ),
-  );
+class AppInitializer extends StatelessWidget {
+  const AppInitializer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: getInitializedDatabaseHelper(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
+          final dbHelper = snapshot.data as DatabaseHelperInterface;
+          return MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => SettingsProvider()),
+              ChangeNotifierProvider(create: (_) => AudioProvider()),
+              ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+              Provider<DatabaseHelperInterface>.value(value: dbHelper),
+            ],
+            child: const MyApp(),
+          );
+        }
+        // Show a simple splash screen while initializing
+        return const Directionality(
+          textDirection: TextDirection.ltr,
+          child: ColoredBox(
+            color: Colors.white,
+            child: Center(
+              // Using a simple flutter logo or loader to indicate activity
+              child: SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(color: Colors.orange),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 // Define global RouteObserver

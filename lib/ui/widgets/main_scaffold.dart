@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
 import 'glass_navigation_rail.dart';
 import 'liquid_reveal.dart';
+import 'global_mini_player.dart';
 
 class MainScaffold extends StatefulWidget {
   final Widget child;
@@ -106,7 +107,7 @@ class _MainScaffoldState extends State<MainScaffold>
     final bool showRail = width > 600;
 
     if (!showRail) {
-      return widget.child;
+      return Stack(children: [widget.child, const GlobalMiniPlayer()]);
     }
 
     return Scaffold(
@@ -133,6 +134,8 @@ class _MainScaffoldState extends State<MainScaffold>
                   child: _buildScaffoldLayout(context),
                 ),
               ),
+              // MODIFICATION: Add GlobalMiniPlayer here, outside the LiquidReveal/RepaintBoundary
+              const GlobalMiniPlayer(),
             ],
           );
         },
