@@ -27,8 +27,6 @@ import '../../data/database_helper_interface.dart';
 
 import '../widgets/responsive_wrapper.dart';
 
-enum PlaybackMode { single, continuous, repeatOne }
-
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
   final bool showBackButton; // ✨ NEW parameter
@@ -52,10 +50,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   List<GlobalKey> _itemKeys = [];
 
   // ✨ FIX: State for the playback mode, replacing the old boolean.
-  PlaybackMode _playbackMode = PlaybackMode.single;
+  PlaybackMode _playbackMode = PlaybackMode.continuous; // Default to Continuous
 
   String? _currentShlokId;
-  bool _hasPlaybackStarted = false;
 
   // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
@@ -96,68 +93,30 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     super.dispose();
   }
 
-  // This should not be async. We want to react to state changes, not wait for them.
   void _handleAudioChange() {
     // ✨ FIX: Use the stored provider instance.
     final audioProvider = _audioProvider;
     if (audioProvider == null) return; // Safety check
-    final currentPlaybackState = audioProvider.playbackState;
 
-    if (currentPlaybackState == PlaybackState.playing) {
-      if (_currentShlokId != null) _hasPlaybackStarted = true;
-      debugPrint(
-        "[CONTINUOUS_PLAY_SM] Playback started for $_currentShlokId. Flag set to true.",
-      );
-      return;
-    }
-    if (currentPlaybackState == PlaybackState.stopped) {
-      debugPrint(
-        "[PLAYBACK_SM] Stopped event received. Mode: $_playbackMode, Playback Started: $_hasPlaybackStarted",
-      );
+    // Always sync the current playing ID from the provider to the local state.
+    // This ensures that when the playlist advances (native background play),
+    // the UI reflects the change (highlight + scroll).
+    final newId = audioProvider.currentPlayingShlokaId;
+    if (_currentShlokId != newId) {
+      debugPrint("[UI_SYNC] Shloka changed from $_currentShlokId to $newId");
+      setState(() {
+        _currentShlokId = newId;
+      });
 
-      if (!_hasPlaybackStarted)
-        return; // Don't do anything if playback wasn't properly started.
-
-      final lastPlayedIndex = _shlokaProvider.shlokas.indexWhere(
-        (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
-      );
-      if (lastPlayedIndex == -1) {
-        debugPrint(
-          "[PLAYBACK_SM] Could not find last played shloka. Stopping.",
+      if (_currentShlokId != null) {
+        // Auto-scroll logic
+        final index = _shlokaProvider.shlokas.indexWhere(
+          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
         );
-        _hasPlaybackStarted = false;
-        return;
+        if (index != -1) {
+          _scrollToIndex(index);
+        }
       }
-
-      switch (_playbackMode) {
-        case PlaybackMode.single:
-          // Do nothing, just let it stop.
-          debugPrint("[PLAYBACK_SM] Mode is 'single'. Playback will stop.");
-          break;
-        case PlaybackMode.continuous:
-          debugPrint(
-            "[PLAYBACK_SM] Mode is 'continuous'. Checking for next shloka.",
-          );
-          if (lastPlayedIndex < _shlokaProvider.shlokas.length - 1) {
-            final nextShloka = _shlokaProvider.shlokas[lastPlayedIndex + 1];
-            final nextShlokaId =
-                '${nextShloka.chapterNo}.${nextShloka.shlokNo}';
-            debugPrint("[PLAYBACK_SM] Triggering next shloka: $nextShlokaId");
-            audioProvider.playOrPauseShloka(nextShloka);
-            _currentShlokId = nextShlokaId;
-          } else {
-            debugPrint("[PLAYBACK_SM] End of chapter. Stopping.");
-          }
-          break;
-        case PlaybackMode.repeatOne:
-          debugPrint(
-            "[PLAYBACK_SM] Mode is 'repeatOne'. Repeating shloka $_currentShlokId.",
-          );
-          final currentShloka = _shlokaProvider.shlokas[lastPlayedIndex];
-          audioProvider.playOrPauseShloka(currentShloka);
-          break;
-      }
-      _hasPlaybackStarted = false; // Reset the flag after handling the event.
     }
   }
 
@@ -209,6 +168,27 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
       _playbackMode = PlaybackMode.values[nextIndex];
     });
+
+    // ✨ NEW: If playback is active, reload with the new mode seamlessly
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    if (audioProvider.playbackState == PlaybackState.playing ||
+        audioProvider.playbackState == PlaybackState.paused) {
+      if (_currentShlokId != null) {
+        // Find the index of the currently playing shloka
+        final index = _shlokaProvider.shlokas.indexWhere(
+          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
+        );
+
+        if (index != -1) {
+          audioProvider.playChapter(
+            shlokas: _shlokaProvider.shlokas,
+            initialIndex: index,
+            playbackMode: _playbackMode,
+            initialPosition: audioProvider.position,
+          );
+        }
+      }
+    }
   }
 
   Widget _buildPlaybackModeButton({required bool isHeader}) {
@@ -218,27 +198,34 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     switch (_playbackMode) {
       case PlaybackMode.single:
         icon = Icons.play_arrow;
-        tooltip = 'Single Play';
+        tooltip = 'Single';
         break;
       case PlaybackMode.continuous:
         icon = Icons.playlist_play;
-        tooltip = 'Continuous Play';
+        tooltip = 'Continuous';
         break;
       case PlaybackMode.repeatOne:
         icon = Icons.repeat_one;
-        tooltip = 'Repeat Shloka';
+        tooltip = 'Repeat';
         break;
     }
 
     // ✨ FIX: Unify button styles. The search result screen now gets a styled button.
     if (isHeader) {
       // This is for the expanded app bar in chapter view, which is just an icon.
+      // This is for the expanded app bar in chapter view.
       return Tooltip(
         message: tooltip,
-        child: IconButton(
-          icon: Icon(icon),
-          color: Colors.white70,
+        child: TextButton.icon(
           onPressed: _cyclePlaybackMode,
+          icon: Icon(icon, color: Colors.white, size: 24),
+          label: Text(
+            tooltip,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
         ),
       );
     } else {
@@ -248,7 +235,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
         icon: Icon(icon, color: Colors.white70, size: 20),
         label: Text(
           tooltip, // Use the full tooltip as the label
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(
@@ -267,13 +258,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   @override
   Widget build(BuildContext context) {
     // When a user presses play, we need to initialize our state machine.
-    final audioProviderForInit = Provider.of<AudioProvider>(
-      context,
-      listen: false,
-    );
-    if (audioProviderForInit.playbackState == PlaybackState.stopped) {
-      _hasPlaybackStarted = false; // Reset continuous play tracker
-    }
+
     // This handles cases like a query of "1" or "1,21".
     final chapterNumber = int.tryParse(
       widget.searchQuery.split(',').first.trim(),
@@ -544,11 +529,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                     ),
                                     currentlyPlayingId: _currentShlokId,
                                     onPlayPause: () {
-                                      // When the user manually plays, update our local tracker.
-                                      _currentShlokId =
-                                          '${shlokas[index].chapterNo}.${shlokas[index].shlokNo}';
-                                      _hasPlaybackStarted =
-                                          false; // Reset for the new shloka
+                                      // Call playChapter to start the playlist from this index.
+                                      // This ensures background playback works via ConcatenatingAudioSource.
+                                      Provider.of<AudioProvider>(
+                                        context,
+                                        listen: false,
+                                      ).playChapter(
+                                        shlokas: shlokas,
+                                        initialIndex: index,
+                                        playbackMode: _playbackMode,
+                                      );
                                     },
                                   ),
                                 ),
@@ -838,7 +828,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 
                                       // Line 2: Font & Playback Controls
                                       SizedBox(
-                                        height: 40,
+                                        height:
+                                            48, // Increased height to fit vertical button
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -854,24 +845,51 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                             const SizedBox(width: 8),
                                             _VerticalDivider(),
                                             const SizedBox(width: 8),
-                                            IconButton(
+                                            TextButton(
                                               onPressed: onPlaybackModePressed,
-                                              icon: Icon(
-                                                playbackMode ==
-                                                        PlaybackMode.single
-                                                    ? Icons.play_arrow
-                                                    : playbackMode ==
-                                                          PlaybackMode
-                                                              .continuous
-                                                    ? Icons.playlist_play
-                                                    : Icons.repeat_one,
-                                                color: Colors.black87,
+                                              style: TextButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 2,
+                                                    ),
+                                                foregroundColor: Colors.black87,
                                               ),
-                                              tooltip: 'Playback Mode',
-                                              padding: EdgeInsets.zero,
-                                              constraints:
-                                                  const BoxConstraints(),
-                                              iconSize: 24,
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    playbackMode ==
+                                                            PlaybackMode.single
+                                                        ? Icons.play_arrow
+                                                        : playbackMode ==
+                                                              PlaybackMode
+                                                                  .continuous
+                                                        ? Icons.playlist_play
+                                                        : Icons.repeat_one,
+                                                    color: Colors.black87,
+                                                    size:
+                                                        20, // Slightly smaller icon
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    playbackMode ==
+                                                            PlaybackMode.single
+                                                        ? 'Single'
+                                                        : playbackMode ==
+                                                              PlaybackMode
+                                                                  .continuous
+                                                        ? 'Continuous'
+                                                        : 'Repeat',
+                                                    style: const TextStyle(
+                                                      color: Colors.black87,
+                                                      fontSize:
+                                                          10, // Smaller font for label
+                                                      height: 1.0,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),

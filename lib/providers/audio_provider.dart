@@ -50,7 +50,6 @@ const bool _useLocalAssets = false;
 // Enum to represent the state of the audio player for a specific shloka
 enum PlaybackState { stopped, loading, playing, paused, error }
 
-// Enum to represent the download status of a chapter's audio asset pack
 enum AssetPackStatus {
   unknown,
   notDownloaded,
@@ -59,6 +58,9 @@ enum AssetPackStatus {
   downloaded,
   failed,
 }
+
+// NEW: Shared PlaybackMode enum
+enum PlaybackMode { single, continuous, repeatOne }
 
 class AudioProvider extends ChangeNotifier {
   // --- PRIVATE STATE ---
@@ -71,7 +73,9 @@ class AudioProvider extends ChangeNotifier {
 
   // --- PUBLIC GETTERS ---
   String? get currentPlayingShlokaId => _currentPlayingShlokaId;
+
   PlaybackState get playbackState => _playbackState;
+  Duration get position => _audioPlayer.position;
 
   // --- LIFECYCLE ---
   AudioProvider() {
@@ -112,13 +116,12 @@ class AudioProvider extends ChangeNotifier {
 
   // --- PUBLIC METHODS ---
 
-  // --- PUBLIC METHODS ---
-
-  // NEW: Helper to expose audio path for sharing
+  // NEW: Helper to expose audio path for sharing (Restored)
   Future<String?> getShlokaAudioPath(ShlokaResult shloka) {
     return _getShlokaAssetPath(shloka);
   }
 
+  // Restored: Check download status for a chapter
   AssetPackStatus getChapterPackStatus(int chapterNumber) {
     // MODIFIED: On iOS or when using local assets, we treat everything as downloaded.
     if (_useLocalAssets || Platform.isIOS) {
@@ -128,73 +131,177 @@ class AudioProvider extends ChangeNotifier {
     return _packStatus[packName] ?? AssetPackStatus.unknown;
   }
 
+  // Restored: Get download progress
   double getChapterDownloadProgress(int chapterNumber) {
     final packName = _getPackName(chapterNumber);
     return _downloadProgress[packName] ?? 0.0;
   }
 
-  Future<void> playOrPauseShloka(ShlokaResult shloka) async {
-    final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
-    final isCurrentlyPlaying = _currentPlayingShlokaId == shlokaId;
+  // --- PUBLIC METHODS ---
 
-    if (isCurrentlyPlaying && _playbackState == PlaybackState.playing) {
+  // NEW: Expose current index stream for UI sync
+  Stream<int?> get currentIndexStream => _audioPlayer.currentIndexStream;
+
+  // NEW: Expose sequence state stream to detect playlist changes
+  Stream<SequenceState?> get sequenceStateStream =>
+      _audioPlayer.sequenceStateStream;
+
+  // NEW: Expose position stream for progress bar
+  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+
+  // NEW: Simple toggle for the current item (Mini Player)
+  Future<void> togglePlayback() async {
+    if (_playbackState == PlaybackState.playing) {
       await _audioPlayer.pause();
-      return;
-    }
-    if (isCurrentlyPlaying && _playbackState == PlaybackState.paused) {
+    } else if (_playbackState == PlaybackState.paused) {
       await _audioPlayer.play();
-      return;
+    }
+  }
+
+  // NEW: Public stop method (Mini Player)
+  Future<void> stopPlayback() async {
+    await _stop(_currentPlayingShlokaId);
+  }
+
+  // NEW: Combined Play Function that handles both Single and Playlist modes
+  // based on the context.
+  Future<void> playChapter({
+    required List<ShlokaResult> shlokas,
+    required int initialIndex,
+    PlaybackMode playbackMode = PlaybackMode.continuous,
+    Duration? initialPosition,
+  }) async {
+    final shloka = shlokas[initialIndex];
+    final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
+
+    // 0. Set Loop Mode based on PlaybackMode
+    switch (playbackMode) {
+      case PlaybackMode.single:
+        await _audioPlayer.setLoopMode(LoopMode.off);
+        break;
+      case PlaybackMode.continuous:
+        await _audioPlayer.setLoopMode(
+          LoopMode.off,
+        ); // Playlist logic handles sequence
+        break;
+      case PlaybackMode.repeatOne:
+        await _audioPlayer.setLoopMode(LoopMode.one);
+        break;
     }
 
-    // Stop the player but don't notify listeners yet to prevent a flicker state.
-    await _stop(shlokaId, notify: false);
+    // 1. Handle Play/Pause Toggle if tapping the same shloka
+    // Skip this check if initialPosition is provided (implies reloading config/mode)
+    if (_currentPlayingShlokaId == shlokaId && initialPosition == null) {
+      if (_playbackState == PlaybackState.playing) {
+        await _audioPlayer.pause();
+        return;
+      } else if (_playbackState == PlaybackState.paused) {
+        await _audioPlayer.play();
+        return;
+      }
+    }
+
+    // 2. Stop previous playback nicely
+    await _stop(_currentPlayingShlokaId, notify: false);
     _currentPlayingShlokaId = shlokaId;
     _setPlaybackState(PlaybackState.loading);
 
     try {
-      final assetPath = await _getShlokaAssetPath(shloka);
-      // If the asset path is null (e.g., download failed or not yet complete),
-      // set an error state and stop.
-      if (assetPath == null) {
-        debugPrint(
-          "Could not get asset path for shloka $shlokaId. Asset might not be ready.",
+      if (playbackMode == PlaybackMode.continuous) {
+        // --- CONTINUOUS MODE (Playlist) ---
+        // Optimization: Get base path once for Android
+        String? chapterPackPath;
+        final chapterNum = int.parse(shlokas.first.chapterNo);
+        if (!_useLocalAssets && !Platform.isIOS) {
+          chapterPackPath = await _getShlokaAssetPathForChapter(chapterNum);
+        }
+
+        final List<AudioSource> sources = [];
+
+        for (var s in shlokas) {
+          Uri? uri;
+          if (_useLocalAssets || Platform.isIOS) {
+            final path = await _getShlokaAssetPath(s); // Uses bundle logic
+            if (path != null) uri = Uri.parse('asset:///$path');
+          } else {
+            // Android Optimization: Build path manually from base
+            if (chapterPackPath != null) {
+              final sNum = int.parse(s.shlokNo).toString().padLeft(2, '0');
+              final cNum = chapterNum.toString().padLeft(2, '0');
+              final finalPath = '$chapterPackPath/ch${cNum}_sh$sNum.opus';
+              uri = Uri.file(finalPath);
+            }
+          }
+
+          if (uri != null) {
+            sources.add(
+              AudioSource.uri(
+                uri,
+                tag: MediaItem(
+                  id: '${s.chapterNo}.${s.shlokNo}',
+                  album:
+                      "Chapter ${s.chapterNo}: ${StaticData.geetaAdhyay[int.parse(s.chapterNo) - 1]}",
+                  title: "Shloka ${s.chapterNo}.${s.shlokNo}",
+                  artist: s.speaker ?? "Gita Recitation",
+                ),
+              ),
+            );
+          } else {
+            // If a file is missing, we might have to skip it or add a silence placeholder?
+            // For now, we just don't add it, which might shift indices.
+            // Ideally we should handle this, but for now assuming download is complete.
+          }
+        }
+
+        final playlist = ConcatenatingAudioSource(children: sources);
+        await _audioPlayer.setAudioSource(
+          playlist,
+          initialIndex: initialIndex,
+          initialPosition: initialPosition,
         );
-        _setPlaybackState(PlaybackState.error);
-        return;
-      }
+        await _audioPlayer.play();
+      } else {
+        // --- SINGLE / REPEAT ONE MODE ---
+        // Use existing logic for single source
+        final assetPath = await _getShlokaAssetPath(shloka);
+        if (assetPath == null) {
+          _setPlaybackState(PlaybackState.error);
+          return;
+        }
 
-      // Create the MediaItem tag required by just_audio_background
-      final mediaItem = MediaItem(
-        id: shlokaId,
-        album:
-            "Chapter ${shloka.chapterNo}: ${StaticData.geetaAdhyay[int.parse(shloka.chapterNo) - 1]}",
-        title: "Shloka ${shloka.chapterNo}.${shloka.shlokNo}",
-        artist: shloka.speaker ?? "Gita Recitation",
-      );
-
-      // Determine if it's a local asset or a file path from asset_delivery
-      final uri = (_useLocalAssets || Platform.isIOS)
-          ? Uri.parse('asset:///$assetPath')
-          : Uri.file(assetPath);
-
-      // Use setAudioSource with the tagged URI
-      final source = AudioSource.uri(uri, tag: mediaItem);
-      await _audioPlayer.setAudioSource(source);
-      await _audioPlayer.play();
-    } catch (e, s) {
-      // NEW: Suppress benign "Loading interrupted" errors.
-      // This happens when a new play request comes in while the previous one is still loading.
-      if (e.toString().contains('Loading interrupted')) {
-        debugPrint(
-          "[AUDIO_PLAYBACK] Loading interrupted by new request. This is expected behavior.",
+        final mediaItem = MediaItem(
+          id: shlokaId,
+          album:
+              "Chapter ${shloka.chapterNo}: ${StaticData.geetaAdhyay[int.parse(shloka.chapterNo) - 1]}",
+          title: "Shloka ${shloka.chapterNo}.${shloka.shlokNo}",
+          artist: shloka.speaker ?? "Gita Recitation",
         );
-        return;
-      }
 
-      debugPrint("[AUDIO_PLAYBACK] Error playing shloka: $e");
-      debugPrint("[AUDIO_PLAYBACK] Stack trace: $s");
+        final uri = (_useLocalAssets || Platform.isIOS)
+            ? Uri.parse('asset:///$assetPath')
+            : Uri.file(assetPath);
+
+        await _audioPlayer.setAudioSource(
+          AudioSource.uri(uri, tag: mediaItem),
+          initialPosition: initialPosition,
+        );
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      if (e.toString().contains('Loading interrupted')) return;
+      debugPrint("Error playing audio: $e");
       _setPlaybackState(PlaybackState.error);
     }
+  }
+
+  // Deprecated wrapper for backward compatibility if needed, or just remove it.
+  Future<void> playOrPauseShloka(ShlokaResult shloka) async {
+    // This assumes single mode.
+    playChapter(
+      shlokas: [shloka],
+      initialIndex: 0,
+      playbackMode: PlaybackMode.single,
+    );
   }
 
   Future<void> initiateChapterAudioDownload(int chapterNumber) async {
@@ -346,16 +453,11 @@ class AudioProvider extends ChangeNotifier {
 
   void _listenToPlayerState() {
     _audioPlayer.playerStateStream.listen((state) {
-      // The 'playing' boolean is the source of truth for playback activity.
       final isPlaying = state.playing;
-
       switch (state.processingState) {
         case ProcessingState.idle:
-          // This state is ambiguous and can be emitted during transitions.
-          // It's safer to not react to it directly. Errors and completions are handled elsewhere.
           break;
         case ProcessingState.completed:
-          // The track finished playing naturally. This is a definitive stop.
           _stop(_currentPlayingShlokaId);
           break;
         case ProcessingState.loading:
@@ -363,11 +465,30 @@ class AudioProvider extends ChangeNotifier {
           _setPlaybackState(PlaybackState.loading);
           break;
         case ProcessingState.ready:
-          // The player is ready. The 'isPlaying' boolean determines the final state.
           _setPlaybackState(
             isPlaying ? PlaybackState.playing : PlaybackState.paused,
           );
           break;
+      }
+    });
+
+    // NEW: Listen to current index to update the current playing ID
+    // This is crucial for the UI to know what is playing when auto-advancing
+    _audioPlayer.currentIndexStream.listen((index) {
+      if (index != null &&
+          _audioPlayer.audioSource is ConcatenatingAudioSource) {
+        final playlist = _audioPlayer.audioSource as ConcatenatingAudioSource;
+        if (index < playlist.length) {
+          final source = playlist.children[index] as UriAudioSource;
+          // We attached MediaItem as tag.
+          if (source.tag is MediaItem) {
+            final mediaItem = source.tag as MediaItem;
+            if (_currentPlayingShlokaId != mediaItem.id) {
+              _currentPlayingShlokaId = mediaItem.id;
+              notifyListeners();
+            }
+          }
+        }
       }
     });
   }
