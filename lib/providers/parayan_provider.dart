@@ -54,6 +54,7 @@ class ParayanProvider extends ChangeNotifier {
         (await _dbHelper.getAllShlokas(
           language: _language,
           script: _script,
+          includeCommentaries: false, // Fix OOM on Android
         )).where((shloka) {
           final isValidChapter = int.tryParse(shloka.chapterNo) != null;
           final isValidShlok = int.tryParse(shloka.shlokNo) != null;

@@ -299,6 +299,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     int chapter, {
     String language = 'hi',
     String script = 'dev',
+    bool includeCommentaries = true,
   }) async {
     final sql = _buildQuery(language, script, whereClause: "m.chapter_no = ?");
     final fullSql = "$sql ORDER BY m.shloka_no ASC";
@@ -307,7 +308,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       chapter,
     ]);
 
-    if (maps.isNotEmpty) {
+    if (maps.isNotEmpty && includeCommentaries) {
       final ids = maps.map((m) => "'${m['id']}'").join(',');
       final comms = await _db.rawQuery(
         "SELECT * FROM commentaries WHERE shloka_id IN ($ids)",
@@ -336,10 +337,19 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   Future<List<ShlokaResult>> getAllShlokas({
     String language = 'hi',
     String script = 'dev',
+    bool includeCommentaries = true,
   }) async {
     final sql =
         "${_buildQuery(language, script)} ORDER BY CAST(m.chapter_no AS INTEGER) ASC, CAST(m.shloka_no AS INTEGER) ASC";
     final List<Map<String, dynamic>> maps = await _db.rawQuery(sql);
+
+    // If commentaries are not requested, return results without them.
+    if (!includeCommentaries) {
+      return List.generate(
+        maps.length,
+        (i) => ShlokaResult.fromMap(maps[i], commentaries: null),
+      );
+    }
 
     // Fetch all commentaries
     // Note: This might be large, but necessary for offline functionality requested.
@@ -361,6 +371,33 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       final id = m['id'].toString();
       return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
     });
+  }
+
+  @override
+  Future<List<Commentary>> getCommentariesForShloka(
+    String chapterNo,
+    String shlokNo,
+  ) async {
+    // 1. Find Shloka ID
+    final List<Map<String, dynamic>> idResult = await _db.query(
+      'master_shlokas',
+      columns: ['id'],
+      where: 'chapter_no = ? AND shloka_no = ?',
+      whereArgs: [chapterNo, shlokNo],
+    );
+
+    if (idResult.isEmpty) return [];
+
+    final id = idResult.first['id'];
+
+    // 2. Fetch Commentaries
+    final List<Map<String, dynamic>> comms = await _db.query(
+      'commentaries',
+      where: 'shloka_id = ?',
+      whereArgs: [id],
+    );
+
+    return comms.map((c) => Commentary.fromMap(c)).toList();
   }
 
   @override
@@ -437,6 +474,57 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       print("Error fetching embeddings: $e");
       return [];
     }
+  }
+
+  @override
+  Future<List<ShlokaResult>> getShlokasByReferences(
+    List<Map<String, dynamic>> references, {
+    String language = 'hi',
+    String script = 'dev',
+    bool includeCommentaries = true,
+  }) async {
+    if (references.isEmpty) return [];
+
+    final keys = references
+        .map((r) => "'${r['chapter_no']}:${r['shlok_no']}'")
+        .join(",");
+
+    final whereClause = "m.chapter_no || ':' || m.shloka_no IN ($keys)";
+
+    final sql = _buildQuery(language, script, whereClause: whereClause);
+    final fullSql =
+        "$sql ORDER BY CAST(m.chapter_no AS INTEGER) ASC, CAST(m.shloka_no AS INTEGER) ASC";
+
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
+
+    if (maps.isEmpty) return [];
+
+    if (!includeCommentaries) {
+      return List.generate(
+        maps.length,
+        (i) => ShlokaResult.fromMap(maps[i], commentaries: null),
+      );
+    }
+
+    final ids = maps.map((m) => "'${m['id']}'").join(',');
+    final comms = await _db.rawQuery(
+      "SELECT * FROM commentaries WHERE shloka_id IN ($ids)",
+    );
+
+    final Map<String, List<Commentary>> commentariesMap = {};
+    for (var c in comms) {
+      final sId = c['shloka_id'].toString();
+      if (!commentariesMap.containsKey(sId)) {
+        commentariesMap[sId] = [];
+      }
+      commentariesMap[sId]!.add(Commentary.fromMap(c));
+    }
+
+    return List.generate(maps.length, (i) {
+      final m = maps[i];
+      final id = m['id'].toString();
+      return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
+    });
   }
 }
 
