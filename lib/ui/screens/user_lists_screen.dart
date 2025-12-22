@@ -60,6 +60,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
                           centerTitle: true,
                         ),
                         floatingActionButton: FloatingActionButton(
+                          heroTag: 'add_list_fab_wide',
                           onPressed: _createNewList,
                           child: const Icon(Icons.add),
                         ),
@@ -131,6 +132,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'add_list_fab_mobile',
         onPressed: _createNewList,
         child: const Icon(Icons.add),
       ),

@@ -59,10 +59,7 @@ class GlobalMiniPlayer extends StatelessWidget {
                       stream: audioProvider
                           .positionStream, // We need to expose this
                       builder: (context, snapshot) {
-                        final pos = snapshot.data ?? Duration.zero;
-                        // Use a fixed duration for total or just show a loading indeterminate if duration unknown?
-                        // For simplicity in this iteration, just a static colored line or 'active' indicator.
-                        // Let's make it a simple "Active Line" accent.
+                        // Just trigger rebuilds for now, progress bar logic to be added later if needed
                         return Container(
                           height: 2,
                           width: double.infinity,

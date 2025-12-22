@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/audio_provider.dart';
+
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../../models/shloka_result.dart';
@@ -148,17 +149,26 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        actions: [
-          Builder(
-            builder: (context) {
-              return IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: () => _shareList(context),
-                tooltip: 'Share List',
-              );
-            },
-          ),
-        ],
+      ),
+      floatingActionButton: Consumer<AudioProvider>(
+        builder: (context, audioProvider, child) {
+          final isMiniPlayerVisible =
+              audioProvider.playbackState != PlaybackState.stopped &&
+              audioProvider.currentPlayingShlokaId != null;
+          final double bottomPadding = isMiniPlayerVisible ? 100.0 : 0.0;
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: bottomPadding),
+            child: FloatingActionButton.extended(
+              heroTag: 'share_list_fab',
+              onPressed: () => _shareList(context),
+              icon: const Icon(Icons.share),
+              label: const Text('Share Collection'),
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+          );
+        },
       ),
       body: Stack(
         children: [
