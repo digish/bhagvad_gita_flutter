@@ -63,6 +63,7 @@ class MyApp extends StatelessWidget {
       routerConfig: router,
       title: 'Bhagavad Gita',
       theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
