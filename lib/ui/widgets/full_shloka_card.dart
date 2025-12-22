@@ -229,9 +229,12 @@ class FullShlokaCard extends StatelessWidget {
           try {
             final byteData = await rootBundle.load(audioPath);
             final tempDir = await getTemporaryDirectory();
-            final tempFile = File(
-              '${tempDir.path}/${audioPath.split('/').last}',
-            );
+
+            // Create a descriptive filename for better sharing experience
+            // Use .ogg extension for compatibility
+            final fileName =
+                'BhagavadGita_Ch${shloka.chapterNo}_Sh${shloka.shlokNo}.ogg';
+            final tempFile = File('${tempDir.path}/$fileName');
             await tempFile.writeAsBytes(byteData.buffer.asUint8List());
             validFilePath = tempFile.path;
           } catch (e) {
@@ -243,7 +246,8 @@ class FullShlokaCard extends StatelessWidget {
 
         if (validFilePath != null && await File(validFilePath).exists()) {
           await Share.shareXFiles(
-            [XFile(validFilePath)],
+            // Use application/octet-stream to force "Document" handling (attachment style)
+            [XFile(validFilePath, mimeType: 'application/octet-stream')],
             text: shareText,
             subject: shlokaIdentifier,
             sharePositionOrigin: sharePositionOrigin,
