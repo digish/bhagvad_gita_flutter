@@ -87,24 +87,20 @@ class SearchProvider extends ChangeNotifier {
       try {
         if (_isAiMode) {
           // --- AI SEMANTIC SEARCH ---
-          final matches = await _aiSearch.search(_searchQuery);
+          final List<ShlokaResult> matches = await _aiSearch.search(
+            _searchQuery,
+            language: _language,
+            script: _script,
+          );
 
-          // Fetch full details for matched results
           final List<SearchResultItem> aiResults = [];
           if (matches.isNotEmpty) {
             aiResults.add(HeaderItem("AI Matches"));
-
-            for (var match in matches) {
-              final shloka = await _dbHelper.getShlokaById(
-                match.shlokaId,
-                language: _language,
-                script: _script,
-              );
-              if (shloka != null) {
-                // Attach the matched bhavarth snippet for context
-                shloka.matchSnippet = match.bhavarth;
-                aiResults.add(ShlokaItem(shloka, score: match.score));
-              }
+            // Results are already hydrated and sorted
+            for (var result in matches) {
+              // Extract score from snippet if available or pass null
+              // The search service now injects confidence into matchSnippet
+              aiResults.add(ShlokaItem(result));
             }
           }
           _searchResults = aiResults;

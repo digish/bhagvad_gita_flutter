@@ -101,8 +101,9 @@ lib/secrets.dart
 # Large database files
 assets/database/geeta_v1.db
 assets/database/geeta_v2.db
-test/test_geeta_v2.db
 assets/database/geeta_v3.db
+test/test_geeta_v2.db
+test/test_geeta_v3.db
 
 # AI Models
 *.tflite

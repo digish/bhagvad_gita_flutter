@@ -13,14 +13,14 @@ import '../models/word_result.dart';
 import 'database_helper_interface.dart';
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 3; // Increment this to force DB update
+  static const int DB_VERSION = 4; // Increment this to force DB update
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
 
   static Future<DatabaseHelperImpl> create() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, "geeta_v2.db");
+    final path = join(documentsDirectory.path, "geeta_v3.db");
 
     // Check version
     final prefs = await SharedPreferences.getInstance();
@@ -38,10 +38,10 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         // Close existing DB connections if any? (Not easily possible statically, rely on restart)
 
         // 1. Clean up OLD databases to save space
-        final oldDbV1 = File(join(documentsDirectory.path, "geeta_v1.db"));
-        if (await oldDbV1.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta_v1.db");
-          await oldDbV1.delete();
+        final oldDbV2 = File(join(documentsDirectory.path, "geeta_v2.db"));
+        if (await oldDbV2.exists()) {
+          print("[DB_MOBILE] Deleting old DB: geeta_v2.db");
+          await oldDbV2.delete();
         }
         final oldDbLegacy = File(join(documentsDirectory.path, "geeta.db"));
         if (await oldDbLegacy.exists()) {
@@ -59,7 +59,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         print("[DB_MOBILE] Copying new database from assets...");
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load(
-          join("assets", "database", "geeta_v2.db"),
+          join("assets", "database", "geeta_v3.db"),
         );
         List<int> bytes = data.buffer.asUint8List(
           data.offsetInBytes,
@@ -529,17 +529,14 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
 
   @override
   Future<List<Map<String, dynamic>>> getEmbeddings() async {
-    // Determine which table has embeddings. Assuming 'translations'.
-    // We fetch shloka_id, bhavarth, and embedding.
-    // Ensure we only get rows with embeddings.
     try {
       return await _db.query(
-        'translations',
-        columns: ['shloka_id', 'bhavarth', 'embedding'],
+        'ai_search_index',
+        columns: ['shloka_id', 'chunk_text', 'embedding', 'source_type'],
         where: 'embedding IS NOT NULL AND embedding != ""',
       );
     } catch (e) {
-      print("Error fetching embeddings: $e");
+      print("Error fetching embeddings from ai_search_index: $e");
       return [];
     }
   }

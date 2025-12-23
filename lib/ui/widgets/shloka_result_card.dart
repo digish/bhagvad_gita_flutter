@@ -37,133 +37,128 @@ class ShlokaResultCard extends StatelessWidget {
     final settings = Provider.of<SettingsProvider>(context);
     final isSimpleTheme = !settings.showBackground;
 
-    String displayShlok = shloka.shlok;
-
-    // Contextual Display Logic
-    if (shloka.matchedCategory != null && shloka.matchSnippet != null) {
-      if ([
-        'meaning',
-        'bhavarth',
-      ].contains(shloka.matchedCategory!.toLowerCase())) {
-        displayShlok = shloka.matchSnippet!;
-      } else if (shloka.matchedCategory!.toLowerCase() == 'anvay') {
-        displayShlok = shloka.anvay;
-      }
-    }
-
-    displayShlok = displayShlok
+    // --- 1. Main Shloka Text (Always Visible) ---
+    String mainShlokaText = shloka.shlok;
+    mainShlokaText = mainShlokaText
         .replaceAll(RegExp(r'<c>', caseSensitive: false), '')
         .replaceAll('*', ' ');
+
+    // --- 2. Determines Logic Mode ---
+    bool isAiMode =
+        shloka.matchSnippet != null &&
+        shloka.matchSnippet!.contains("Confidence:");
+
+    // Variables for the Result "Snippet" (The context below the shloka)
+    String? snippetContent;
+    String? snippetSource;
+    String? aiDebugInfo; // Only for AI
+
+    if (isAiMode) {
+      // --- AI MODE LOGIC ---
+      final parts = shloka.matchSnippet!.split('\n');
+      if (parts.isNotEmpty) {
+        aiDebugInfo = parts[0]; // e.g. "Confidence: 54.9% | Matches: 29"
+        if (parts.length > 1) {
+          String secondLine = parts.sublist(1).join('\n');
+          if (secondLine.contains("Match:")) {
+            final splitContent = secondLine.split("Match:");
+            snippetSource = splitContent[0].trim();
+            snippetContent = splitContent
+                .sublist(1)
+                .join("Match:")
+                .replaceAll('"', '')
+                .trim();
+            if (snippetContent!.startsWith("Context: ")) {
+              snippetContent = snippetContent!.replaceFirst("Context: ", "");
+            }
+          } else {
+            snippetSource = secondLine;
+          }
+        }
+      }
+    } else {
+      // --- NON-AI (FTS) MODE LOGIC ---
+      // Determine what to show in the snippet box based on where the match happened
+      if (shloka.matchedCategory != null) {
+        final category = shloka.matchedCategory!.toLowerCase();
+
+        if (category == 'anvay') {
+          snippetSource = "ANVAY";
+          snippetContent = shloka.anvay;
+        } else if (['meaning', 'bhavarth'].contains(category)) {
+          snippetSource = "MEANING";
+          // Use matchSnippet if generated (contextual), else fallback to full bhavarth
+          snippetContent =
+              (shloka.matchSnippet != null && shloka.matchSnippet!.isNotEmpty)
+              ? shloka.matchSnippet
+              : shloka.bhavarth;
+        } else if (category.contains('commentary') ||
+            category.contains('tika') ||
+            category.contains('ramanuj')) {
+          snippetSource = "COMMENTARY";
+          snippetContent =
+              shloka.matchSnippet ?? "Content matched in commentary";
+        } else if (category == 'shlok') {
+          // Match is in the shloka itself, no snippet needed
+          snippetContent = null;
+        }
+      }
+    }
 
     final termsToHighlight =
         (shloka.matchedWords != null && shloka.matchedWords!.isNotEmpty)
         ? shloka.matchedWords!
         : [searchQuery];
 
-    // Theme-based styling
+    // Theme Colors
     final cardColor = isSimpleTheme
-        ? Colors.white.withOpacity(0.6)
-        : Colors.grey[900]!.withOpacity(0.7);
-
+        ? Colors.white.withOpacity(0.9)
+        : Colors.grey[900]!.withOpacity(0.85);
     final borderColor = isSimpleTheme
-        ? Colors.pink.withOpacity(0.2)
-        : const Color(0xFFFFD700).withOpacity(0.5);
-
+        ? Colors.pink.withOpacity(0.1)
+        : const Color(0xFFFFD700).withOpacity(0.3);
     final titleColor = isSimpleTheme
-        ? Colors.pink.shade900.withOpacity(0.8)
+        ? const Color(0xFF880E4F)
         : const Color(0xFFFFD700);
-
     final textColor = isSimpleTheme
         ? Colors.brown.shade900
-        : Colors.white.withOpacity(0.85);
-
+        : Colors.white.withOpacity(0.9);
     final highlightColor = isSimpleTheme
-        ? const Color(0xFFD81B60) // Deep Pink for highlight
-        : const Color(0xFFFFD700); // Gold
-
-    List<TextSpan> buildHighlightedText(String text, List<String> terms) {
-      if (terms.isEmpty) return [TextSpan(text: text)];
-      final spans = <TextSpan>[];
-      final lowerText = text.toLowerCase();
-      final ranges = <({int start, int end})>[];
-
-      for (final term in terms) {
-        final lowerTerm = term.toLowerCase();
-        if (lowerTerm.isEmpty) continue;
-        int start = 0;
-        while (true) {
-          final idx = lowerText.indexOf(lowerTerm, start);
-          if (idx == -1) break;
-          ranges.add((start: idx, end: idx + term.length));
-          start = idx + 1;
-        }
-      }
-
-      ranges.sort((a, b) => a.start.compareTo(b.start));
-      final merged = <({int start, int end})>[];
-      for (final r in ranges) {
-        if (merged.isEmpty) {
-          merged.add(r);
-        } else {
-          final last = merged.last;
-          if (r.start < last.end) {
-            if (r.end > last.end) {
-              merged[merged.length - 1] = (start: last.start, end: r.end);
-            }
-          } else {
-            merged.add(r);
-          }
-        }
-      }
-
-      int currentPos = 0;
-      for (final r in merged) {
-        if (r.start > currentPos) {
-          spans.add(TextSpan(text: text.substring(currentPos, r.start)));
-        }
-        spans.add(
-          TextSpan(
-            text: text.substring(r.start, r.end),
-            style: TextStyle(
-              color: highlightColor,
-              fontWeight: FontWeight.bold,
-              backgroundColor: isSimpleTheme
-                  ? highlightColor.withOpacity(0.1)
-                  : Colors.transparent,
-            ),
-          ),
-        );
-        currentPos = r.end;
-      }
-      if (currentPos < text.length) {
-        spans.add(TextSpan(text: text.substring(currentPos)));
-      }
-      return spans;
-    }
+        ? const Color(0xFFD81B60)
+        : const Color(0xFFFFD700);
+    final snippetBgColor = isSimpleTheme
+        ? Colors.orange.withOpacity(0.08)
+        : Colors.black.withOpacity(0.3);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
           boxShadow: isSimpleTheme
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: Colors.black12,
+                    blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16.0),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
             child: Container(
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(16.0),
-                border: Border.all(color: borderColor, width: 1.2),
+                border: Border.all(color: borderColor, width: 1),
               ),
               child: InkWell(
                 onTap: () {
@@ -175,70 +170,246 @@ class ShlokaResultCard extends StatelessWidget {
                   );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // --- HEADER ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
                             style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.bold,
                               color: titleColor,
-                              letterSpacing: 0.5,
                             ),
                           ),
-                          if (score != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSimpleTheme
-                                    ? Colors.black.withOpacity(0.05)
-                                    : Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '${(score! * 100).toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: titleColor.withOpacity(0.8),
-                                ),
-                              ),
-                            ),
+                          // Display appropriate badge
+                          if (isAiMode && aiDebugInfo != null)
+                            _buildAIInfoBadge(aiDebugInfo!, titleColor)
+                          else if (score != null)
+                            _buildScoreBadge(score!, isSimpleTheme, titleColor),
                         ],
                       ),
-                      const SizedBox(height: 8),
+
+                      const SizedBox(height: 12),
+
+                      // --- MAIN SHLOKA TEXT ---
                       RichText(
                         text: TextSpan(
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontSize: 15,
-                            height: 1.5,
-                            fontWeight: FontWeight.w400,
+                          style: theme.textTheme.bodyLarge?.copyWith(
                             color: textColor,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'NotoSerifDevanagari',
                           ),
                           children: buildHighlightedText(
-                            displayShlok,
+                            mainShlokaText,
                             termsToHighlight,
+                            highlightColor,
+                            isSimpleTheme,
                           ),
                         ),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                       ),
+
+                      // --- SNIPPET BOX (AI Match or Non-AI Context) ---
+                      if (snippetContent != null &&
+                          snippetContent!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: snippetBgColor,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: titleColor.withOpacity(0.2),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Source Label
+                              Row(
+                                children: [
+                                  Icon(
+                                    isAiMode
+                                        ? Icons.auto_awesome
+                                        : Icons.menu_book_rounded,
+                                    size: 12,
+                                    color: titleColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    snippetSource?.toUpperCase() ?? "MATCH",
+                                    style: TextStyle(
+                                      color: titleColor,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              // Snippet Text
+                              RichText(
+                                text: TextSpan(
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 13,
+                                    height: 1.5,
+                                    color: textColor.withOpacity(0.85),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  children: buildHighlightedText(
+                                    snippetContent!,
+                                    termsToHighlight,
+                                    highlightColor,
+                                    isSimpleTheme,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIInfoBadge(String debugInfo, Color color) {
+    // Expected format: "Confidence: 54.9% | Matches: 29"
+    String label = "Match";
+    try {
+      final parts = debugInfo.split('|');
+      final percentStr = parts[0]
+          .replaceAll('Confidence:', '')
+          .replaceAll('%', '')
+          .trim();
+      final percent = double.tryParse(percentStr) ?? 0.0;
+
+      // Extract Matches count if available
+      String matchesCountStr = "";
+      if (parts.length > 1) {
+        final countVal = parts[1].replaceAll('Matches:', '').trim();
+        matchesCountStr = " • $countVal Vecs"; // " • 29 Vecs"
+      }
+
+      // Reconstruct label with logic
+      label = "${percent.toStringAsFixed(0)}%$matchesCountStr";
+    } catch (e) {
+      // Fallback
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  List<TextSpan> buildHighlightedText(
+    String text,
+    List<String> terms,
+    Color highlightColor,
+    bool isSimpleTheme,
+  ) {
+    if (terms.isEmpty) return [TextSpan(text: text)];
+    final spans = <TextSpan>[];
+    final lowerText = text.toLowerCase();
+    final ranges = <({int start, int end})>[];
+
+    for (final term in terms) {
+      final lowerTerm = term.toLowerCase();
+      if (lowerTerm.isEmpty) continue;
+      int start = 0;
+      while (true) {
+        final idx = lowerText.indexOf(lowerTerm, start);
+        if (idx == -1) break;
+        ranges.add((start: idx, end: idx + term.length));
+        start = idx + 1;
+      }
+    }
+
+    ranges.sort((a, b) => a.start.compareTo(b.start));
+    final merged = <({int start, int end})>[];
+    for (final r in ranges) {
+      if (merged.isEmpty) {
+        merged.add(r);
+      } else {
+        final last = merged.last;
+        if (r.start < last.end) {
+          if (r.end > last.end) {
+            merged[merged.length - 1] = (start: last.start, end: r.end);
+          }
+        } else {
+          merged.add(r);
+        }
+      }
+    }
+
+    int currentPos = 0;
+    for (final r in merged) {
+      if (r.start > currentPos) {
+        spans.add(TextSpan(text: text.substring(currentPos, r.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(r.start, r.end),
+          style: TextStyle(
+            color: highlightColor,
+            fontWeight: FontWeight.bold,
+            backgroundColor: isSimpleTheme
+                ? highlightColor.withOpacity(0.1)
+                : Colors.transparent,
+          ),
+        ),
+      );
+      currentPos = r.end;
+    }
+    if (currentPos < text.length) {
+      spans.add(TextSpan(text: text.substring(currentPos)));
+    }
+    return spans;
+  }
+
+  Widget _buildScoreBadge(double score, bool isSimpleTheme, Color titleColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSimpleTheme
+            ? Colors.black.withOpacity(0.05)
+            : Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '${(score * 100).toStringAsFixed(0)}%',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: titleColor.withOpacity(0.8),
         ),
       ),
     );
