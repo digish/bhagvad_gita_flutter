@@ -800,32 +800,41 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                           // Line 2: Playback & Display Layout
                                           SizedBox(
                                             height: 40,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                (context
-                                                        .findAncestorStateOfType<
-                                                          _ParayanScreenState
-                                                        >()!)
-                                                    ._buildPlaybackModeButton(),
+                                            child: LayoutBuilder(
+                                              builder: (context, constraints) {
+                                                return FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      (context
+                                                              .findAncestorStateOfType<
+                                                                _ParayanScreenState
+                                                              >()!)
+                                                          ._buildPlaybackModeButton(),
 
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  width: 1,
-                                                  height: 20,
-                                                  color: Colors.black12,
-                                                ),
-                                                const SizedBox(width: 8),
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        width: 1,
+                                                        height: 20,
+                                                        color: Colors.black12,
+                                                      ),
+                                                      const SizedBox(width: 8),
 
-                                                (context
-                                                        .findAncestorStateOfType<
-                                                          _ParayanScreenState
-                                                        >()!)
-                                                    ._buildDisplayModeButton(),
-                                              ],
+                                                      (context
+                                                              .findAncestorStateOfType<
+                                                                _ParayanScreenState
+                                                              >()!)
+                                                          ._buildDisplayModeButton(),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
                                             ),
                                           ),
 

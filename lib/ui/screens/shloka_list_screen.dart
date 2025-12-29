@@ -828,70 +828,88 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 
                                       // Line 2: Font & Playback Controls
                                       SizedBox(
-                                        height:
-                                            48, // Increased height to fit vertical button
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            _FontSizeControl(
-                                              currentSize: currentFontSize,
-                                              onDecrement: onFontSizeDecrement,
-                                              onIncrement: onFontSizeIncrement,
-                                              color: Colors.black87,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            _VerticalDivider(),
-                                            const SizedBox(width: 8),
-                                            TextButton(
-                                              onPressed: onPlaybackModePressed,
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 2,
-                                                    ),
-                                                foregroundColor: Colors.black87,
-                                              ),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
+                                        height: 48,
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            return FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
                                                 children: [
-                                                  Icon(
-                                                    playbackMode ==
-                                                            PlaybackMode.single
-                                                        ? Icons.play_arrow
-                                                        : playbackMode ==
-                                                              PlaybackMode
-                                                                  .continuous
-                                                        ? Icons.playlist_play
-                                                        : Icons.repeat_one,
+                                                  _FontSizeControl(
+                                                    currentSize:
+                                                        currentFontSize,
+                                                    onDecrement:
+                                                        onFontSizeDecrement,
+                                                    onIncrement:
+                                                        onFontSizeIncrement,
                                                     color: Colors.black87,
-                                                    size:
-                                                        20, // Slightly smaller icon
                                                   ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    playbackMode ==
-                                                            PlaybackMode.single
-                                                        ? 'Single'
-                                                        : playbackMode ==
-                                                              PlaybackMode
-                                                                  .continuous
-                                                        ? 'Continuous'
-                                                        : 'Repeat',
-                                                    style: const TextStyle(
-                                                      color: Colors.black87,
-                                                      fontSize:
-                                                          10, // Smaller font for label
-                                                      height: 1.0,
+                                                  const SizedBox(width: 8),
+                                                  _VerticalDivider(),
+                                                  const SizedBox(width: 8),
+                                                  TextButton(
+                                                    onPressed:
+                                                        onPlaybackModePressed,
+                                                    style: TextButton.styleFrom(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 4,
+                                                            vertical: 2,
+                                                          ),
+                                                      foregroundColor:
+                                                          Colors.black87,
+                                                    ),
+                                                    child: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          playbackMode ==
+                                                                  PlaybackMode
+                                                                      .single
+                                                              ? Icons.play_arrow
+                                                              : playbackMode ==
+                                                                    PlaybackMode
+                                                                        .continuous
+                                                              ? Icons
+                                                                    .playlist_play
+                                                              : Icons
+                                                                    .repeat_one,
+                                                          color: Colors.black87,
+                                                          size: 20,
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 2,
+                                                        ),
+                                                        Text(
+                                                          playbackMode ==
+                                                                  PlaybackMode
+                                                                      .single
+                                                              ? 'Single'
+                                                              : playbackMode ==
+                                                                    PlaybackMode
+                                                                        .continuous
+                                                              ? 'Continuous'
+                                                              : 'Repeat',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .black87,
+                                                                fontSize: 10,
+                                                                height: 1.0,
+                                                              ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                          ],
+                                            );
+                                          },
                                         ),
                                       ),
 
