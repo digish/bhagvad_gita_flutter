@@ -569,14 +569,9 @@ class AudioProvider extends ChangeNotifier {
       final shlokPadded = shlokNum.toString().padLeft(2, '0');
 
       // MODIFIED: Use bundled assets for iOS or if _useLocalAssets is true
+      // Since we removed local .opus files, we must use .m4a for all local/bundled usage.
       if (_useLocalAssets || Platform.isIOS) {
-        // iOS requires a container that supports Opus (like CAf) or AAC (m4a).
-        // Standard Ogg Opus (.opus) is not supported by AVPlayer on physical iOS devices.
-        // We use .m4a (converted from .opus) for iOS.
-        if (Platform.isIOS) {
-          return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.m4a';
-        }
-        return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.opus';
+        return 'assets/audio/$packName/ch${chapterPadded}_sh$shlokPadded.m4a';
       } else {
         // Use the new helper to get the base path for the chapter.
         final assetPackPath = await _getShlokaAssetPathForChapter(chapter);
