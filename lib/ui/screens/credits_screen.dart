@@ -84,13 +84,6 @@ final List<CreditItem> creditsData = [
     description:
         'Source code is open source and available on GitHub under the MIT License.',
   ),
-
-  const CreditItem(
-    category: 'Coding Partner',
-    source: 'Gemini and Antigravity',
-    description:
-        'Developed with the assistance of Google DeepMind\'s advanced AI coding agents.',
-  ),
 ];
 
 class CreditsScreen extends StatelessWidget {
