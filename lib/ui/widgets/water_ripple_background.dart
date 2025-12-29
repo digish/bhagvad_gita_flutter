@@ -37,10 +37,7 @@ class _ShaderPainter extends CustomPainter {
     shader.setFloat(2, resolution.height);
 
     // Draw the shader
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..shader = shader,
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
@@ -51,9 +48,7 @@ class _ShaderPainter extends CustomPainter {
 }
 
 class WaterRippleBackground extends StatefulWidget {
-  const WaterRippleBackground({
-    super.key,
-  });
+  const WaterRippleBackground({super.key});
 
   @override
   State<WaterRippleBackground> createState() => _WaterRippleBackgroundState();
@@ -68,11 +63,14 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
   void initState() {
     super.initState();
     // Load the shader from the asset file
-    _shaderProgramFuture =
-        ui.FragmentProgram.fromAsset('assets/shaders/ripple.frag');
+    _shaderProgramFuture = ui.FragmentProgram.fromAsset(
+      'assets/shaders/ripple.frag',
+    );
     _timeController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100), // A long duration for continuous animation
+      duration: const Duration(
+        seconds: 100,
+      ), // A long duration for continuous animation
     )..repeat();
   }
 
@@ -94,14 +92,19 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
           return AnimatedBuilder(
             animation: _timeController,
             builder: (context, child) {
-              return CustomPaint(
-                size: Size.infinite,
-                painter: _ShaderPainter(
-                  shader: snapshot.data!,
-                  time: _timeController.value *
-                      _timeController.duration!.inMilliseconds /
-                      1000.0,
-                  resolution: MediaQuery.of(context).size,
+              // Vital stability fix: ClipRect prevents the custom shader from rendering
+              // to 'infinity', which crashes the iOS Simulator's Metal driver (MTLSimDriver).
+              return ClipRect(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _ShaderPainter(
+                    shader: snapshot.data!,
+                    time:
+                        _timeController.value *
+                        _timeController.duration!.inMilliseconds /
+                        1000.0,
+                    resolution: MediaQuery.of(context).size,
+                  ),
                 ),
               );
             },
@@ -112,4 +115,3 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
     );
   }
 }
-
