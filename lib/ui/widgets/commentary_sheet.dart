@@ -359,42 +359,57 @@ class _CommentarySheetState extends State<CommentarySheet> {
                                   color: theme.dividerColor.withOpacity(0.1),
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                              child: Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 12, // Horizontal gap
+                                runSpacing: 4, // Vertical gap if it wraps
                                 children: [
-                                  Icon(
-                                    Icons.language,
-                                    size: 16,
-                                    color: theme.textTheme.bodySmall?.color,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _getLanguageDisplayName(
-                                      selectedCommentary.languageCode,
-                                    ),
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              theme.textTheme.bodySmall?.color,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.language,
+                                        size: 16,
+                                        color: theme.textTheme.bodySmall?.color,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _getLanguageDisplayName(
+                                          selectedCommentary.languageCode,
                                         ),
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: theme
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.color,
+                                            ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 16),
-                                  Icon(
-                                    Icons.timeline, // Or category icon
-                                    size: 16,
-                                    color: theme.textTheme.bodySmall?.color,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _getCommentaryType(
-                                      selectedCommentary.authorName,
-                                    ),
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.primary,
+                                  // Separator or just spacing? Using spacing from Wrap.
+                                  // We can group the second item too.
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.timeline, // Or category icon
+                                        size: 16,
+                                        color: theme.textTheme.bodySmall?.color,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _getCommentaryType(
+                                          selectedCommentary.authorName,
                                         ),
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

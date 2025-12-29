@@ -81,11 +81,21 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    final isTablet = MediaQuery.of(context).size.shortestSide > 600;
-    final double glowSize = isTablet ? 400 : 250;
-    final double imageSize = isTablet ? 360 : 230;
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide > 600;
+    final isSmallPhone = size.width < 380;
+
+    final double glowSize = isTablet
+        ? 400
+        : isSmallPhone
+        ? 200
+        : 250;
+    final double imageSize = isTablet
+        ? 360
+        : isSmallPhone
+        ? 180
+        : 230;
 
     return Transform.rotate(
       angle: rotationAngle,
