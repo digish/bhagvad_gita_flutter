@@ -19,6 +19,7 @@ import 'package:asset_delivery/asset_delivery.dart';
 // ADDED for background audio
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/shloka_result.dart';
 import '../data/static_data.dart'; // ADDED for chapter titles in MediaItem
 
@@ -515,6 +516,14 @@ class AudioProvider extends ChangeNotifier {
         "[AUDIO_PROVIDER] State changing from $_playbackState to $state for ID $_currentPlayingShlokaId",
       );
       _playbackState = state;
+
+      // Toggle Wakelock based on state
+      if (state == PlaybackState.playing) {
+        WakelockPlus.enable();
+      } else {
+        WakelockPlus.disable();
+      }
+
       if (notify) notifyListeners();
     }
   }

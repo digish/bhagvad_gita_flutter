@@ -67,6 +67,7 @@ dependencies:
   audio_session: ^0.1.19 
   just_audio_background: ^0.0.1-beta.11
   asset_delivery: ^1.1.0
+  wakelock_plus: ^1.4.0
 
 dev_dependencies:
   flutter_test:
