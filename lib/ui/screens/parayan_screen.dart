@@ -130,6 +130,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
       index: index,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOutCubic,
+      alignment: 0.4, // Center the item (0.0 is top, 1.0 is bottom)
     );
   }
 
