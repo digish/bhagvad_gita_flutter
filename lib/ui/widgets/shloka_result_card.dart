@@ -36,17 +36,28 @@ class ShlokaResultCard extends StatelessWidget {
     final isSimpleTheme = !settings.showBackground;
 
     String displayShlok = shloka.shlok;
+    final List<String> snippets = [];
 
-    // Contextual Display Logic
-    if (shloka.matchedCategory != null && shloka.matchSnippet != null) {
-      if ([
-        'meaning',
-        'bhavarth',
-      ].contains(shloka.matchedCategory!.toLowerCase())) {
-        displayShlok = shloka.matchSnippet!;
-      } else if (shloka.matchedCategory!.toLowerCase() == 'anvay') {
-        displayShlok = shloka.anvay;
+    // Contextual Display Logic: Combine all matched snippets
+    if (shloka.categorySnippets != null &&
+        shloka.categorySnippets!.isNotEmpty) {
+      final order = ['shloka', 'anvay', 'meaning', 'bhavarth'];
+      for (final cat in order) {
+        if (shloka.categorySnippets!.containsKey(cat)) {
+          final s = shloka.categorySnippets![cat]!;
+          final prefix = cat == 'shloka'
+              ? 'Verse'
+              : (cat[0].toUpperCase() + cat.substring(1));
+          snippets.add("$prefix: $s");
+        }
       }
+    }
+
+    if (snippets.isNotEmpty) {
+      displayShlok = snippets.join('\n\n');
+    } else if (shloka.matchedCategory != null && shloka.matchSnippet != null) {
+      // Fallback for legacy items without categorySnippets map
+      displayShlok = shloka.matchSnippet!;
     }
 
     displayShlok = displayShlok
@@ -202,7 +213,7 @@ class ShlokaResultCard extends StatelessWidget {
                             termsToHighlight,
                           ),
                         ),
-                        maxLines: 4,
+                        maxLines: 10,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

@@ -12,6 +12,11 @@ import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import 'database_helper_interface.dart';
 
+Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
+  print("[DB_MOBILE] Initializing database helper...");
+  return await DatabaseHelperImpl.create();
+}
+
 class DatabaseHelperImpl implements DatabaseHelperInterface {
   static const int DB_VERSION = 2; // Increment this to force DB update
   late Database _db;
@@ -146,28 +151,79 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String script = 'dev',
   }) async {
     // 1. FTS Search to get relevant IDs, Categories, AND Original Terms
+    final tokens = query
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) return [];
+
+    // 1. Cross-row AND Search: Use INTERSECT to find ref_ids matching all tokens
+    final intersectSubquery = tokens
+        .map(
+          (t) =>
+              "SELECT ref_id FROM search_index WHERE search_index MATCH '$t*'",
+        )
+        .join(' INTERSECT ');
+    final orFtsQuery = tokens.map((t) => '$t*').join(' OR ');
+
+    print("[SEARCH_DEBUG] Multi-word AND search. INTERSECT logic.");
+
     final List<Map<String, dynamic>> maps = await _db.rawQuery(
       '''
       SELECT ref_id, category, term_original 
       FROM search_index 
-      WHERE search_index MATCH ? 
+      WHERE ref_id IN ($intersectSubquery)
+      AND search_index MATCH ? 
       LIMIT 100
     ''',
-      ['$query*'],
+      [orFtsQuery],
     );
 
-    if (maps.isEmpty) return [];
+    print("[SEARCH_DEBUG] FTS found ${maps.length} rows for intersection.");
 
-    final Map<String, Set<String>> matchedTermsById = {};
-    for (var m in maps) {
-      final id = m['ref_id'] as String;
-      final term = m['term_original'] as String?;
-      if (term != null) {
-        matchedTermsById.putIfAbsent(id, () => {}).add(term);
-      }
+    if (maps.isEmpty) {
+      print("[SEARCH_DEBUG] No shlokas matched ALL terms across rows.");
+      return [];
     }
 
-    final uniqueIds = matchedTermsById.keys.toList();
+    // 1.5 Calculate relevance scores for ranking
+    final Map<String, int> shlokaScores = {};
+    for (var m in maps) {
+      final id = m['ref_id'] as String;
+      final cat = (m['category'] as String).toLowerCase();
+      // Weights: shloka (10), anvay (5), others (3)
+      int weight = 3;
+      if (cat == 'shloka') {
+        weight = 10;
+      } else if (cat == 'anvay') {
+        weight = 5;
+      }
+      shlokaScores[id] = (shlokaScores[id] ?? 0) + weight;
+    }
+
+    // Sort maps by relevance score (descending)
+    final sortedMaps = List<Map<String, dynamic>>.from(maps);
+    sortedMaps.sort((a, b) {
+      final scoreA = shlokaScores[a['ref_id']] ?? 0;
+      final scoreB = shlokaScores[b['ref_id']] ?? 0;
+      return scoreB.compareTo(scoreA);
+    });
+
+    // Group terms and categories by ref_id
+    final Map<String, Map<String, Set<String>>> metadataById = {};
+    for (var m in maps) {
+      final id = m['ref_id'] as String;
+      final cat = m['category'] as String;
+      final term = m['term_original'] as String?;
+
+      if (!metadataById.containsKey(id)) {
+        metadataById[id] = {};
+      }
+      metadataById[id]!.putIfAbsent(cat, () => {}).add(term ?? '');
+    }
+
+    final uniqueIds = metadataById.keys.toList();
     if (uniqueIds.isEmpty) return [];
 
     // 2. Fetch Full Details
@@ -208,7 +264,6 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     final resultsMap = {for (var r in results) r['id'].toString(): r};
 
     List<ShlokaResult> ordered = [];
-    final seenIds = <String>{};
 
     String? generateSnippet(String? text, Set<String> terms, String rawQuery) {
       if (text == null || text.isEmpty) return null;
@@ -217,6 +272,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       int bestLen = 0;
 
       for (final term in terms) {
+        if (term.isEmpty) continue;
         final idx = lowerText.indexOf(term.toLowerCase());
         if (idx != -1) {
           if (bestIndex == -1 || idx < bestIndex) {
@@ -243,45 +299,69 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       return snippet.replaceAll(RegExp(r'\s+'), ' ');
     }
 
-    for (var match in maps) {
-      String id = match['ref_id'] as String;
-      if (seenIds.contains(id)) continue;
-      seenIds.add(id);
+    // Pre-calculate all available snippets for each ID
+    final Map<String, Map<String, String>> snippetsById = {};
+    for (var id in metadataById.keys) {
+      if (!resultsMap.containsKey(id)) continue;
+      final shlokaData = resultsMap[id]!;
+      final cats = metadataById[id]!;
+      final snips = <String, String>{};
 
-      String category = match['category'] as String;
-
-      if (resultsMap.containsKey(id)) {
-        final shlokaData = Map<String, dynamic>.from(resultsMap[id]!);
-        final terms = matchedTermsById[id] ?? {};
-        if (terms.isEmpty) terms.add(query);
-
-        String? snippet;
-        if (category == 'meaning') {
-          snippet = generateSnippet(
+      cats.forEach((category, words) {
+        final combinedTerms = {...words, ...tokens};
+        String? s;
+        if (category == 'shloka') {
+          s = generateSnippet(
+            shlokaData['shloka_text'] as String?,
+            combinedTerms,
+            query,
+          );
+        } else if (category == 'meaning') {
+          s = generateSnippet(
             shlokaData['commentary_text'] as String?,
-            terms,
+            combinedTerms,
             query,
           );
         } else if (category == 'bhavarth') {
-          snippet = generateSnippet(
+          s = generateSnippet(
             shlokaData['bhavarth_en'] as String?,
-            terms,
+            combinedTerms,
             query,
           );
         } else if (category == 'anvay') {
-          snippet = generateSnippet(
+          s = generateSnippet(
             shlokaData['anvay_text'] as String?,
-            terms,
+            combinedTerms,
             query,
           );
         }
+        if (s != null) snips[category] = s;
+      });
+      snippetsById[id] = snips;
+    }
+
+    // User requested original behavior: return each match row
+    // SearchProvider will then group them.
+    for (var match in sortedMaps) {
+      final id = match['ref_id'] as String;
+      final category = match['category'] as String?;
+      if (id.isEmpty || category == null) continue;
+
+      if (resultsMap.containsKey(id)) {
+        final shlokaData = Map<String, dynamic>.from(resultsMap[id]!);
+        final terms = metadataById[id]?[category] ?? {};
+        final combinedTerms = {...terms, ...tokens};
 
         shlokaData['matched_category'] = category;
-        shlokaData['match_snippet'] = snippet;
-        shlokaData['matched_words'] = terms.toList();
+        shlokaData['match_snippet'] = snippetsById[id]?[category];
+        shlokaData['matched_words'] = combinedTerms.toList();
 
         ordered.add(
-          ShlokaResult.fromMap(shlokaData, commentaries: commentariesMap[id]),
+          ShlokaResult.fromMap(
+            shlokaData,
+            commentaries: commentariesMap[id],
+            categorySnippets: snippetsById[id],
+          ),
         );
       }
     }
@@ -292,6 +372,11 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   @override
   Future<List<WordResult>> searchWords(String query) async {
     return [];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getWordDefinition(String query) async {
+    return null;
   }
 
   @override
@@ -308,29 +393,79 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       chapter,
     ]);
 
-    if (maps.isNotEmpty && includeCommentaries) {
-      final ids = maps.map((m) => "'${m['id']}'").join(',');
-      final comms = await _db.rawQuery(
-        "SELECT * FROM commentaries WHERE shloka_id IN ($ids)",
-      );
-
-      final Map<String, List<Commentary>> commentariesMap = {};
-      for (var c in comms) {
-        final sId = c['shloka_id'].toString();
-        if (!commentariesMap.containsKey(sId)) {
-          commentariesMap[sId] = [];
+    // Fetch commentaries if needed
+    Map<String, List<Commentary>> commentariesMap = {};
+    if (includeCommentaries) {
+      final ids = maps.map((m) => m['id'].toString()).toList();
+      final idsList = ids.map((id) => "'$id'").join(",");
+      if (idsList.isNotEmpty) {
+        final comms = await _db.rawQuery(
+          "SELECT * FROM commentaries WHERE shloka_id IN ($idsList)",
+        );
+        for (var c in comms) {
+          final sId = c['shloka_id'].toString();
+          if (!commentariesMap.containsKey(sId)) {
+            commentariesMap[sId] = [];
+          }
+          commentariesMap[sId]!.add(Commentary.fromMap(c));
         }
-        commentariesMap[sId]!.add(Commentary.fromMap(c));
       }
-
-      return List.generate(maps.length, (i) {
-        final m = maps[i];
-        final id = m['id'].toString();
-        return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
-      });
     }
 
-    return List.generate(maps.length, (i) => ShlokaResult.fromMap(maps[i]));
+    return maps
+        .map(
+          (m) => ShlokaResult.fromMap(
+            m,
+            commentaries: commentariesMap[m['id'].toString()],
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<ShlokaResult>> getShlokasByReferences(
+    List<Map<String, dynamic>> references, {
+    String language = 'hi',
+    String script = 'dev',
+    bool includeCommentaries = true,
+  }) async {
+    if (references.isEmpty) return [];
+    final ids = references.map((r) => r['id'].toString()).toList();
+    final idsList = ids.map((id) => "'$id'").join(",");
+    final sql = _buildQuery(
+      language,
+      script,
+      whereClause: "m.id IN ($idsList)",
+    );
+
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(sql);
+    final resultsMap = {for (var r in maps) r['id'].toString(): r};
+
+    Map<String, List<Commentary>> commentariesMap = {};
+    if (includeCommentaries) {
+      if (ids.isNotEmpty) {
+        final comms = await _db.rawQuery(
+          "SELECT * FROM commentaries WHERE shloka_id IN ($idsList)",
+        );
+        for (var c in comms) {
+          final sId = c['shloka_id'].toString();
+          if (!commentariesMap.containsKey(sId)) {
+            commentariesMap[sId] = [];
+          }
+          commentariesMap[sId]!.add(Commentary.fromMap(c));
+        }
+      }
+    }
+
+    return ids
+        .where((id) => resultsMap.containsKey(id))
+        .map(
+          (id) => ShlokaResult.fromMap(
+            resultsMap[id]!,
+            commentaries: commentariesMap[id],
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -339,71 +474,29 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String script = 'dev',
     bool includeCommentaries = true,
   }) async {
-    final sql =
-        "${_buildQuery(language, script)} ORDER BY CAST(m.chapter_no AS INTEGER) ASC, CAST(m.shloka_no AS INTEGER) ASC";
+    final sql = _buildQuery(language, script);
     final List<Map<String, dynamic>> maps = await _db.rawQuery(sql);
 
-    // If commentaries are not requested, return results without them.
-    if (!includeCommentaries) {
-      return List.generate(
-        maps.length,
-        (i) => ShlokaResult.fromMap(maps[i], commentaries: null),
-      );
-    }
-
-    // Fetch all commentaries
-    // Note: This might be large, but necessary for offline functionality requested.
-    // Optimization: Depending on DB size, we might want to defer this, but
-    // for now we assume it fits in memory (commentaries are text).
-    final comms = await _db.query('commentaries');
-
-    final Map<String, List<Commentary>> commentariesMap = {};
-    for (var c in comms) {
-      final sId = c['shloka_id'].toString();
-      if (!commentariesMap.containsKey(sId)) {
-        commentariesMap[sId] = [];
+    Map<String, List<Commentary>> commentariesMap = {};
+    if (includeCommentaries) {
+      final comms = await _db.query('commentaries');
+      for (var c in comms) {
+        final sId = c['shloka_id'].toString();
+        if (!commentariesMap.containsKey(sId)) {
+          commentariesMap[sId] = [];
+        }
+        commentariesMap[sId]!.add(Commentary.fromMap(c));
       }
-      commentariesMap[sId]!.add(Commentary.fromMap(c));
     }
 
-    return List.generate(maps.length, (i) {
-      final m = maps[i];
-      final id = m['id'].toString();
-      return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
-    });
-  }
-
-  @override
-  Future<List<Commentary>> getCommentariesForShloka(
-    String chapterNo,
-    String shlokNo,
-  ) async {
-    // 1. Find Shloka ID
-    final List<Map<String, dynamic>> idResult = await _db.query(
-      'master_shlokas',
-      columns: ['id'],
-      where: 'chapter_no = ? AND shloka_no = ?',
-      whereArgs: [chapterNo, shlokNo],
-    );
-
-    if (idResult.isEmpty) return [];
-
-    final id = idResult.first['id'];
-
-    // 2. Fetch Commentaries
-    final List<Map<String, dynamic>> comms = await _db.query(
-      'commentaries',
-      where: 'shloka_id = ?',
-      whereArgs: [id],
-    );
-
-    return comms.map((c) => Commentary.fromMap(c)).toList();
-  }
-
-  @override
-  Future<Map<String, dynamic>?> getWordDefinition(String query) async {
-    // Unimplemented for now in V2 schema
-    return null;
+    return maps
+        .map(
+          (m) => ShlokaResult.fromMap(
+            m,
+            commentaries: commentariesMap[m['id'].toString()],
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -412,25 +505,44 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String script = 'dev',
   }) async {
     final sql = _buildQuery(language, script);
-    final fullSql = "$sql ORDER BY RANDOM() LIMIT 1";
-
-    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
-    if (maps.isEmpty) return null;
-
-    final m = maps.first;
-    final id = m['id'].toString();
-
-    // Fetch commentaries for this specific shloka
-    final comms = await _db.rawQuery(
-      "SELECT * FROM commentaries WHERE shloka_id = ?",
-      [id],
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(
+      "$sql ORDER BY RANDOM() LIMIT 1",
     );
+    if (maps.isNotEmpty) {
+      final id = maps.first['id'].toString();
+      return ShlokaResult.fromMap(
+        maps.first,
+        commentaries: await getCommentaries(id),
+      );
+    }
+    return null;
+  }
 
-    final List<Commentary> commentaries = comms
-        .map((c) => Commentary.fromMap(c))
-        .toList();
+  @override
+  Future<List<Commentary>> getCommentariesForShloka(
+    String chapterNo,
+    String shlokNo,
+  ) async {
+    final id = "$chapterNo.$shlokNo";
+    return getCommentaries(id);
+  }
 
-    return ShlokaResult.fromMap(m, commentaries: commentaries);
+  Future<List<Commentary>> getCommentaries(String shlokaId) async {
+    final List<Map<String, dynamic>> maps = await _db.query(
+      'commentaries',
+      where: 'shloka_id = ?',
+      whereArgs: [shlokaId],
+    );
+    return maps.map((m) => Commentary.fromMap(m)).toList();
+  }
+
+  Future<List<Translation>> getTranslations(String shlokaId) async {
+    final List<Map<String, dynamic>> maps = await _db.query(
+      'translations',
+      where: 'shloka_id = ?',
+      whereArgs: [shlokaId],
+    );
+    return maps.map((m) => Translation.fromMap(m)).toList();
   }
 
   @override
@@ -442,76 +554,68 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     final sql = _buildQuery(language, script, whereClause: "m.id = ?");
     final List<Map<String, dynamic>> maps = await _db.rawQuery(sql, [id]);
 
-    if (maps.isEmpty) return null;
-
-    final m = maps.first;
-
-    // Fetch commentaries for this specific shloka
-    final comms = await _db.rawQuery(
-      "SELECT * FROM commentaries WHERE shloka_id = ?",
-      [id],
-    );
-
-    final List<Commentary> commentaries = comms
-        .map((c) => Commentary.fromMap(c))
-        .toList();
-
-    return ShlokaResult.fromMap(m, commentaries: commentaries);
+    if (maps.isNotEmpty) {
+      final commentaries = await getCommentaries(id);
+      return ShlokaResult.fromMap(maps.first, commentaries: commentaries);
+    }
+    return null;
   }
 
-  @override
-  Future<List<ShlokaResult>> getShlokasByReferences(
-    List<Map<String, dynamic>> references, {
+  Future<List<Map<String, dynamic>>> getChapters({
     String language = 'hi',
     String script = 'dev',
-    bool includeCommentaries = true,
   }) async {
-    if (references.isEmpty) return [];
-
-    final keys = references
-        .map((r) => "'${r['chapter_no']}:${r['shlok_no']}'")
-        .join(",");
-
-    final whereClause = "m.chapter_no || ':' || m.shloka_no IN ($keys)";
-
-    final sql = _buildQuery(language, script, whereClause: whereClause);
-    final fullSql =
-        "$sql ORDER BY CAST(m.chapter_no AS INTEGER) ASC, CAST(m.shloka_no AS INTEGER) ASC";
-
-    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
-
-    if (maps.isEmpty) return [];
-
-    if (!includeCommentaries) {
-      return List.generate(
-        maps.length,
-        (i) => ShlokaResult.fromMap(maps[i], commentaries: null),
-      );
+    // Determine translation language code (as per _buildQuery logic)
+    String transCode = language;
+    if (language == 'hi') {
+      if (script == 'dev' || script == 'hi')
+        transCode = 'hi';
+      else if (script == 'en' || script == 'ro')
+        transCode = 'ro';
+      else
+        transCode = script;
     }
 
-    final ids = maps.map((m) => "'${m['id']}'").join(',');
-    final comms = await _db.rawQuery(
-      "SELECT * FROM commentaries WHERE shloka_id IN ($ids)",
+    return await _db.rawQuery(
+      '''
+      SELECT 
+        id, 
+        chapter_number, 
+        chapter_summary, 
+        name, 
+        name_meaning, 
+        name_translation, 
+        verses_count 
+      FROM chapters 
+      WHERE language = ?
+    ''',
+      [transCode],
+    );
+  }
+
+  Future<Map<String, dynamic>?> getChapter(
+    int chapterNumber, {
+    String language = 'hi',
+    String script = 'dev',
+  }) async {
+    String transCode = language;
+    if (language == 'hi') {
+      if (script == 'dev' || script == 'hi')
+        transCode = 'hi';
+      else if (script == 'en' || script == 'ro')
+        transCode = 'ro';
+      else
+        transCode = script;
+    }
+
+    final results = await _db.rawQuery(
+      '''
+      SELECT * FROM chapters 
+      WHERE chapter_number = ? AND language = ?
+    ''',
+      [chapterNumber, transCode],
     );
 
-    final Map<String, List<Commentary>> commentariesMap = {};
-    for (var c in comms) {
-      final sId = c['shloka_id'].toString();
-      if (!commentariesMap.containsKey(sId)) {
-        commentariesMap[sId] = [];
-      }
-      commentariesMap[sId]!.add(Commentary.fromMap(c));
-    }
-
-    return List.generate(maps.length, (i) {
-      final m = maps[i];
-      final id = m['id'].toString();
-      return ShlokaResult.fromMap(m, commentaries: commentariesMap[id]);
-    });
+    return results.isNotEmpty ? results.first : null;
   }
-}
-
-// Top-level function for conditional import
-Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
-  return await DatabaseHelperImpl.create();
 }

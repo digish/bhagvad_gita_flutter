@@ -18,6 +18,8 @@ class ShlokaResult {
   final String? matchedCategory;
   final String? matchSnippet;
   final List<String>? matchedWords;
+  final Map<String, String>?
+  categorySnippets; // NEW: Map of category -> snippet
 
   // Commentaries
   final List<Commentary>? commentaries;
@@ -35,12 +37,14 @@ class ShlokaResult {
     this.matchedCategory,
     this.matchSnippet,
     this.matchedWords,
+    this.categorySnippets,
     this.commentaries,
   });
 
   factory ShlokaResult.fromMap(
     Map<String, dynamic> map, {
     List<Commentary>? commentaries,
+    Map<String, String>? categorySnippets,
   }) {
     return ShlokaResult(
       // V2 Schema: id is "1.1" (TEXT)
@@ -69,6 +73,8 @@ class ShlokaResult {
           ?.map((e) => e.toString())
           .toList(),
 
+      categorySnippets:
+          categorySnippets ?? map['category_snippets'] as Map<String, String>?,
       commentaries: commentaries,
     );
   }
@@ -100,6 +106,20 @@ class Commentary {
       authorName: map['author_name']?.toString() ?? 'Unknown',
       languageCode: map['language_code']?.toString() ?? '',
       content: map['content']?.toString() ?? '',
+    );
+  }
+}
+
+class Translation {
+  final String languageCode;
+  final String bhavarth;
+
+  Translation({required this.languageCode, required this.bhavarth});
+
+  factory Translation.fromMap(Map<String, dynamic> map) {
+    return Translation(
+      languageCode: map['language_code']?.toString() ?? '',
+      bhavarth: map['bhavarth']?.toString() ?? '',
     );
   }
 }
