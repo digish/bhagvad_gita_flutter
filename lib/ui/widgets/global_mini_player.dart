@@ -54,24 +54,63 @@ class GlobalMiniPlayer extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ✨ Innovative Touch: A subtle gradient progress glow at the top
-                    StreamBuilder<Duration>(
-                      stream: audioProvider
-                          .positionStream, // We need to expose this
-                      builder: (context, snapshot) {
-                        // Just trigger rebuilds for now, progress bar logic to be added later if needed
-                        return Container(
-                          height: 2,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                theme.colorScheme.primary.withOpacity(0.3),
-                                theme.colorScheme.primary,
-                                theme.colorScheme.primary.withOpacity(0.3),
-                              ],
-                            ),
-                          ),
+                    // Progress Bar / Seekbar
+                    StreamBuilder<Duration?>(
+                      stream: audioProvider.durationStream,
+                      builder: (context, durationSnapshot) {
+                        final duration = durationSnapshot.data ?? Duration.zero;
+                        return StreamBuilder<Duration>(
+                          stream: audioProvider.positionStream,
+                          builder: (context, positionSnapshot) {
+                            var position =
+                                positionSnapshot.data ?? Duration.zero;
+                            if (position > duration) {
+                              position = duration;
+                            }
+                            // Creatively beautiful seekbar: Floating, with glow
+                            return Container(
+                              height: 24, // Generous touch target vertical
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ), // Safe margins
+                              child: SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3.0, // Slightly bolder line
+                                  trackShape:
+                                      const RoundedRectSliderTrackShape(), // Rounded ends
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius:
+                                        8.0, // Prominent, touch-friendly thumb
+                                    elevation: 4, // Drop shadow for pop
+                                    pressedElevation: 8,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius:
+                                        24.0, // Massive touch area for ease of use
+                                  ),
+                                  activeTrackColor: theme.colorScheme.primary,
+                                  inactiveTrackColor: theme.colorScheme.primary
+                                      .withOpacity(0.15),
+                                  thumbColor: theme.colorScheme.secondary,
+                                  overlayColor: theme.colorScheme.secondary
+                                      .withOpacity(0.2),
+                                ),
+                                child: Material(
+                                  type: MaterialType.transparency,
+                                  child: Slider(
+                                    value: position.inMilliseconds.toDouble(),
+                                    min: 0.0,
+                                    max: duration.inMilliseconds.toDouble(),
+                                    onChanged: (value) {
+                                      audioProvider.seek(
+                                        Duration(milliseconds: value.toInt()),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),

@@ -150,6 +150,14 @@ class AudioProvider extends ChangeNotifier {
   // NEW: Expose position stream for progress bar
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
 
+  // NEW: Expose duration stream for progress bar
+  Stream<Duration?> get durationStream => _audioPlayer.durationStream;
+
+  // NEW: Seek method
+  Future<void> seek(Duration position) async {
+    await _audioPlayer.seek(position);
+  }
+
   // NEW: Simple toggle for the current item (Mini Player)
   Future<void> togglePlayback() async {
     if (_playbackState == PlaybackState.playing) {
