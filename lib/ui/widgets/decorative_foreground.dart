@@ -240,35 +240,36 @@ class DecorativeForeground extends StatelessWidget {
     required VoidCallback onTap,
     required double size,
   }) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Background glow effect
-          Opacity(
-            opacity: 0.5,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-              child: ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  heroTag == 'whiteLotusHero'
-                      ? Colors.white
-                      : heroTag == 'creditsLotusHero'
-                      ? Colors.amber
-                      : const Color.fromARGB(255, 0, 150, 255),
-                  BlendMode.srcATop,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Background glow effect
+            Opacity(
+              opacity: 0.5,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    heroTag == 'whiteLotusHero'
+                        ? Colors.white
+                        : heroTag == 'creditsLotusHero'
+                        ? Colors.amber
+                        : const Color.fromARGB(255, 0, 150, 255),
+                    BlendMode.srcATop,
+                  ),
+                  child: Image.asset(imageAsset, fit: BoxFit.contain),
                 ),
-                child: Image.asset(imageAsset, fit: BoxFit.contain),
               ),
             ),
-          ),
 
-          // Main interactive lotus
-          GestureDetector(
-            onTap: onTap,
-            child: Hero(
+            // Main interactive lotus
+            Hero(
               tag: heroTag,
 
               // ✨ ADD THE CUSTOM ANIMATION BUILDER HERE ✨
@@ -307,8 +308,8 @@ class DecorativeForeground extends StatelessWidget {
                   },
               child: Image.asset(imageAsset, fit: BoxFit.contain),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

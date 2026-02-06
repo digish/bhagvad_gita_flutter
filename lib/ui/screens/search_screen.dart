@@ -116,21 +116,23 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     required bool showBackground,
     required bool isKeyboardOpen,
     required bool shouldShowResults,
+    bool excludeDecoration = false,
   }) {
     if (showBackground) {
       return Stack(
         children: [
           DarkenedAnimatedBackground(opacity: isKeyboardOpen ? 1.0 : 0.2),
-          AnimatedOpacity(
-            opacity: shouldShowResults ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: shouldShowResults,
-              child: isKeyboardOpen
-                  ? const DecorativeForeground(opacity: 0.2)
-                  : const DecorativeForeground(opacity: 1.0),
+          if (!excludeDecoration)
+            AnimatedOpacity(
+              opacity: shouldShowResults ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 300),
+              child: IgnorePointer(
+                ignoring: shouldShowResults,
+                child: isKeyboardOpen
+                    ? const DecorativeForeground(opacity: 0.2)
+                    : const DecorativeForeground(opacity: 1.0),
+              ),
             ),
-          ),
         ],
       );
     } else {
@@ -138,8 +140,28 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         startColor: Theme.of(context).brightness == Brightness.dark
             ? Theme.of(context).scaffoldBackgroundColor
             : const Color(0xFFF48FB1),
-        showMandala: false,
       );
+    }
+  }
+
+  Widget _buildDecorationOnly({
+    required bool showBackground,
+    required bool isKeyboardOpen,
+    required bool shouldShowResults,
+  }) {
+    if (showBackground) {
+      return AnimatedOpacity(
+        opacity: shouldShowResults ? 0.0 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        child: IgnorePointer(
+          ignoring: shouldShowResults,
+          child: isKeyboardOpen
+              ? const DecorativeForeground(opacity: 0.2)
+              : const DecorativeForeground(opacity: 1.0),
+        ),
+      );
+    } else {
+      return const SizedBox.shrink();
     }
   }
 
@@ -220,15 +242,16 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             builder: (context, _) {
               return Stack(
                 children: [
-                  // Base Layer: Shown only during animation
+                  // Base Layer: Background Color (No Buttons)
                   if (_revealController.isAnimating)
                     _buildBackgroundOnly(
                       showBackground: !_isBackgroundRequested!,
                       isKeyboardOpen: isKeyboardOpen,
                       shouldShowResults: shouldShowResults,
+                      excludeDecoration: true,
                     ),
 
-                  // Top Layer: The current requested background (Revealing)
+                  // Top Layer: Background Color (No Buttons) - Revealing
                   LiquidReveal(
                     progress: _revealController.isAnimating
                         ? _revealController.value
@@ -238,6 +261,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                       showBackground: _isBackgroundRequested!,
                       isKeyboardOpen: isKeyboardOpen,
                       shouldShowResults: shouldShowResults,
+                      excludeDecoration: true,
                     ),
                   ),
 
@@ -426,6 +450,28 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             ),
                           ),
                       ],
+                    ),
+                  ),
+
+                  // Decoration Layer (Buttons) - ON TOP of content
+                  // Base Layer Decoration
+                  if (_revealController.isAnimating)
+                    _buildDecorationOnly(
+                      showBackground: !_isBackgroundRequested!,
+                      isKeyboardOpen: isKeyboardOpen,
+                      shouldShowResults: shouldShowResults,
+                    ),
+
+                  // Top Layer Decoration - Revealing
+                  LiquidReveal(
+                    progress: _revealController.isAnimating
+                        ? _revealController.value
+                        : 1.0,
+                    center: _revealCenter,
+                    child: _buildDecorationOnly(
+                      showBackground: _isBackgroundRequested!,
+                      isKeyboardOpen: isKeyboardOpen,
+                      shouldShowResults: shouldShowResults,
                     ),
                   ),
                 ],
