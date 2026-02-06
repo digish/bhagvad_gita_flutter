@@ -75,6 +75,9 @@ class AudioProvider extends ChangeNotifier {
   final Map<String, AssetPackStatus> _packStatus = {};
   final Map<String, double> _downloadProgress = {};
 
+  // NEW: Flag to suppress index updates during playlist initialization
+  bool _isInitializingPlayback = false;
+
   // --- PUBLIC GETTERS ---
   String? get currentPlayingShlokaId => _currentPlayingShlokaId;
 
@@ -296,12 +299,25 @@ class AudioProvider extends ChangeNotifier {
           }
         }
 
+        // ✨ FIX: Set initialization flag to prevent index listener from firing early
+        _isInitializingPlayback = true;
+
         final playlist = ConcatenatingAudioSource(children: sources);
         await _audioPlayer.setAudioSource(
           playlist,
           initialIndex: initialIndex,
           initialPosition: initialPosition,
         );
+
+        // Reset flag after source is set and stabilized (hopefully)
+        _isInitializingPlayback = false;
+
+        // Explicitly notify the correct ID now that we are stable
+        if (_currentPlayingShlokaId != shlokaId) {
+          _currentPlayingShlokaId = shlokaId;
+          notifyListeners(); // Ensure UI gets the final correct ID
+        }
+
         await _audioPlayer.play();
       } else {
         // --- SINGLE / REPEAT ONE MODE ---
@@ -514,6 +530,9 @@ class AudioProvider extends ChangeNotifier {
     // NEW: Listen to current index to update the current playing ID
     // This is crucial for the UI to know what is playing when auto-advancing
     _audioPlayer.currentIndexStream.listen((index) {
+      // ✨ FIX: Ignore updates if we are in the middle of setting up a new chapter/shloka.
+      if (_isInitializingPlayback) return;
+
       if (index != null &&
           _audioPlayer.audioSource is ConcatenatingAudioSource) {
         final playlist = _audioPlayer.audioSource as ConcatenatingAudioSource;

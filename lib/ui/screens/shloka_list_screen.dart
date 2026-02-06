@@ -755,7 +755,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 
                                       const SizedBox(height: 4),
 
-                                      // Line 2: Font & Playback Controls
+                                      // Line 2: Font Controls & Read Mode (Merged)
                                       SizedBox(
                                         height: 48,
                                         child: LayoutBuilder(
@@ -782,53 +782,51 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                             ?.color ??
                                                         Colors.black87,
                                                   ),
+
                                                   const SizedBox(width: 8),
                                                   _VerticalDivider(),
                                                   const SizedBox(width: 8),
+
+                                                  FilledButton.icon(
+                                                    onPressed: () {
+                                                      context.push(
+                                                        '/book-reading/$chapterNumber',
+                                                      );
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.menu_book_rounded,
+                                                      size: 16,
+                                                    ),
+                                                    label: const Text(
+                                                      "Commentry Book",
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                    style: FilledButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.deepOrange,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 12,
+                                                            vertical: 8,
+                                                          ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                             );
                                           },
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 2),
-
-                                      // Line 3: Read Mode Button (Centered)
-                                      SizedBox(
-                                        height: 36,
-                                        child: Center(
-                                          child: FilledButton.icon(
-                                            onPressed: () {
-                                              context.push(
-                                                '/book-reading/$chapterNumber',
-                                              );
-                                            },
-                                            icon: const Icon(
-                                              Icons.menu_book_rounded,
-                                              size: 16,
-                                            ),
-                                            label: const Text(
-                                              "Commentry Book",
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.deepOrange,
-                                              foregroundColor: Colors.white,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                          ),
                                         ),
                                       ),
                                     ],

@@ -106,13 +106,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
         final index = parayanProvider.shlokas.indexWhere(
           (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
         );
+
         if (index != -1) {
           _scrollToIndex(index);
         }
       }
     }
-
-    // Legacy auto-advance logic removed - handled by AudioProvider playlist.
   }
 
   @override
@@ -210,6 +209,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
               return ResponsiveWrapper(
                 maxWidth: 1200, // ✨ NEW: Increased width for iPad
                 child: ScrollablePositionedList.builder(
+                  key: const PageStorageKey(
+                    'parayan_list',
+                  ), // ✨ FIX: Persist scroll state
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
                   itemCount: shlokas.length,
@@ -746,9 +748,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
                                           const SizedBox(height: 4),
 
-                                          // Line 2: Playback & Display Layout
+                                          // Line 2: Font Controls & Display Mode (Merged)
                                           SizedBox(
-                                            height: 40,
+                                            height: 48,
                                             child: LayoutBuilder(
                                               builder: (context, constraints) {
                                                 return FittedBox(
@@ -761,7 +763,48 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                         CrossAxisAlignment
                                                             .center,
                                                     children: [
-                                                      // REMOVED: Playback Mode Button
+                                                      _FontSizeControl(
+                                                        currentSize: widget
+                                                            .settingsProvider
+                                                            .fontSize,
+                                                        onDecrement: () {
+                                                          if (widget
+                                                                  .settingsProvider
+                                                                  .fontSize >
+                                                              16.0) {
+                                                            widget
+                                                                .settingsProvider
+                                                                .setFontSize(
+                                                                  widget
+                                                                          .settingsProvider
+                                                                          .fontSize -
+                                                                      2.0,
+                                                                );
+                                                          }
+                                                        },
+                                                        onIncrement: () {
+                                                          if (widget
+                                                                  .settingsProvider
+                                                                  .fontSize <
+                                                              32.0) {
+                                                            widget
+                                                                .settingsProvider
+                                                                .setFontSize(
+                                                                  widget
+                                                                          .settingsProvider
+                                                                          .fontSize +
+                                                                      2.0,
+                                                                );
+                                                          }
+                                                        },
+                                                        color:
+                                                            Theme.of(context)
+                                                                .textTheme
+                                                                .bodyMedium
+                                                                ?.color ??
+                                                            Colors.black87,
+                                                      ),
+
                                                       const SizedBox(width: 8),
                                                       Container(
                                                         width: 1,
@@ -781,54 +824,6 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                   ),
                                                 );
                                               },
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 2),
-
-                                          // Line 3: Font Controls (Centered)
-                                          SizedBox(
-                                            height: 36,
-                                            child: Center(
-                                              child: _FontSizeControl(
-                                                currentSize: widget
-                                                    .settingsProvider
-                                                    .fontSize,
-                                                onDecrement: () {
-                                                  if (widget
-                                                          .settingsProvider
-                                                          .fontSize >
-                                                      16.0) {
-                                                    widget.settingsProvider
-                                                        .setFontSize(
-                                                          widget
-                                                                  .settingsProvider
-                                                                  .fontSize -
-                                                              2.0,
-                                                        );
-                                                  }
-                                                },
-                                                onIncrement: () {
-                                                  if (widget
-                                                          .settingsProvider
-                                                          .fontSize <
-                                                      32.0) {
-                                                    widget.settingsProvider
-                                                        .setFontSize(
-                                                          widget
-                                                                  .settingsProvider
-                                                                  .fontSize +
-                                                              2.0,
-                                                        );
-                                                  }
-                                                },
-                                                color:
-                                                    Theme.of(context)
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.color ??
-                                                    Colors.black87,
-                                              ),
                                             ),
                                           ),
                                         ],
