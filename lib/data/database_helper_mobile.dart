@@ -167,8 +167,6 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         .join(' INTERSECT ');
     final orFtsQuery = tokens.map((t) => '$t*').join(' OR ');
 
-    print("[SEARCH_DEBUG] Multi-word AND search. INTERSECT logic.");
-
     final List<Map<String, dynamic>> maps = await _db.rawQuery(
       '''
       SELECT ref_id, category, term_original 
@@ -180,10 +178,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       [orFtsQuery],
     );
 
-    print("[SEARCH_DEBUG] FTS found ${maps.length} rows for intersection.");
-
     if (maps.isEmpty) {
-      print("[SEARCH_DEBUG] No shlokas matched ALL terms across rows.");
       return [];
     }
 
