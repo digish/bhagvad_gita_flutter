@@ -68,6 +68,9 @@ class AudioProvider extends ChangeNotifier {
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _currentPlayingShlokaId;
   PlaybackState _playbackState = PlaybackState.stopped;
+  // NEW: Global Playback Mode & Context
+  PlaybackMode _playbackMode = PlaybackMode.continuous;
+  List<ShlokaResult>? _currentContextShlokas;
 
   final Map<String, AssetPackStatus> _packStatus = {};
   final Map<String, double> _downloadProgress = {};
@@ -76,6 +79,7 @@ class AudioProvider extends ChangeNotifier {
   String? get currentPlayingShlokaId => _currentPlayingShlokaId;
 
   PlaybackState get playbackState => _playbackState;
+  PlaybackMode get playbackMode => _playbackMode;
   Duration get position => _audioPlayer.position;
 
   // --- LIFECYCLE ---
@@ -167,6 +171,33 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
+  // NEW: Cycle Playback Mode (Global)
+  Future<void> cyclePlaybackMode() async {
+    final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
+    _playbackMode = PlaybackMode.values[nextIndex];
+    notifyListeners();
+
+    // If currently playing or paused, re-apply the mode by reloading
+    if ((_playbackState == PlaybackState.playing ||
+            _playbackState == PlaybackState.paused) &&
+        _currentContextShlokas != null &&
+        _currentPlayingShlokaId != null) {
+      final currentIndex = _currentContextShlokas!.indexWhere(
+        (s) => '${s.chapterNo}.${s.shlokNo}' == _currentPlayingShlokaId,
+      );
+
+      if (currentIndex != -1) {
+        // Reload playback with new mode, preserving position
+        await playChapter(
+          shlokas: _currentContextShlokas!,
+          initialIndex: currentIndex,
+          initialPosition: position,
+          // Force existing mode to be used
+        );
+      }
+    }
+  }
+
   // NEW: Public stop method (Mini Player)
   Future<void> stopPlayback() async {
     await _stop(_currentPlayingShlokaId);
@@ -177,14 +208,17 @@ class AudioProvider extends ChangeNotifier {
   Future<void> playChapter({
     required List<ShlokaResult> shlokas,
     required int initialIndex,
-    PlaybackMode playbackMode = PlaybackMode.continuous,
+    // playbackMode is now internal, optional override for specific cases?
+    // Removing argument to enforce global state consistency.
     Duration? initialPosition,
   }) async {
+    // Cache the context for mode switching
+    _currentContextShlokas = shlokas;
     final shloka = shlokas[initialIndex];
     final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
 
     // 0. Set Loop Mode based on PlaybackMode
-    switch (playbackMode) {
+    switch (_playbackMode) {
       case PlaybackMode.single:
         await _audioPlayer.setLoopMode(LoopMode.off);
         break;
@@ -216,7 +250,7 @@ class AudioProvider extends ChangeNotifier {
     _setPlaybackState(PlaybackState.loading);
 
     try {
-      if (playbackMode == PlaybackMode.continuous) {
+      if (_playbackMode == PlaybackMode.continuous) {
         // --- CONTINUOUS MODE (Playlist) ---
         // Optimization: Get base path once for Android
         String? chapterPackPath;
@@ -306,11 +340,7 @@ class AudioProvider extends ChangeNotifier {
   // Deprecated wrapper for backward compatibility if needed, or just remove it.
   Future<void> playOrPauseShloka(ShlokaResult shloka) async {
     // This assumes single mode.
-    playChapter(
-      shlokas: [shloka],
-      initialIndex: 0,
-      playbackMode: PlaybackMode.single,
-    );
+    playChapter(shlokas: [shloka], initialIndex: 0);
   }
 
   Future<void> initiateChapterAudioDownload(int chapterNumber) async {

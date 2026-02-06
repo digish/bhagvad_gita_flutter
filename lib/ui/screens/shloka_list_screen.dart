@@ -50,8 +50,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
 
-  // ✨ FIX: State for the playback mode, replacing the old boolean.
-  PlaybackMode _playbackMode = PlaybackMode.continuous; // Default to Continuous
+  // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
   String? _currentShlokId;
 
@@ -164,97 +163,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   // --- NEW: Helper methods for the playback mode cycle button ---
 
-  void _cyclePlaybackMode() {
-    setState(() {
-      final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
-      _playbackMode = PlaybackMode.values[nextIndex];
-    });
-
-    // ✨ NEW: If playback is active, reload with the new mode seamlessly
-    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    if (audioProvider.playbackState == PlaybackState.playing ||
-        audioProvider.playbackState == PlaybackState.paused) {
-      if (_currentShlokId != null) {
-        // Find the index of the currently playing shloka
-        final index = _shlokaProvider.shlokas.indexWhere(
-          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
-        );
-
-        if (index != -1) {
-          audioProvider.playChapter(
-            shlokas: _shlokaProvider.shlokas,
-            initialIndex: index,
-            playbackMode: _playbackMode,
-            initialPosition: audioProvider.position,
-          );
-        }
-      }
-    }
-  }
-
-  Widget _buildPlaybackModeButton({required bool isHeader}) {
-    IconData icon;
-    String tooltip;
-
-    switch (_playbackMode) {
-      case PlaybackMode.single:
-        icon = Icons.play_arrow;
-        tooltip = 'Single';
-        break;
-      case PlaybackMode.continuous:
-        icon = Icons.playlist_play;
-        tooltip = 'Continuous';
-        break;
-      case PlaybackMode.repeatOne:
-        icon = Icons.repeat_one;
-        tooltip = 'Repeat';
-        break;
-    }
-
-    // ✨ FIX: Unify button styles. The search result screen now gets a styled button.
-    if (isHeader) {
-      // This is for the expanded app bar in chapter view, which is just an icon.
-      // This is for the expanded app bar in chapter view.
-      return Tooltip(
-        message: tooltip,
-        child: TextButton.icon(
-          onPressed: _cyclePlaybackMode,
-          icon: Icon(icon, color: Colors.white, size: 24),
-          label: Text(
-            tooltip,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-          ),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-          ),
-        ),
-      );
-    } else {
-      // This is for the search result app bar.
-      return OutlinedButton.icon(
-        onPressed: _cyclePlaybackMode,
-        icon: Icon(icon, color: Colors.white70, size: 20),
-        label: Text(
-          tooltip, // Use the full tooltip as the label
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ), // A slightly more opaque border for better contrast
-          side: BorderSide(color: Colors.white.withOpacity(0.7)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-        ),
-      );
-    }
-  }
+  // REMOVED: _cyclePlaybackMode and _buildPlaybackModeButton
+  // Playback control moved to Global Mini Player.
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +250,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               },
                               color: Colors.white,
                             ),
-                            _buildPlaybackModeButton(isHeader: false),
+                            // REMOVED: Playback Mode Button
                             // ✨ NEW: Book Reading Mode Button
                             if (chapterNumber != null)
                               Tooltip(
@@ -488,8 +398,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                               delegate: _AnimatingHeaderDelegate(
                                 chapterNumber: chapterNumber,
                                 title: title, // Use localized title
-                                playbackMode: _playbackMode,
-                                onPlaybackModePressed: _cyclePlaybackMode,
+                                // REMOVED: Playback Mode Params
                                 currentFontSize: settingsProvider.fontSize,
                                 onFontSizeIncrement: () {
                                   if (settingsProvider.fontSize < maxFontSize) {
@@ -549,7 +458,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                       ).playChapter(
                                         shlokas: shlokas,
                                         initialIndex: index,
-                                        playbackMode: _playbackMode,
                                       );
                                     },
                                   ),
@@ -633,8 +541,7 @@ class _ChapterEmblemHeader extends StatelessWidget {
 class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int chapterNumber;
   final String title;
-  final PlaybackMode playbackMode;
-  final VoidCallback onPlaybackModePressed;
+  // REMOVED: playbackMode, onPlaybackModePressed
   final double currentFontSize;
   final VoidCallback onFontSizeIncrement;
   final VoidCallback onFontSizeDecrement;
@@ -647,8 +554,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   _AnimatingHeaderDelegate({
     required this.chapterNumber,
     required this.title,
-    required this.playbackMode,
-    required this.onPlaybackModePressed,
     required this.currentFontSize,
     required this.onFontSizeIncrement,
     required this.onFontSizeDecrement,
@@ -880,70 +785,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                   const SizedBox(width: 8),
                                                   _VerticalDivider(),
                                                   const SizedBox(width: 8),
-                                                  TextButton(
-                                                    onPressed:
-                                                        onPlaybackModePressed,
-                                                    style: TextButton.styleFrom(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                            vertical: 2,
-                                                          ),
-                                                      foregroundColor:
-                                                          Theme.of(context)
-                                                              .textTheme
-                                                              .bodyMedium
-                                                              ?.color,
-                                                    ),
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          playbackMode ==
-                                                                  PlaybackMode
-                                                                      .single
-                                                              ? Icons.play_arrow
-                                                              : playbackMode ==
-                                                                    PlaybackMode
-                                                                        .continuous
-                                                              ? Icons
-                                                                    .playlist_play
-                                                              : Icons
-                                                                    .repeat_one,
-                                                          color: Theme.of(
-                                                            context,
-                                                          ).iconTheme.color,
-                                                          size: 20,
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 2,
-                                                        ),
-                                                        Text(
-                                                          playbackMode ==
-                                                                  PlaybackMode
-                                                                      .single
-                                                              ? 'Single'
-                                                              : playbackMode ==
-                                                                    PlaybackMode
-                                                                        .continuous
-                                                              ? 'Continuous'
-                                                              : 'Repeat',
-                                                          style: TextStyle(
-                                                            color:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .bodySmall
-                                                                    ?.color,
-                                                            fontSize: 10,
-                                                            height: 1.0,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
                                                 ],
                                               ),
                                             );
@@ -1068,8 +909,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         maxExtent != oldDelegate.maxExtent ||
         chapterNumber != oldDelegate.chapterNumber ||
         title != oldDelegate.title ||
-        playbackMode != oldDelegate.playbackMode ||
-        onPlaybackModePressed != oldDelegate.onPlaybackModePressed ||
+        // playbackMode removed
         currentFontSize != oldDelegate.currentFontSize ||
         onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
         onFontSizeDecrement != oldDelegate.onFontSizeDecrement;

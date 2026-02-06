@@ -47,9 +47,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
 
-  // --- NEW: Playback Mode State ---
-  PlaybackMode _playbackMode =
-      PlaybackMode.continuous; // Changed default to continuous
+  // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
   final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
     // This is not used anymore but kept for potential future use.
@@ -131,80 +129,15 @@ class _ParayanScreenState extends State<ParayanScreen> {
       index: index,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOutCubic,
-      alignment: 0.4, // Center the item (0.0 is top, 1.0 is bottom)
+      alignment: 0.3, // Center the item (0.0 is top, 1.0 is bottom)
     );
   }
 
-  // --- NEW: Cycle button for playback mode ---
-  void _cyclePlaybackMode() {
-    setState(() {
-      final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
-      _playbackMode = PlaybackMode.values[nextIndex];
-    });
+  // REMOVED: _cyclePlaybackMode
+  // The playback mode toggle has been moved to the Global Mini Player.
 
-    // ✨ NEW: If playback is active, reload with the new mode seamlessly
-    if (_audioProvider != null &&
-        (_audioProvider!.playbackState == PlaybackState.playing ||
-            _audioProvider!.playbackState == PlaybackState.paused)) {
-      if (_currentlyPlayingId != null) {
-        // Find the index of the currently playing shloka
-        final parayanProvider = Provider.of<ParayanProvider>(
-          context,
-          listen: false,
-        );
-        final index = parayanProvider.shlokas.indexWhere(
-          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
-        );
-
-        if (index != -1) {
-          _audioProvider!.playChapter(
-            shlokas: parayanProvider.shlokas,
-            initialIndex: index,
-            playbackMode: _playbackMode,
-            initialPosition: _audioProvider!.position,
-          );
-        }
-      }
-    }
-  }
-
-  Widget _buildPlaybackModeButton() {
-    IconData icon;
-    String tooltip;
-
-    switch (_playbackMode) {
-      case PlaybackMode.single:
-        icon = Icons.play_arrow;
-        tooltip = 'Single';
-        break;
-      case PlaybackMode.continuous:
-        icon = Icons.playlist_play;
-        tooltip = 'Continuous';
-        break;
-      case PlaybackMode.repeatOne:
-        icon = Icons.repeat_one;
-        tooltip = 'Repeat';
-        break;
-    }
-
-    return TextButton.icon(
-      onPressed: _cyclePlaybackMode,
-      icon: Icon(icon, color: Theme.of(context).iconTheme.color, size: 20),
-      label: Text(
-        tooltip,
-        style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
+  // REMOVED: _buildPlaybackModeButton
+  // The playback mode toggle has been moved to the Global Mini Player.
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +262,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             _audioProvider?.playChapter(
                               shlokas: shlokas,
                               initialIndex: index,
-                              playbackMode: _playbackMode,
+                              // playbackMode: used from provider state
                             );
                           },
                           config: cardConfig.copyWith(
@@ -828,12 +761,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                         CrossAxisAlignment
                                                             .center,
                                                     children: [
-                                                      (context
-                                                              .findAncestorStateOfType<
-                                                                _ParayanScreenState
-                                                              >()!)
-                                                          ._buildPlaybackModeButton(),
-
+                                                      // REMOVED: Playback Mode Button
                                                       const SizedBox(width: 8),
                                                       Container(
                                                         width: 1,

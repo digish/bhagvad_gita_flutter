@@ -126,6 +126,25 @@ class GlobalMiniPlayer extends StatelessWidget {
                             ),
 
                             // 3. Playback Controls
+                            // Playback Mode Toggle
+                            IconButton(
+                              onPressed: audioProvider.cyclePlaybackMode,
+                              icon: Icon(
+                                _getPlaybackModeIcon(
+                                  audioProvider.playbackMode,
+                                ),
+                                size: 24,
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.7,
+                                ),
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              tooltip: _getPlaybackModeTooltip(
+                                audioProvider.playbackMode,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
                             IconButton(
                               onPressed: audioProvider.togglePlayback,
                               icon: Icon(
@@ -171,6 +190,28 @@ class GlobalMiniPlayer extends StatelessWidget {
   String _formatTitle(String currentId) {
     // Current ID is "Chapter.Shloka" wrapper
     return "Verse $currentId";
+  }
+
+  IconData _getPlaybackModeIcon(PlaybackMode mode) {
+    switch (mode) {
+      case PlaybackMode.single:
+        return Icons.looks_one_rounded; // '1' icon to indicate single play
+      case PlaybackMode.continuous:
+        return Icons.playlist_play;
+      case PlaybackMode.repeatOne:
+        return Icons.repeat_one;
+    }
+  }
+
+  String _getPlaybackModeTooltip(PlaybackMode mode) {
+    switch (mode) {
+      case PlaybackMode.single:
+        return 'Single Verse';
+      case PlaybackMode.continuous:
+        return 'Continuous Play';
+      case PlaybackMode.repeatOne:
+        return 'Repeat One';
+    }
   }
 }
 
