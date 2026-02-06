@@ -54,66 +54,11 @@ class GlobalMiniPlayer extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(
+                      height: 6,
+                    ), // Add breathing room above seekbar
                     // Progress Bar / Seekbar
-                    StreamBuilder<Duration?>(
-                      stream: audioProvider.durationStream,
-                      builder: (context, durationSnapshot) {
-                        final duration = durationSnapshot.data ?? Duration.zero;
-                        return StreamBuilder<Duration>(
-                          stream: audioProvider.positionStream,
-                          builder: (context, positionSnapshot) {
-                            var position =
-                                positionSnapshot.data ?? Duration.zero;
-                            if (position > duration) {
-                              position = duration;
-                            }
-                            // Creatively beautiful seekbar: Floating, with glow
-                            return Container(
-                              height: 24, // Generous touch target vertical
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ), // Safe margins
-                              child: SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  trackHeight: 3.0, // Slightly bolder line
-                                  trackShape:
-                                      const RoundedRectSliderTrackShape(), // Rounded ends
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius:
-                                        8.0, // Prominent, touch-friendly thumb
-                                    elevation: 4, // Drop shadow for pop
-                                    pressedElevation: 8,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius:
-                                        24.0, // Massive touch area for ease of use
-                                  ),
-                                  activeTrackColor: theme.colorScheme.primary,
-                                  inactiveTrackColor: theme.colorScheme.primary
-                                      .withOpacity(0.15),
-                                  thumbColor: theme.colorScheme.secondary,
-                                  overlayColor: theme.colorScheme.secondary
-                                      .withOpacity(0.2),
-                                ),
-                                child: Material(
-                                  type: MaterialType.transparency,
-                                  child: Slider(
-                                    value: position.inMilliseconds.toDouble(),
-                                    min: 0.0,
-                                    max: duration.inMilliseconds.toDouble(),
-                                    onChanged: (value) {
-                                      audioProvider.seek(
-                                        Duration(milliseconds: value.toInt()),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                    _MiniPlayerSeekbar(audioProvider: audioProvider),
                     SafeArea(
                       top: false,
                       // Maintain bottom safe area padding so controls don't overlap home indicator
@@ -226,5 +171,100 @@ class GlobalMiniPlayer extends StatelessWidget {
   String _formatTitle(String currentId) {
     // Current ID is "Chapter.Shloka" wrapper
     return "Verse $currentId";
+  }
+}
+
+class _MiniPlayerSeekbar extends StatefulWidget {
+  final AudioProvider audioProvider;
+  const _MiniPlayerSeekbar({required this.audioProvider});
+
+  @override
+  State<_MiniPlayerSeekbar> createState() => _MiniPlayerSeekbarState();
+}
+
+class _MiniPlayerSeekbarState extends State<_MiniPlayerSeekbar> {
+  bool _isDragging = false;
+  double _dragValue = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return StreamBuilder<Duration?>(
+      stream: widget.audioProvider.durationStream,
+      builder: (context, durationSnapshot) {
+        final duration = durationSnapshot.data ?? Duration.zero;
+        return StreamBuilder<Duration>(
+          stream: widget.audioProvider.positionStream,
+          builder: (context, positionSnapshot) {
+            var position = positionSnapshot.data ?? Duration.zero;
+            if (position > duration) {
+              position = duration;
+            }
+
+            // Use drag value if dragging, otherwise stream value
+            final currentValue = _isDragging
+                ? _dragValue
+                : position.inMilliseconds.toDouble();
+            final maxValue = duration.inMilliseconds.toDouble();
+
+            // Safety check to ensure value doesn't exceed max
+            final effectiveValue = currentValue.clamp(0.0, maxValue);
+
+            return Container(
+              height: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3.0,
+                  trackShape: const RoundedRectSliderTrackShape(),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 8.0,
+                    elevation: 4,
+                    pressedElevation: 8,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 24.0,
+                  ),
+                  activeTrackColor: theme.colorScheme.primary,
+                  inactiveTrackColor: theme.colorScheme.primary.withOpacity(
+                    0.15,
+                  ),
+                  thumbColor: theme.colorScheme.secondary,
+                  overlayColor: theme.colorScheme.secondary.withOpacity(0.2),
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Slider(
+                    value: effectiveValue,
+                    min: 0.0,
+                    max: maxValue,
+                    onChangeStart: (value) {
+                      setState(() {
+                        _isDragging = true;
+                        _dragValue = value;
+                      });
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        _dragValue = value;
+                      });
+                    },
+                    onChangeEnd: (value) {
+                      setState(() {
+                        _isDragging = false;
+                        _dragValue = value;
+                      });
+                      widget.audioProvider.seek(
+                        Duration(milliseconds: value.toInt()),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
