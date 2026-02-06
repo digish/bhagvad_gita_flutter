@@ -25,6 +25,7 @@ import '../../providers/bookmark_provider.dart';
 // import '../../main.dart'; // For routeObserver - Removed
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
+import '../../services/home_widget_service.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -64,6 +65,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   Offset _revealCenter = Offset.zero;
   final GlobalKey _themeToggleKey = GlobalKey();
   bool? _isBackgroundRequested;
+  Set<int>? _lastKnownSources; // Cache for change detection
 
   @override
   void initState() {
@@ -72,12 +74,26 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    // Defer the random fetch until after the first frame to access providers context safely
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadRandomShloka();
-      }
-    });
+    // Removed explicit postFrameCallback here; handled in didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = Provider.of<SettingsProvider>(context);
+    final newSources = settings.randomShlokaSources;
+
+    // Trigger load if sources change (or first run)
+    if (_lastKnownSources == null ||
+        !setEquals(_lastKnownSources, newSources)) {
+      _lastKnownSources = Set.from(newSources);
+      // Defer to avoid setState during build integration
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadRandomShloka();
+        }
+      });
+    }
   }
 
   @override
@@ -615,6 +631,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           _randomShloka = result;
           _loadingRandom = false;
         });
+
+        // Sync with Home Widget
+        if (result != null) {
+          HomeWidgetService.updateWidgetData(
+            result,
+            header: _randomShlokaListName,
+          );
+        }
       }
     } catch (e) {
       debugPrint('SearchScreen: Error loading random shloka: $e');

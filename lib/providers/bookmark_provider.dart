@@ -129,7 +129,11 @@ class BookmarkProvider extends ChangeNotifier {
       for (var item in items) {
         final parts = item.split('.');
         if (parts.length == 2) {
-          references.add({'chapter_no': parts[0], 'shlok_no': parts[1]});
+          references.add({
+            'id': item,
+            'chapter_no': parts[0],
+            'shlok_no': parts[1],
+          });
         }
       }
     } else {
@@ -139,7 +143,9 @@ class BookmarkProvider extends ChangeNotifier {
       if (savedItems.isEmpty) return [];
       // savedItems is List<Map<String, Object?>>, we cast or use as is if keys match
       // UserDatabaseHelper uses 'chapter_no' and 'shlok_no' which matches what we need
-      references = List<Map<String, dynamic>>.from(savedItems);
+      references = savedItems.map((item) {
+        return {...item, 'id': '${item['chapter_no']}.${item['shlok_no']}'};
+      }).toList();
     }
 
     if (references.isEmpty) return [];
