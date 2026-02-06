@@ -1,5 +1,6 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FCE4EC" /> <!-- Pink 50 -->
+    <solid android:color="@color/widget_background" />
     <corners android:radius="16dp" />
-    <stroke android:width="1dp" android:color="#F8BBD0" />
+    <!-- Android widgets often don't have borders, but a subtle one helps on some wallpapers -->
+    <stroke android:width="0dp" android:color="#00000000" />
 </shape>

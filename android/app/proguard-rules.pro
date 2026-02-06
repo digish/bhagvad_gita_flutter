@@ -13,3 +13,6 @@
 -dontwarn com.google.android.play.core.tasks.OnFailureListener
 -dontwarn com.google.android.play.core.tasks.OnSuccessListener
 -dontwarn com.google.android.play.core.tasks.Task
+
+# Keep the Widget Provider class to prevent R8 from stripping it
+-keep class org.komal.bhagvadgeeta.DailyShlokaWidget { *; }

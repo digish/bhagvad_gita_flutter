@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#121212</color> <!-- Material Dark -->
+    <color name="widget_text_primary">#FFFFFF</color>
+    <color name="widget_text_secondary">#F48FB1</color> <!-- Lighter Pink -->
+</resources>

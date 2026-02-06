@@ -4,52 +4,49 @@
     android:background="@drawable/widget_background"
     android:orientation="vertical"
     android:padding="16dp"
-    android:theme="@style/Theme.DeviceDefault.Light">
+    style="@android:style/Theme.DeviceDefault.Light">
 
     <TextView
         android:id="@+id/widget_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="DAILY GITA WISDOM"
-        android:textColor="#880E4F"
+        android:textColor="@color/widget_text_secondary"
         android:textSize="10sp"
         android:textStyle="bold"
-        android:letterSpacing="0.1"
-        android:gravity="center_vertical" />
+        android:letterSpacing="0.05"
+        android:gravity="center_horizontal|top" />
 
     <TextView
         android:id="@+id/widget_shloka_text"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:text="Loading..."
-        android:textColor="#3E2723"
+        android:text="dharma-kṣhetre kuru-kṣhetre\nsama-vetā yuyutsavaḥ\nmāmakāḥ pāṇḍavāśh chaiva\nkim akurvata sañjaya"
+        android:textColor="@color/widget_text_primary"
         android:textSize="14sp"
         android:textStyle="bold"
         android:gravity="center"
         android:ellipsize="end"
-        android:maxLines="6"
+        android:maxLines="4"
         android:paddingTop="8dp"
         android:paddingBottom="8dp" />
 
+    <!-- iOS Widget does not show translation, matches requested alignment -->
     <TextView
         android:id="@+id/widget_translation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tap to refresh..."
-        android:textColor="#5D4037"
-        android:textSize="12sp"
-        android:maxLines="3"
-        android:ellipsize="end" />
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_footer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Chapter X, Shloka Y"
-        android:textColor="#880E4F"
+        android:text="Chapter 1, Shloka 1"
+        android:textColor="@color/widget_text_secondary"
         android:textSize="10sp"
-        android:gravity="end"
-        android:paddingTop="4dp" />
+        android:textStyle="bold"
+        android:gravity="center_horizontal|bottom" />
 
 </LinearLayout>
