@@ -10,6 +10,7 @@ import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
 import '../widgets/shloka_result_card.dart';
 import '../widgets/font_size_control.dart';
+import '../../navigation/app_router.dart';
 
 class AskGitaScreen extends StatefulWidget {
   final String? initialQuery;
@@ -304,6 +305,33 @@ class _ChatBubble extends StatelessWidget {
     final isUser = message.sender == MessageSender.user;
     final theme = Theme.of(context);
 
+    // Smart Parsing for [QUOTE] tag
+    String displayText = message.text;
+    String? shareableQuote;
+
+    if (!isUser) {
+      final quoteRegExp = RegExp(r'\[QUOTE\](.*?)\[/QUOTE\]', dotAll: true);
+      final match = quoteRegExp.firstMatch(message.text);
+      if (match != null) {
+        shareableQuote = match.group(1)?.trim();
+        // Remove the quote tag from the displayed text
+        displayText = message.text.replaceAll(quoteRegExp, '').trim();
+      } else {
+        // Fallback: Use the first significant sentence
+        final lines = message.text.split('\n');
+        for (final line in lines) {
+          if (line.trim().length > 20 && !line.startsWith('#')) {
+            shareableQuote = line.trim();
+            break;
+          }
+        }
+        // Safety cap
+        if (shareableQuote != null && shareableQuote.length > 150) {
+          shareableQuote = shareableQuote.substring(0, 150) + '...';
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: isUser
           ? CrossAxisAlignment.end
@@ -334,9 +362,9 @@ class _ChatBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (message.text.isNotEmpty)
+              if (displayText.isNotEmpty)
                 MarkdownBody(
-                  data: message.text,
+                  data: displayText,
                   styleSheet: MarkdownStyleSheet(
                     p: TextStyle(
                       color: isUser
@@ -387,11 +415,30 @@ class _ChatBubble extends StatelessWidget {
                       onPressed: () {
                         final footer =
                             '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
-                        Share.share(message.text + footer);
+                        Share.share(displayText + footer);
                       },
                       visualDensity: VisualDensity.compact,
                       color: theme.primaryColor.withOpacity(0.7),
                     ),
+                    // Create Image Button (Only for AI responses)
+                    if (!isUser)
+                      IconButton(
+                        icon: const Icon(Icons.image_outlined, size: 18),
+                        tooltip: 'Share as Quote',
+                        onPressed: () {
+                          if (shareableQuote != null) {
+                            context.push(
+                              AppRoutes.imageCreator,
+                              extra: {
+                                'text': shareableQuote, // Use the smart quote
+                                'source': 'Ask Gita AI', // Dynamic source
+                              },
+                            );
+                          }
+                        },
+                        visualDensity: VisualDensity.compact,
+                        color: theme.primaryColor.withOpacity(0.7),
+                      ),
                   ],
                 ),
               ],

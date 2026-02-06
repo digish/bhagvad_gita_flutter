@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class CreditProvider extends ChangeNotifier {
   static const String _prefKeyCredits = 'divine_credits_balance';
   static const String _prefKeyLastGrantDate = 'divine_credits_last_grant';
-  static const int _dailyFreeGrant = 5;
+  static const int _dailyFreeGrant = 3;
 
   int _balance = 0;
   bool _isLoading = true;
@@ -20,7 +20,7 @@ class CreditProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _balance =
         prefs.getInt(_prefKeyCredits) ??
-        _dailyFreeGrant; // Start with 5 for new users
+        _dailyFreeGrant; // Start with 3 for new users
 
     // Check for daily grant
     final lastGrantStr = prefs.getString(_prefKeyLastGrantDate);

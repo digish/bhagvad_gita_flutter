@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // Import the share_plus package
+import 'package:go_router/go_router.dart';
+import '../../navigation/app_router.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/bookmark_provider.dart';
@@ -151,6 +153,16 @@ class FullShlokaCard extends StatelessWidget {
       builder: (context) => ShareOptionsSheet(
         showAudioOption: true, // Allow audio for individual shloka
         onShare: (selectedOptions) => _executeShare(context, selectedOptions),
+        onCreateImage: () {
+          context.push(
+            AppRoutes.imageCreator,
+            extra: {
+              'text': shloka.shlok,
+              'translation': shloka.bhavarth,
+              'source': 'Chapter ${shloka.chapterNo}.${shloka.shlokNo}',
+            },
+          );
+        },
       ),
     );
   }

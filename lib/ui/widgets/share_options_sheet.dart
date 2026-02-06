@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class ShareOptionsSheet extends StatefulWidget {
   final bool showAudioOption;
   final Function(Set<ShareOption>) onShare;
+  final VoidCallback? onCreateImage;
 
   const ShareOptionsSheet({
     super.key,
     required this.showAudioOption,
     required this.onShare,
+    this.onCreateImage,
   });
 
   @override
@@ -124,6 +126,37 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    // Create Visual Card Button
+                    if (widget.onCreateImage != null)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.onCreateImage!();
+                          },
+                          icon: const Icon(Icons.image_outlined),
+                          label: const Text(
+                            'Share as Image',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: 1.5,
+                            ),
+                            foregroundColor: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 16),
                   ],
                 ),

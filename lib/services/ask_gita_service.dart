@@ -99,6 +99,7 @@ Instructions:
 3. Be compassionate, calm, and practical.
 4. DO NOT just copy-paste the verses. Explain their essence in your own words.
 5. Answer in the SAME LANGUAGE as the User's Question. (If they ask in English, answer in English).
+6. At the very end, provide a single "witty and intelligent" one-line summary of your advice for sharing, enclosed in [QUOTE] tags. Example: [QUOTE]Focus on the effort, not the outcome, and find your peace.[/QUOTE]
 
 Question: $userQuery
 Your Guidance:

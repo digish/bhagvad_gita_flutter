@@ -31,6 +31,7 @@ import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
 import '../ui/screens/book_reading_screen.dart';
 import '../ui/screens/ask_gita_screen.dart';
+import '../ui/screens/image_creator_screen.dart';
 
 class AppRoutes {
   static const String search = '/';
@@ -44,6 +45,7 @@ class AppRoutes {
   static const String bookmarks = '/bookmarks';
   static const String bookReading = '/book-reading/:chapter';
   static const String askGita = '/ask-gita';
+  static const String imageCreator = '/image-creator';
 }
 
 final GoRouter router = GoRouter(
@@ -178,6 +180,31 @@ final GoRouter router = GoRouter(
           builder: (context, state) {
             final query = state.extra as String?;
             return AskGitaScreen(initialQuery: query);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.imageCreator,
+          pageBuilder: (context, state) {
+            // Expecting params as a Map in 'extra'
+            final args = state.extra as Map<String, dynamic>? ?? {};
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: ImageCreatorScreen(
+                text: args['text'] ?? '',
+                translation: args['translation'],
+                source: args['source'],
+              ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 1),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    );
+                  },
+            );
           },
         ),
       ],
