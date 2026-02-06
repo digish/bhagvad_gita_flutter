@@ -23,11 +23,13 @@ import 'dart:ui';
 class ShlokaResultCard extends StatelessWidget {
   final ShlokaResult shloka;
   final String searchQuery;
+  final bool isCompact;
 
   const ShlokaResultCard({
     super.key,
     required this.shloka,
     required this.searchQuery,
+    this.isCompact = false,
   });
 
   @override
@@ -64,8 +66,8 @@ class ShlokaResultCard extends StatelessWidget {
     }
 
     displayShlok = displayShlok
-        .replaceAll(RegExp(r'<c>', caseSensitive: false), '')
-        .replaceAll('*', ' ');
+        .replaceAll(RegExp(r'<c>', caseSensitive: false), '\n')
+        .replaceAll('*', '\n');
 
     final termsToHighlight =
         (shloka.matchedWords != null && shloka.matchedWords!.isNotEmpty)
@@ -172,7 +174,10 @@ class ShlokaResultCard extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 10 : 16,
+        vertical: isCompact ? 4 : 6,
+      ),
       child: Container(
         decoration: BoxDecoration(
           boxShadow: isSimpleLight
@@ -205,9 +210,9 @@ class ShlokaResultCard extends StatelessWidget {
                   );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: isCompact ? 10 : 14,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,11 +225,11 @@ class ShlokaResultCard extends StatelessWidget {
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isCompact ? 4 : 8),
                       RichText(
                         text: TextSpan(
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            fontSize: 15,
+                            fontSize: isCompact ? 14 : 15,
                             height: 1.5,
                             fontWeight: FontWeight.w400,
                             color: textColor,

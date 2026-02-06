@@ -196,6 +196,17 @@ class _MainScaffoldState extends State<MainScaffold>
                 label: const Text('Search'),
               ),
               NavigationRailDestination(
+                icon: const Icon(
+                  Icons.auto_awesome_outlined,
+                  color: Colors.black54,
+                ),
+                selectedIcon: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.orange,
+                ),
+                label: const Text('Ask Gita AI'),
+              ),
+              NavigationRailDestination(
                 icon: _buildLotusIcon('assets/images/lotus_white22.png', false),
                 selectedIcon: _buildLotusIcon(
                   'assets/images/lotus_white22.png',
@@ -264,20 +275,23 @@ class _MainScaffoldState extends State<MainScaffold>
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith(AppRoutes.chapters)) {
+    if (location == AppRoutes.askGita) {
       return 1;
     }
-    if (location.startsWith(AppRoutes.parayan)) {
+    if (location.startsWith(AppRoutes.chapters)) {
       return 2;
     }
-    if (location.startsWith(AppRoutes.credits)) {
+    if (location.startsWith(AppRoutes.parayan)) {
       return 3;
     }
-    if (location.startsWith(AppRoutes.bookmarks)) {
+    if (location.startsWith(AppRoutes.credits)) {
       return 4;
     }
-    if (location.startsWith(AppRoutes.settings)) {
+    if (location.startsWith(AppRoutes.bookmarks)) {
       return 5;
+    }
+    if (location.startsWith(AppRoutes.settings)) {
+      return 6;
     }
     if (location == AppRoutes.search) {
       return 0;
@@ -291,18 +305,21 @@ class _MainScaffoldState extends State<MainScaffold>
         context.go(AppRoutes.search);
         break;
       case 1:
-        context.go(AppRoutes.chapters);
+        context.go(AppRoutes.askGita);
         break;
       case 2:
-        context.go(AppRoutes.parayan);
+        context.go(AppRoutes.chapters);
         break;
       case 3:
-        context.go(AppRoutes.credits);
+        context.go(AppRoutes.parayan);
         break;
       case 4:
-        context.go(AppRoutes.bookmarks);
+        context.go(AppRoutes.credits);
         break;
       case 5:
+        context.go(AppRoutes.bookmarks);
+        break;
+      case 6:
         context.go(AppRoutes.settings);
         break;
     }

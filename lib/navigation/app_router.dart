@@ -30,6 +30,7 @@ import '../providers/settings_provider.dart'; // Import SettingsProvider
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
 import '../ui/screens/book_reading_screen.dart';
+import '../ui/screens/ask_gita_screen.dart';
 
 class AppRoutes {
   static const String search = '/';
@@ -42,6 +43,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String bookmarks = '/bookmarks';
   static const String bookReading = '/book-reading/:chapter';
+  static const String askGita = '/ask-gita';
 }
 
 final GoRouter router = GoRouter(
@@ -169,6 +171,13 @@ final GoRouter router = GoRouter(
                     return FadeTransition(opacity: animation, child: child);
                   },
             );
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.askGita,
+          builder: (context, state) {
+            final query = state.extra as String?;
+            return AskGitaScreen(initialQuery: query);
           },
         ),
       ],

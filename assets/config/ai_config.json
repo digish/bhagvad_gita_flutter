@@ -1,0 +1,4 @@
+{
+    "chat_model": "gemini-flash-lite-latest",
+    "embedding_model": "gemini-embedding-001"
+}

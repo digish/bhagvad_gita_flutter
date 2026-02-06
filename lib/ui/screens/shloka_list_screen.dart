@@ -22,6 +22,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
+import '../widgets/font_size_control.dart';
 import '../../data/static_data.dart';
 import '../../data/database_helper_interface.dart';
 
@@ -232,22 +233,10 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _FontSizeControl(
+                            FontSizeControl(
                               currentSize: settingsProvider.fontSize,
-                              onDecrement: () {
-                                if (settingsProvider.fontSize > minFontSize) {
-                                  settingsProvider.setFontSize(
-                                    settingsProvider.fontSize - fontStep,
-                                  );
-                                }
-                              },
-                              onIncrement: () {
-                                if (settingsProvider.fontSize < maxFontSize) {
-                                  settingsProvider.setFontSize(
-                                    settingsProvider.fontSize + fontStep,
-                                  );
-                                }
-                              },
+                              onSizeChanged: (newSize) =>
+                                  settingsProvider.setFontSize(newSize),
                               color: Colors.white,
                             ),
                             // REMOVED: Playback Mode Button
@@ -768,13 +757,17 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.center,
                                                 children: [
-                                                  _FontSizeControl(
+                                                  FontSizeControl(
                                                     currentSize:
                                                         currentFontSize,
-                                                    onDecrement:
-                                                        onFontSizeDecrement,
-                                                    onIncrement:
-                                                        onFontSizeIncrement,
+                                                    onSizeChanged: (newSize) {
+                                                      if (newSize >
+                                                          currentFontSize) {
+                                                        onFontSizeIncrement();
+                                                      } else {
+                                                        onFontSizeDecrement();
+                                                      }
+                                                    },
                                                     color:
                                                         Theme.of(context)
                                                             .textTheme
@@ -915,55 +908,6 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 /// A reusable widget for switches in the collapsing header.
-
-// --- NEW: Font size control widget ---
-class _FontSizeControl extends StatelessWidget {
-  final double currentSize;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-  final Color color;
-
-  const _FontSizeControl({
-    required this.currentSize,
-    required this.onDecrement,
-    required this.onIncrement,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(Icons.remove, color: color),
-          onPressed: onDecrement,
-          iconSize: 20,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            '${currentSize.toInt()}',
-            style: TextStyle(
-              color: color,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        IconButton(
-          icon: Icon(Icons.add, color: color),
-          onPressed: onIncrement,
-          iconSize: 20,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-      ],
-    );
-  }
-}
 
 class _VerticalDivider extends StatelessWidget {
   @override

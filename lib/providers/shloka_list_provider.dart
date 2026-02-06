@@ -64,7 +64,35 @@ class ShlokaListProvider extends ChangeNotifier {
     // Case #0: Query is a "chapter,shloka" or "chapter.shloka" reference.
     final shlokaRefMatch = RegExp(r'^(\d+)[,.](\d+)$').firstMatch(_searchQuery);
 
-    if (shlokaRefMatch != null) {
+    // Case #0.5: Query is a list of shloka IDs (e.g. "ids:1.1,2.45")
+    if (_searchQuery.startsWith('ids:')) {
+      final idsStr = _searchQuery.replaceFirst('ids:', '');
+      final ids = idsStr
+          .split(',')
+          .where((id) => id.trim().isNotEmpty)
+          .toList();
+
+      final List<ShlokaResult> fetched = [];
+      for (final id in ids) {
+        final parts = id.trim().split('.');
+        if (parts.length == 2) {
+          final chapter = int.tryParse(parts[0]);
+          final shlokNum = int.tryParse(parts[1]);
+          if (chapter != null && shlokNum != null) {
+            final chapterShlokas = await _dbHelper.getShlokasByChapter(
+              chapter,
+              language: _language,
+              script: _script,
+            );
+            final match = chapterShlokas
+                .where((s) => int.tryParse(s.shlokNo) == shlokNum)
+                .toList();
+            fetched.addAll(match);
+          }
+        }
+      }
+      _shlokas = fetched;
+    } else if (shlokaRefMatch != null) {
       final chapterStr = shlokaRefMatch.group(1)!;
       final chapter = int.tryParse(chapterStr);
       final shlokNum = int.tryParse(shlokaRefMatch.group(2)!);

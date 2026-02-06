@@ -614,7 +614,7 @@ class AudioProvider extends ChangeNotifier {
         );
       }
       return assetPackPath;
-    } catch (e, s) {
+    } catch (e) {
       // This is an expected failure if the pack is not on the device.
       debugPrint(
         "[ASSET_DELIVERY] Could not get asset pack path for $packName (likely not downloaded). Error: $e",

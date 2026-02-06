@@ -16,8 +16,10 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/ad_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/bookmark_provider.dart';
+import '../../providers/credit_provider.dart';
 import '../widgets/simple_gradient_background.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -441,6 +443,176 @@ class SettingsScreen extends StatelessWidget {
 
                               const SizedBox(height: 32),
 
+                              // --- AI Settings Section ---
+                              _buildSectionHeader('Divine Connection (AI)'),
+                              Card(
+                                color: Theme.of(context).cardTheme.color,
+                                elevation: 4,
+                                child: Column(
+                                  children: [
+                                    Consumer<CreditProvider>(
+                                      builder: (context, credits, _) {
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: Colors.amber
+                                                .withOpacity(0.1),
+                                            child: const Icon(
+                                              Icons.auto_awesome,
+                                              color: Colors.amber,
+                                            ),
+                                          ),
+                                          title: const Text(
+                                            'Divine Credits',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            settings.customAiApiKey != null
+                                                ? '∞ Unrestricted (Using personal key)'
+                                                : '${credits.balance} Credits Available',
+                                            style: TextStyle(
+                                              color: credits.balance == 0
+                                                  ? Colors.red[700]
+                                                  : Colors.grey[700],
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (settings.customAiApiKey == null) ...[
+                                      const Divider(height: 1, indent: 72),
+                                      ListTile(
+                                        leading: const SizedBox(width: 40),
+                                        title: const Text(
+                                          'Get more queries',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        trailing: Wrap(
+                                          spacing: 8,
+                                          children: [
+                                            TextButton.icon(
+                                              onPressed: () {
+                                                AdService.instance.showRewardedAd(
+                                                  onRewardEarned: (reward) {
+                                                    context
+                                                        .read<CreditProvider>()
+                                                        .addCredits(5);
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Karma earned! +5 Credits added. 🙏',
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  onAdFailedToShow: () {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Ad not ready yet. Please try again in a few seconds.',
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.play_circle_outline,
+                                                size: 16,
+                                              ),
+                                              label: const Text('Watch Ad'),
+                                              style: TextButton.styleFrom(
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                            ),
+                                            TextButton.icon(
+                                              onPressed: () {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Seva (Support) coming soon!',
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.favorite_border,
+                                                size: 16,
+                                              ),
+                                              label: const Text('Seva'),
+                                              style: TextButton.styleFrom(
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    const Divider(height: 1, indent: 72),
+                                    ListTile(
+                                      leading: const SizedBox(width: 40),
+                                      title: const Text(
+                                        'Custom Gemini API Key',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                      subtitle: Text(
+                                        settings.customAiApiKey != null
+                                            ? 'Active'
+                                            : 'Use your own key for unlimited AI',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      trailing: Icon(
+                                        settings.customAiApiKey != null
+                                            ? Icons.edit
+                                            : Icons.add,
+                                        size: 18,
+                                      ),
+                                      onTap: () =>
+                                          _showApiKeyDialog(context, settings),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 8.0,
+                                  left: 4.0,
+                                ),
+                                child: InkWell(
+                                  onTap: () async {
+                                    final url = Uri.parse(
+                                      'https://aistudio.google.com/app/apikey',
+                                    );
+                                    if (!await launchUrl(
+                                      url,
+                                      mode: LaunchMode.externalApplication,
+                                    )) {
+                                      debugPrint('Could not launch AI Studio');
+                                    }
+                                  },
+                                  child: const Text(
+                                    'Get your own free key from Google AI Studio',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize: 12,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+
                               // --- Support Section ---
                               _buildSectionHeader('Support'),
                               _buildActionTile(
@@ -706,6 +878,66 @@ class SettingsScreen extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showApiKeyDialog(BuildContext context, SettingsProvider settings) {
+    final controller = TextEditingController(
+      text: settings.customAiApiKey ?? '',
+    );
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Custom Gemini API Key'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your personal Gemini API key. This will be stored only on your device and used instead of the app\'s default key.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Gemini API Key',
+                  border: OutlineInputBorder(),
+                  hintText: 'AIzaSy...',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (settings.customAiApiKey != null)
+              TextButton(
+                onPressed: () {
+                  settings.clearCustomAiApiKey();
+                  Navigator.of(context).pop();
+                },
+                child: const Text(
+                  'Clear Key',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final key = controller.text.trim();
+                if (key.isNotEmpty) {
+                  settings.setCustomAiApiKey(key);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
             ),
           ],
         );

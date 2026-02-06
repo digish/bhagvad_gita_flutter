@@ -62,6 +62,7 @@ dependencies:
   
   # UI
   flutter_speed_dial: ^7.0.0 
+  flutter_markdown: ^0.7.1 # For Chat UI
   scrollable_positioned_list: ^0.3.8
   just_audio: ^0.10.4
   audio_session: ^0.1.19 
@@ -69,8 +70,11 @@ dependencies:
   asset_delivery: ^1.1.0
   wakelock_plus: ^1.4.0
   home_widget: ^0.9.0
+  google_generative_ai: ^0.4.6 # For Gemini API
+  google_mobile_ads: ^5.3.0
 
 dev_dependencies:
+  sqflite_common_ffi: ^2.3.3 # For running DB script on desktop
   flutter_test:
     sdk: flutter
   change_app_package_name: ^1.2.0
@@ -96,6 +100,7 @@ flutter:
     - assets/shaders/ripple.frag
 
   assets:
+    - assets/gita_embeddings.json
     - assets/images/
     - assets/emblems/
     - assets/emblems/chapter/

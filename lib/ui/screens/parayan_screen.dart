@@ -25,6 +25,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../widgets/font_size_control.dart';
 import '../theme/app_colors.dart';
 
 // --- NEW: Enum to manage the content display modes ---
@@ -763,40 +764,16 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                         CrossAxisAlignment
                                                             .center,
                                                     children: [
-                                                      _FontSizeControl(
+                                                      FontSizeControl(
                                                         currentSize: widget
                                                             .settingsProvider
                                                             .fontSize,
-                                                        onDecrement: () {
-                                                          if (widget
-                                                                  .settingsProvider
-                                                                  .fontSize >
-                                                              16.0) {
-                                                            widget
+                                                        onSizeChanged:
+                                                            (newSize) => widget
                                                                 .settingsProvider
                                                                 .setFontSize(
-                                                                  widget
-                                                                          .settingsProvider
-                                                                          .fontSize -
-                                                                      2.0,
-                                                                );
-                                                          }
-                                                        },
-                                                        onIncrement: () {
-                                                          if (widget
-                                                                  .settingsProvider
-                                                                  .fontSize <
-                                                              32.0) {
-                                                            widget
-                                                                .settingsProvider
-                                                                .setFontSize(
-                                                                  widget
-                                                                          .settingsProvider
-                                                                          .fontSize +
-                                                                      2.0,
-                                                                );
-                                                          }
-                                                        },
+                                                                  newSize,
+                                                                ),
                                                         color:
                                                             Theme.of(context)
                                                                 .textTheme
@@ -923,55 +900,6 @@ class _ChapterStartHeader extends StatelessWidget {
           color: const Color.fromARGB(255, 4, 123, 192),
         ),
       ),
-    );
-  }
-}
-
-// --- NEW: Font size control widget (copied from shloka_list_screen) ---
-class _FontSizeControl extends StatelessWidget {
-  final double currentSize;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-  final Color color;
-
-  const _FontSizeControl({
-    required this.currentSize,
-    required this.onDecrement,
-    required this.onIncrement,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(Icons.remove, color: color),
-          onPressed: onDecrement,
-          iconSize: 20,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            '${currentSize.toInt()}',
-            style: TextStyle(
-              color: color,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        IconButton(
-          icon: Icon(Icons.add, color: color),
-          onPressed: onIncrement,
-          iconSize: 20,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-      ],
     );
   }
 }

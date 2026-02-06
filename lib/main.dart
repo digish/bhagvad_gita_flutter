@@ -22,18 +22,33 @@ import 'providers/audio_provider.dart';
 import 'data/database_helper.dart';
 import 'providers/settings_provider.dart';
 import 'providers/bookmark_provider.dart';
+import 'providers/credit_provider.dart';
 import 'data/database_helper_interface.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'services/ad_service.dart';
+import 'providers/ask_gita_provider.dart';
+
+import 'services/remote_config_service.dart';
 
 Future<void> main() async {
   // <-- Make main async
   // --- ADD THIS INITIALIZATION BLOCK ---
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Background Audio
   await JustAudioBackground.init(
     androidNotificationChannelId: 'org.komal.bhagvadgeeta.channel.audio',
     androidNotificationChannelName: 'Audio Playback',
     androidNotificationOngoing: true,
   );
+
+  // Initialize Mobile Ads
+  await MobileAds.instance.initialize();
+  AdService.instance.loadRewardedAd();
+
+  // Initialize Remote Config for AI Models
+  await RemoteConfigService.fetchConfig();
 
   runApp(const AppInitializer());
 }
@@ -49,11 +64,35 @@ class AppInitializer extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.done &&
             snapshot.hasData) {
           final dbHelper = snapshot.data as DatabaseHelperInterface;
+
+          // SECURE API KEY ACCESS
+          // Run with: flutter run --dart-define=GEMINI_API_KEY=AIzaSy...
+          const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
+          if (apiKey.isEmpty) {
+            debugPrint(
+              'WARNING: GEMINI_API_KEY not found in environment variables.',
+            );
+          }
+
           return MultiProvider(
             providers: [
               ChangeNotifierProvider(create: (_) => SettingsProvider()),
               ChangeNotifierProvider(create: (_) => AudioProvider()),
               ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+              ChangeNotifierProvider(create: (_) => CreditProvider()),
+              ChangeNotifierProxyProvider<SettingsProvider, AskGitaProvider>(
+                create: (context) =>
+                    AskGitaProvider(apiKey.isEmpty ? 'MISSING_KEY' : apiKey)
+                      ..init(),
+                update: (context, settings, askGita) {
+                  final effectiveKey =
+                      settings.customAiApiKey ??
+                      (apiKey.isEmpty ? 'MISSING_KEY' : apiKey);
+                  askGita!.updateStatus(apiKey: effectiveKey);
+                  return askGita;
+                },
+              ),
               Provider<DatabaseHelperInterface>.value(value: dbHelper),
             ],
             child: const MyApp(),

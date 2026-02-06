@@ -27,6 +27,16 @@ class SettingsProvider extends ChangeNotifier {
   bool _showBackground = _defaultShowBackground;
   bool get showBackground => _showBackground;
 
+  String? _customAiApiKey;
+  String? get customAiApiKey => _customAiApiKey;
+
+  /* DEPRECATED: Replaced by CreditProvider */
+  // int _aiQueryCount = 0;
+  // int get aiQueryCount => _aiQueryCount;
+  // String _lastQueryResetDate = '';
+  // static const int dailyAiQuota = 5;
+  // bool get aiQuotaReached => _customAiApiKey == null && _aiQueryCount >= dailyAiQuota;
+
   SettingsProvider() {
     _loadSettings();
   }
@@ -51,6 +61,26 @@ class SettingsProvider extends ChangeNotifier {
     // Save the new background visibility to persistent storage.
     await prefs.setBool(_showBackgroundKey, newValue);
   }
+
+  Future<void> setCustomAiApiKey(String key) async {
+    _customAiApiKey = key;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('custom_ai_api_key', key);
+  }
+
+  Future<void> clearCustomAiApiKey() async {
+    _customAiApiKey = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('custom_ai_api_key');
+  }
+
+  /* DEPRECATED: Replaced by CreditProvider */
+  // Future<void> incrementAiQueryCount() async {}
+
+  /* DEPRECATED: Replaced by CreditProvider.addCredits() */
+  // Future<void> grantAdReward() async {}
 
   // --- Language & Script Support ---
   static const String _languageKey = 'language'; // 'hi' or 'en'
@@ -186,6 +216,21 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _themeMode = ThemeMode.system;
     }
+
+    _customAiApiKey = prefs.getString('custom_ai_api_key');
+
+    /* DEPRECATED: Replaced by CreditProvider */
+    // _lastQueryResetDate = prefs.getString('last_ai_query_reset_date') ?? DateTime.now().toIso8601String().split('T')[0];
+    // _aiQueryCount = prefs.getInt('ai_query_count') ?? 0;
+
+    // Daily Reset check during load
+    // final today = DateTime.now().toIso8601String().split('T')[0];
+    // if (_lastQueryResetDate != today) {
+    //   _aiQueryCount = 0;
+    //   _lastQueryResetDate = today;
+    //   await prefs.setString('last_ai_query_reset_date', today);
+    //   await prefs.setInt('ai_query_count', 0);
+    // }
 
     notifyListeners();
   }

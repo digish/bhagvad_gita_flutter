@@ -60,12 +60,14 @@ class _SearchScreenView extends StatefulWidget {
 }
 
 class _SearchScreenViewState extends State<_SearchScreenView>
-    with RouteAware, SingleTickerProviderStateMixin {
+    with RouteAware, TickerProviderStateMixin {
   late AnimationController _revealController;
+  late AnimationController _pulseController;
   Offset _revealCenter = Offset.zero;
   final GlobalKey _themeToggleKey = GlobalKey();
   bool? _isBackgroundRequested;
   Set<int>? _lastKnownSources; // Cache for change detection
+  bool _isAiMode = false;
 
   @override
   void initState() {
@@ -74,6 +76,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
     // Removed explicit postFrameCallback here; handled in didChangeDependencies
   }
 
@@ -99,6 +105,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   @override
   void dispose() {
     _revealController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -319,7 +326,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             ),
                           ),
                         ),
-                        if (isSearching)
+                        if (isSearching && !_isAiMode)
                           Padding(
                             // Adjusted padding to position the list below the search bar area.
                             padding: const EdgeInsets.only(top: 100.0),
@@ -498,6 +505,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       spacing: 12,
       children: [
         SpeedDialChild(
+          child: const Icon(Icons.auto_awesome),
+          label: 'Ask Gita AI',
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          onTap: () => context.push(AppRoutes.askGita),
+        ),
+        SpeedDialChild(
           child: const Icon(Icons.menu_book),
           label: 'Browse Chapters',
           backgroundColor: Theme.of(context).colorScheme.surface,
@@ -551,6 +564,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final borderColor = isLightStyle
         ? Colors.black.withOpacity(0.1)
         : Colors.amberAccent.withOpacity(0.6);
+    final activeAiColor = isLightStyle ? Colors.orange[900]! : Colors.amber;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(50.0),
@@ -568,16 +582,149 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             onChanged: (value) => provider.onSearchQueryChanged(value),
             onSubmitted: (value) {
               if (value.isNotEmpty) {
-                context.pushNamed(
-                  'shloka-list',
-                  pathParameters: {'query': value},
-                );
+                if (_isAiMode) {
+                  context.push(AppRoutes.askGita, extra: value);
+                } else {
+                  context.pushNamed(
+                    'shloka-list',
+                    pathParameters: {'query': value},
+                  );
+                }
               }
             },
             decoration: InputDecoration(
-              hintText: 'Search the Gita...',
+              hintText: _isAiMode
+                  ? 'Ask Krishna anything...'
+                  : 'Search the Gita...',
               hintStyle: TextStyle(color: hintColor),
               prefixIcon: Icon(Icons.search, color: hintColor),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isAiMode && provider.searchQuery.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4.0),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.send_rounded,
+                          color: activeAiColor,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          context.push(
+                            AppRoutes.askGita,
+                            extra: provider.searchQuery,
+                          );
+                        },
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Tooltip(
+                      message: _isAiMode
+                          ? 'Switch to Normal Search'
+                          : 'Switch to AI Mode (Ask Krishna)',
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isAiMode = !_isAiMode;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 64, // Fixed width for toggle pill
+                          height: 32,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: _isAiMode
+                                ? activeAiColor.withOpacity(0.25)
+                                : Colors.grey.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _isAiMode
+                                  ? activeAiColor.withOpacity(0.8)
+                                  : Colors.grey.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                            boxShadow: _isAiMode
+                                ? [
+                                    BoxShadow(
+                                      color: activeAiColor.withOpacity(0.3),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Stack(
+                            children: [
+                              // Text Labels background
+                              AnimatedAlign(
+                                duration: const Duration(milliseconds: 300),
+                                alignment: _isAiMode
+                                    ? Alignment.centerLeft
+                                    : Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4.0,
+                                  ),
+                                  child: Text(
+                                    _isAiMode ? 'AI' : '🔍',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: _isAiMode
+                                          ? activeAiColor
+                                          : Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Sliding Indicator
+                              AnimatedAlign(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOutBack,
+                                alignment: _isAiMode
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: _isAiMode
+                                        ? activeAiColor
+                                        : (Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.grey[300]
+                                              : Colors.white),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    _isAiMode
+                                        ? Icons.auto_awesome
+                                        : Icons.search_outlined,
+                                    size: 14,
+                                    color: _isAiMode
+                                        ? Colors.white
+                                        : Colors.grey[800],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
