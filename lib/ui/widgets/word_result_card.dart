@@ -27,22 +27,24 @@ class WordResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = Provider.of<SettingsProvider>(context);
-    final isSimpleTheme = !settings.showBackground;
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
 
     // Theme-based styling
-    final cardColor = isSimpleTheme
+    final cardColor = isSimpleLight
         ? Colors.white.withOpacity(0.6)
         : Colors.grey[900]!.withOpacity(0.7);
 
-    final borderColor = isSimpleTheme
+    final borderColor = isSimpleLight
         ? Colors.pink.withOpacity(0.2)
         : Colors.amberAccent.withOpacity(0.5);
 
-    final titleColor = isSimpleTheme
+    final titleColor = isSimpleLight
         ? Colors.pink.shade900.withOpacity(0.8)
         : Colors.amberAccent;
 
-    final textColor = isSimpleTheme
+    final textColor = isSimpleLight
         ? Colors.brown.shade800
         : Colors.blueGrey.shade100;
 
@@ -50,7 +52,7 @@ class WordResultCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
         decoration: BoxDecoration(
-          boxShadow: isSimpleTheme
+          boxShadow: isSimpleLight
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),

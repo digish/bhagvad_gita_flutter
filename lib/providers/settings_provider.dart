@@ -173,6 +173,20 @@ class SettingsProvider extends ChangeNotifier {
       }
     }
 
+    // Load Theme Mode
+    final themeString = prefs.getString('theme_mode');
+    if (themeString != null) {
+      if (themeString == 'light') {
+        _themeMode = ThemeMode.light;
+      } else if (themeString == 'dark') {
+        _themeMode = ThemeMode.dark;
+      } else {
+        _themeMode = ThemeMode.system;
+      }
+    } else {
+      _themeMode = ThemeMode.system;
+    }
+
     notifyListeners();
   }
 
@@ -243,6 +257,21 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     await setRandomShlokaSources(currentSources);
+  }
+
+  // --- Theme Mode Settings ---
+  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode get themeMode => _themeMode;
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (_themeMode == mode) return;
+    _themeMode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'theme_mode',
+      mode.name,
+    ); // Saves 'system', 'light', 'dark'
   }
 
   // Legacy/Compatibility method for single select (used by UI if not fully updated yet or for simple calls)

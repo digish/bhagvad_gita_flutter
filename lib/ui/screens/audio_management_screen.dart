@@ -33,7 +33,8 @@ class AudioManagementScreen extends StatelessWidget {
       body: Stack(
         children: [
           SimpleGradientBackground(
-              startColor: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+            startColor: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ),
           SafeArea(
             child: Consumer<AudioProvider>(
               builder: (context, audioProvider, child) {
@@ -83,9 +84,16 @@ class _ChapterAudioTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: Colors.green.shade50.withOpacity(0.6),
+              color: theme.brightness == Brightness.dark
+                  ? Colors.green.shade900.withOpacity(0.3)
+                  : Colors.green.shade50.withOpacity(0.6),
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: Colors.green.shade100.withOpacity(0.4), width: 1),
+              border: Border.all(
+                color: theme.brightness == Brightness.dark
+                    ? Colors.green.shade800.withOpacity(0.5)
+                    : Colors.green.shade100.withOpacity(0.4),
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -96,7 +104,9 @@ class _ChapterAudioTile extends StatelessWidget {
                   child: Text(
                     chapterNumber.toString(),
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -107,28 +117,59 @@ class _ChapterAudioTile extends StatelessWidget {
                     children: [
                       Text(
                         'अध्याय $chapterNumber: $chapterName',
-                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.black.withOpacity(0.85), fontWeight: FontWeight.w500),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black.withOpacity(0.85),
+                          fontWeight: FontWeight.w500,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: DefaultTextStyle(
-                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54) ?? const TextStyle(),
+                          style:
+                              theme.textTheme.bodySmall?.copyWith(
+                                color: theme.brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ) ??
+                              const TextStyle(),
                           child: switch (status) {
-                            AssetPackStatus.downloaded =>
-                              const Text('Downloaded', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
-                            AssetPackStatus.pending =>
-                              const Text('Download pending...', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w500)),
-                            AssetPackStatus.downloading => Text(
-                                'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
-                                style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w500),
+                            AssetPackStatus.downloaded => const Text(
+                              'Downloaded',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
                               ),
-                            AssetPackStatus.failed =>
-                              const Text('Download failed', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
-                            AssetPackStatus.notDownloaded =>
-                              const Text('Not downloaded'),
-                            AssetPackStatus.unknown =>
-                              const Text('Status unknown'),
+                            ),
+                            AssetPackStatus.pending => const Text(
+                              'Download pending...',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            AssetPackStatus.downloading => Text(
+                              'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            AssetPackStatus.failed => const Text(
+                              'Download failed',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            AssetPackStatus.notDownloaded => const Text(
+                              'Not downloaded',
+                            ),
+                            AssetPackStatus.unknown => const Text(
+                              'Status unknown',
+                            ),
                           },
                         ),
                       ),
@@ -179,9 +220,17 @@ class _ChapterAudioTile extends StatelessWidget {
       case AssetPackStatus.notDownloaded:
       default:
         return IconButton(
-          icon: Icon(Icons.download_for_offline_outlined, size: 30, color: Colors.grey.shade700),
+          icon: Icon(
+            Icons.download_for_offline_outlined,
+            size: 30,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white70
+                : Colors.grey.shade700,
+          ),
           onPressed: () {
-            debugPrint("[UI] Download button pressed for chapter $chapterNumber");
+            debugPrint(
+              "[UI] Download button pressed for chapter $chapterNumber",
+            );
             audioProvider.initiateChapterAudioDownload(chapterNumber);
           },
           tooltip: 'Download Audio',

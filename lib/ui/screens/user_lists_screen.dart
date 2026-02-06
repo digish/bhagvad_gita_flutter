@@ -208,7 +208,9 @@ class _UserListsScreenState extends State<UserListsScreen> {
                   "Curated Lists",
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black54,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : Colors.black54,
                   ),
                 ),
               );

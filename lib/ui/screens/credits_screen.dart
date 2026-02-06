@@ -114,11 +114,13 @@ class CreditsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFCFB), // A light, warm background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Theme aware
       body: Stack(
         children: [
           SimpleGradientBackground(
-            startColor: const Color.fromARGB(255, 240, 255, 126),
+            startColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.amber.shade900.withOpacity(0.2)
+                : const Color.fromARGB(255, 240, 255, 126),
           ), // Golden-brown for credits
           SafeArea(
             child: CustomScrollView(
@@ -150,7 +152,7 @@ class CreditsScreen extends StatelessWidget {
                                   child: Padding(
                                     padding: const EdgeInsets.only(left: 16.0),
                                     child: BackButton(
-                                      color: Colors.brown.shade800,
+                                      color: Theme.of(context).iconTheme.color,
                                     ),
                                   ),
                                 ),
@@ -181,7 +183,9 @@ class CreditsScreen extends StatelessWidget {
                             textAlign: TextAlign.right, // ✨ Right align text
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
-                                  color: Colors.brown.shade800,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall?.color,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -267,10 +271,12 @@ class _CreditCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: theme.brightness == Brightness.dark
+                  ? Colors.grey.shade900.withOpacity(0.6)
+                  : Colors.white.withOpacity(0.6),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: Colors.black.withOpacity(0.1),
+                color: theme.dividerColor.withOpacity(0.1),
                 width: 1,
               ),
             ),
@@ -280,7 +286,7 @@ class _CreditCard extends StatelessWidget {
                 Text(
                   item.category,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.brown.shade700,
+                    color: theme.textTheme.titleMedium?.color,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -312,7 +318,9 @@ class _CreditCard extends StatelessWidget {
                     : Text(
                         'Source: ${item.source}',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black54,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                            0.7,
+                          ),
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -320,7 +328,7 @@ class _CreditCard extends StatelessWidget {
                 Text(
                   item.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black87,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
                   ),
                 ),
               ],

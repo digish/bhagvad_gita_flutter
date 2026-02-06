@@ -44,8 +44,7 @@ class _ChaptersScreenState extends State<ChaptersScreen>
     // 2. Calculate Target Rect
     final screenWidth = MediaQuery.of(context).size.width;
     final paddingLeft = MediaQuery.of(context).padding.left;
-    final isCompact = true; // Sidebar is always compact in master-detail now
-    final contentWidth = isCompact ? 160.0 : 350.0;
+    final contentWidth = 160.0;
     final detailStartX = contentWidth + paddingLeft + 1.0;
     final detailWidth = screenWidth - detailStartX;
     final targetSize = 160.0;
@@ -108,7 +107,9 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withOpacity(0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.5),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -157,11 +158,14 @@ class _ChaptersScreenState extends State<ChaptersScreen>
 
         if (isWideScreen) {
           return Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: Stack(
               children: [
                 // ✨ Unified Background for Split View
-                const SimpleGradientBackground(startColor: Colors.white),
+                // const SimpleGradientBackground(startColor: Colors.white),
+                // Using null lets it fall through to Scaffold background or we can make it conditional
+                if (Theme.of(context).brightness == Brightness.light)
+                  const SimpleGradientBackground(startColor: Colors.white),
                 Row(
                   children: [
                     // MASTER PANE
@@ -290,10 +294,11 @@ class _ChaptersScreenState extends State<ChaptersScreen>
 
         // MOBILE LAYOUT (Original)
         return Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Stack(
             children: [
-              const SimpleGradientBackground(startColor: Colors.white),
+              if (Theme.of(context).brightness == Brightness.light)
+                const SimpleGradientBackground(startColor: Colors.white),
               SafeArea(
                 child: Column(
                   children: [
@@ -306,11 +311,13 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                         // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
                         if (Theme.of(context).platform == TargetPlatform.iOS &&
                             constraints.maxWidth <= 600)
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
                               padding: EdgeInsets.only(left: 8.0),
-                              child: BackButton(color: Colors.black),
+                              child: BackButton(
+                                color: Theme.of(context).iconTheme.color,
+                              ),
                             ),
                           ),
                         Align(
@@ -435,12 +442,14 @@ class _ChapterCard extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.amber.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.5),
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                    : Theme.of(context).brightness == Brightness.light
+                    ? Colors.white.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(
                   color: isSelected
-                      ? Colors.amber
+                      ? Theme.of(context).colorScheme.primary
                       : Colors.white.withOpacity(0.7),
                   width: isSelected ? 2 : 1,
                 ),
@@ -469,7 +478,9 @@ class _ChapterCard extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.amber.withOpacity(0.7),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.7),
                                       spreadRadius: 2,
                                       blurRadius: 12.0,
                                       offset: Offset.zero,
@@ -499,7 +510,8 @@ class _ChapterCard extends StatelessWidget {
                             Text(
                               chapterName,
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.black.withOpacity(0.85),
+                                color: theme.textTheme.bodyMedium?.color
+                                    ?.withOpacity(0.85),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 14,
                               ),
@@ -528,7 +540,9 @@ class _ChapterCard extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.amber.withOpacity(0.7),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.7),
                                       spreadRadius: 2,
                                       blurRadius: 12.0,
                                       offset: Offset.zero,
@@ -561,7 +575,8 @@ class _ChapterCard extends StatelessWidget {
                                   Text(
                                     chapterName,
                                     style: theme.textTheme.titleLarge?.copyWith(
-                                      color: Colors.black.withOpacity(0.85),
+                                      color: theme.textTheme.bodyMedium?.color
+                                          ?.withOpacity(0.85),
                                       fontWeight: FontWeight.w500,
                                       fontSize: 20,
                                     ),

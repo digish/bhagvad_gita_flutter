@@ -26,6 +26,7 @@ import '../../data/static_data.dart';
 import '../../data/database_helper_interface.dart';
 
 import '../widgets/responsive_wrapper.dart';
+import '../theme/app_colors.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -292,7 +293,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                 ? Colors.transparent
                 : (settingsProvider.showBackground
                       ? null // Let the gradient handle it
-                      : Colors.grey.shade200),
+                      : Theme.of(context).scaffoldBackgroundColor),
             appBar: chapterNumber == null
                 ? AppBar(
                     title: Text(
@@ -303,7 +304,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                       ),
                     ),
                     // ✨ FIX: New background color to complement the pink gradient.
-                    backgroundColor: Colors.pink.shade900,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).appBarTheme.backgroundColor,
                     elevation: 0,
                     centerTitle: true,
                     leading:
@@ -361,13 +364,19 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             extendBodyBehindAppBar: true,
             body: Stack(
               children: [
-                if (!widget.isEmbedded && settingsProvider.showBackground)
+                if (!widget.isEmbedded &&
+                    settingsProvider.showBackground &&
+                    Theme.of(context).brightness == Brightness.light)
                   SimpleGradientBackground(
                     startColor: chapterNumber == null
-                        ? Colors
-                              .pink
-                              .shade100 // Pink for search results to match lotus
-                        : Colors.amber.shade100, // Amber for chapter view
+                        ? Theme.of(context)
+                                  .extension<AppColors>()
+                                  ?.searchResultGradientStart ??
+                              Colors.pink.shade100
+                        : Theme.of(
+                                context,
+                              ).extension<AppColors>()?.chapterGradientStart ??
+                              Colors.amber.shade100,
                   ),
                 SafeArea(
                   top: false,
@@ -526,6 +535,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                     shloka: shlokas[index],
                                     config: _cardConfig.copyWith(
                                       baseFontSize: settingsProvider.fontSize,
+                                      isLightTheme:
+                                          Theme.of(context).brightness ==
+                                          Brightness.light,
                                     ),
                                     currentlyPlayingId: _currentShlokId,
                                     onPlayPause: () {
@@ -591,11 +603,16 @@ class _ChapterEmblemHeader extends StatelessWidget {
           height: 160,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.9), width: 2),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white.withOpacity(0.9)
+                  : Colors.white24,
+              width: 2,
+            ),
             boxShadow: [
               BoxShadow(
                 // Changed to a bright, golden glow
-                color: Colors.amber.withOpacity(0.8),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
                 spreadRadius: 4,
                 blurRadius: 15.0,
                 offset: Offset.zero,
@@ -725,12 +742,16 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                     constraints: BoxConstraints(maxWidth: 700, minWidth: 300),
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(
-                        0.4,
-                      ), // Semi-transparent for glass effect
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.white.withOpacity(0.4)
+                          : Colors.black.withOpacity(
+                              0.6,
+                            ), // Semi-transparent for glass effect
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? Colors.white.withOpacity(0.4)
+                            : Colors.white12,
                         width: 1.5,
                       ),
                       boxShadow: [
@@ -771,7 +792,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                       const Icon(
                                         Icons.arrow_back_ios_new,
                                         size: 20,
-                                        color: Colors.black87,
+                                        // color: Colors.black87, // Removed hardcoded color
                                       ),
                                       const SizedBox(width: 8),
                                     ],
@@ -814,7 +835,10 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                 .textTheme
                                                 .titleMedium
                                                 ?.copyWith(
-                                                  color: Colors.black87,
+                                                  color: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.color,
                                                   fontWeight: FontWeight.bold,
                                                   fontSize:
                                                       15, // Slightly smaller
@@ -846,7 +870,12 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                         onFontSizeDecrement,
                                                     onIncrement:
                                                         onFontSizeIncrement,
-                                                    color: Colors.black87,
+                                                    color:
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .bodyMedium
+                                                            ?.color ??
+                                                        Colors.black87,
                                                   ),
                                                   const SizedBox(width: 8),
                                                   _VerticalDivider(),
@@ -861,7 +890,10 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                             vertical: 2,
                                                           ),
                                                       foregroundColor:
-                                                          Colors.black87,
+                                                          Theme.of(context)
+                                                              .textTheme
+                                                              .bodyMedium
+                                                              ?.color,
                                                     ),
                                                     child: Column(
                                                       mainAxisSize:
@@ -879,7 +911,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                                     .playlist_play
                                                               : Icons
                                                                     .repeat_one,
-                                                          color: Colors.black87,
+                                                          color: Theme.of(
+                                                            context,
+                                                          ).iconTheme.color,
                                                           size: 20,
                                                         ),
                                                         const SizedBox(
@@ -895,13 +929,17 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                                         .continuous
                                                               ? 'Continuous'
                                                               : 'Repeat',
-                                                          style:
-                                                              const TextStyle(
-                                                                color: Colors
-                                                                    .black87,
-                                                                fontSize: 10,
-                                                                height: 1.0,
-                                                              ),
+                                                          style: TextStyle(
+                                                            color:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .bodySmall
+                                                                    ?.color,
+                                                            fontSize: 10,
+                                                            height: 1.0,
+                                                          ),
                                                         ),
                                                       ],
                                                     ),

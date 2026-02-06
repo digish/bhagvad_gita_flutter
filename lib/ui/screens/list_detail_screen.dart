@@ -238,7 +238,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                             showShlokIndex: true,
                             showColoredCard: true,
                             showEmblem: false,
-                            isLightTheme: true,
+                            isLightTheme:
+                                Theme.of(context).brightness ==
+                                Brightness.light,
                           ),
                         ),
                       );

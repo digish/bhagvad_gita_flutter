@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
+import '../theme/app_colors.dart';
 import './glowing_lotus.dart';
 
 class SimpleGradientBackground extends StatefulWidget {
@@ -63,12 +64,25 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
       builder: (context, child) {
         // Use the provided start color for the gradient, or default to white if null.
         final gradientStartColor = widget.startColor ?? Colors.white;
+        final appColors = Theme.of(context).extension<AppColors>();
 
         if (!effectiveShowMandala) {
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [gradientStartColor, const Color(0xFFFCE4EC)],
+                colors: Theme.of(context).brightness == Brightness.dark
+                    ? [
+                        gradientStartColor == Colors.white
+                            ? Colors.black
+                            : gradientStartColor,
+                        appColors?.defaultGradientEnd ??
+                            const Color(0xFF1E1E1E),
+                      ]
+                    : [
+                        gradientStartColor,
+                        appColors?.defaultGradientEnd ??
+                            const Color(0xFFFCE4EC),
+                      ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -82,9 +96,18 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [gradientStartColor.withOpacity(1.0), Colors.white],
+                  colors: Theme.of(context).brightness == Brightness.dark
+                      ? [
+                          (gradientStartColor == Colors.white
+                                  ? Colors.black
+                                  : gradientStartColor)
+                              .withOpacity(1.0),
+                          Colors.black,
+                        ]
+                      : [gradientStartColor.withOpacity(1.0), Colors.white],
                   begin: Alignment.topCenter,
-                  end: Alignment.center, // Fades to white by the center
+                  end: Alignment
+                      .center, // Fades to white (or black) by the center
                 ),
               ),
             ),
@@ -102,7 +125,16 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
                     opacity: 0.5,
                     child: ColorFiltered(
                       colorFilter: ColorFilter.mode(
-                        const Color.fromARGB(255, 0, 0, 0),
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withOpacity(
+                                0.1,
+                              ) // Subtle light glow in dark mode
+                            : const Color.fromARGB(
+                                255,
+                                0,
+                                0,
+                                0,
+                              ), // Dark shadow in light mode
                         BlendMode.srcATop,
                       ),
                       child: ImageFiltered(

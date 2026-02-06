@@ -26,10 +26,12 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          const SimpleGradientBackground(startColor: Colors.white),
+          // Only show gradient in light mode or if specific flag is set, otherwise plain background from Scaffold
+          if (Theme.of(context).brightness == Brightness.light)
+            const SimpleGradientBackground(startColor: Colors.white),
           SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -47,7 +49,7 @@ class SettingsScreen extends StatelessWidget {
                               child: CircleAvatar(
                                 backgroundColor: Colors.black.withOpacity(0.3),
                                 child: BackButton(
-                                  color: Colors.white,
+                                  color: Theme.of(context).iconTheme.color,
                                   onPressed: () {
                                     if (context.canPop()) {
                                       context.pop();
@@ -58,13 +60,10 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          const Text(
+                          Text(
                             'Settings',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -78,10 +77,7 @@ class SettingsScreen extends StatelessWidget {
                               // --- Language Section ---
                               _buildSectionHeader('Language'),
                               Card(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                                color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -138,11 +134,11 @@ class SettingsScreen extends StatelessWidget {
                                                 value: entry.key,
                                                 child: Text(
                                                   entry.value,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                  ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.bodyMedium,
                                                 ),
                                               );
                                             })
@@ -157,10 +153,7 @@ class SettingsScreen extends StatelessWidget {
                               ), // Spacing between cards
                               // --- Translation Language Card (No Header) ---
                               Card(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                                color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -231,10 +224,7 @@ class SettingsScreen extends StatelessWidget {
                               // --- Content Section ---
                               _buildSectionHeader('Content'),
                               Card(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                                color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
                                 child: SwitchListTile(
                                   secondary: CircleAvatar(
@@ -274,10 +264,7 @@ class SettingsScreen extends StatelessWidget {
                               // --- Daily Inspiration Section ---
                               _buildSectionHeader('Daily Inspiration'),
                               Card(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                                color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
                                 child: Column(
                                   children: [
@@ -370,6 +357,76 @@ class SettingsScreen extends StatelessWidget {
 
                               // --- Preferences Section ---
                               _buildSectionHeader('Preferences'),
+                              Card(
+                                color: Theme.of(context).cardTheme.color,
+                                elevation: 4,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                    vertical: 8.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.1),
+                                        child: Icon(
+                                          Icons.brightness_6,
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'App Theme',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Light, Dark, or System',
+                                              style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      DropdownButton<ThemeMode>(
+                                        value: settings.themeMode,
+                                        underline: const SizedBox(),
+                                        onChanged: (ThemeMode? newValue) {
+                                          if (newValue != null) {
+                                            settings.setThemeMode(newValue);
+                                          }
+                                        },
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: ThemeMode.system,
+                                            child: Text('System'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: ThemeMode.light,
+                                            child: Text('Light'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: ThemeMode.dark,
+                                            child: Text('Dark'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                               _buildSettingCard(
                                 context,
                                 title: 'Simple Theme',
@@ -469,8 +526,7 @@ class SettingsScreen extends StatelessWidget {
     required IconData icon,
   }) {
     return Card(
-      color: Colors.white.withOpacity(0.9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Theme.of(context).cardTheme.color,
       elevation: 4,
       child: SwitchListTile(
         secondary: CircleAvatar(
@@ -500,8 +556,7 @@ class SettingsScreen extends StatelessWidget {
     required void Function(BuildContext) onTap,
   }) {
     return Card(
-      color: Colors.white.withOpacity(0.9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Theme.of(context).cardTheme.color,
       elevation: 4,
       child: Builder(
         builder: (innerContext) {
@@ -541,14 +596,11 @@ class SettingsScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87, // Changed from Colors.white
+              // color: Colors.black87, // Removed hardcoded color
             ),
           ),
           const SizedBox(height: 4),
-          const Divider(
-            color: Colors.black12,
-            thickness: 1,
-          ), // Changed from Colors.white24
+          const Divider(thickness: 1),
           const SizedBox(height: 8),
         ],
       ),

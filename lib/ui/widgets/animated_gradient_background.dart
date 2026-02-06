@@ -67,7 +67,16 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
                     opacity: 0.5,
                     child: ColorFiltered(
                       colorFilter: ColorFilter.mode(
-                        const Color.fromARGB(255, 0, 0, 0),
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withOpacity(
+                                0.1,
+                              ) // Subtle light glow in dark mode
+                            : const Color.fromARGB(
+                                255,
+                                0,
+                                0,
+                                0,
+                              ), // Dark shadow in light mode
                         BlendMode.srcATop,
                       ),
                       child: ImageFiltered(

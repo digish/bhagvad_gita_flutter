@@ -14,6 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
+import '../theme/app_colors.dart';
 
 class GlowingLotus extends StatefulWidget {
   final double width;
@@ -44,10 +45,10 @@ class _GlowingLotusState extends State<GlowingLotus>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.4, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
+    _glowAnimation = Tween<double>(
+      begin: 0.4,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -72,12 +73,17 @@ class _GlowingLotusState extends State<GlowingLotus>
                 Opacity(
                   opacity: _glowAnimation.value,
                   child: ImageFiltered(
-                    imageFilter:
-                        ImageFilter.blur(sigmaX: widget.sigma, sigmaY: widget.sigma),
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: widget.sigma,
+                      sigmaY: widget.sigma,
+                    ),
                     child: SvgPicture.asset(
                       'assets/images/lotus_art.svg',
-                      colorFilter: const ColorFilter.mode(
-                          Color.fromARGB(255, 255, 64, 210), BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).extension<AppColors>()?.lotusGlow ??
+                            const Color.fromARGB(255, 255, 64, 210),
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -85,7 +91,10 @@ class _GlowingLotusState extends State<GlowingLotus>
                 SvgPicture.asset(
                   'assets/images/lotus_art.svg',
                   colorFilter: ColorFilter.mode(
-                      const Color.fromARGB(255, 164, 6, 138).withOpacity(0.2), BlendMode.srcIn),
+                    Theme.of(context).extension<AppColors>()?.lotusLines ??
+                        const Color.fromARGB(255, 164, 6, 138).withOpacity(0.2),
+                    BlendMode.srcIn,
+                  ),
                 ),
               ],
             ),

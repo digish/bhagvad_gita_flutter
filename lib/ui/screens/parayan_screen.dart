@@ -25,6 +25,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../theme/app_colors.dart';
 
 // --- NEW: Enum to manage the content display modes ---
 enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
@@ -188,11 +189,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
     return TextButton.icon(
       onPressed: _cyclePlaybackMode,
-      icon: Icon(icon, color: Colors.black87, size: 20),
+      icon: Icon(icon, color: Theme.of(context).iconTheme.color, size: 20),
       label: Text(
         tooltip,
-        style: const TextStyle(
-          color: Colors.black87,
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodyMedium?.color,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -222,12 +223,18 @@ class _ParayanScreenState extends State<ParayanScreen> {
       backgroundColor: settingsProvider.showBackground
           ? Colors
                 .black // Original dark background for gradient
-          : Colors.grey.shade200, // Solid light background for readability
+          : Theme.of(
+              context,
+            ).scaffoldBackgroundColor, // Solid light background for readability
       body: Stack(
         children: [
           if (settingsProvider.showBackground)
             SimpleGradientBackground(
-              startColor: const Color.fromARGB(255, 103, 108, 255),
+              startColor:
+                  Theme.of(
+                    context,
+                  ).extension<AppColors>()?.parayanGradientStart ??
+                  const Color.fromARGB(255, 103, 108, 255),
             ),
           Consumer<ParayanProvider>(
             builder: (context, provider, child) {
@@ -331,7 +338,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             showEmblem: false,
                             showShlokIndex: true,
                             spacingCompact: true,
-                            isLightTheme: true,
+                            isLightTheme:
+                                Theme.of(context).brightness ==
+                                Brightness.light,
                           ),
                           // ✨ Pass script to FullShlokaCard if needed for internal localization
                           // (though speaker is hidden here, shloka index is shown. Index handles its own localization?)
@@ -446,7 +455,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     // Returning an IconButton for compact layout in the island
     return IconButton(
       onPressed: _cycleDisplayMode,
-      icon: Icon(icon, color: Colors.black87),
+      icon: Icon(icon, color: Theme.of(context).iconTheme.color),
       tooltip: tooltip,
       iconSize: 24,
       padding: EdgeInsets.zero,
@@ -684,12 +693,18 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                         ),
                         margin: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(
-                            0.4,
-                          ), // Semi-transparent for glass effect
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                              ? Colors.white.withOpacity(0.4)
+                              : Colors.black.withOpacity(
+                                  0.6,
+                                ), // Semi-transparent for glass effect
                           borderRadius: BorderRadius.circular(32),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                ? Colors.white.withOpacity(0.4)
+                                : Colors.white12,
                             width: 1.5,
                           ),
                           boxShadow: [
@@ -737,7 +752,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                           const Icon(
                                             Icons.arrow_back_ios_new,
                                             size: 20,
-                                            color: Colors.black87,
+                                            // color: Colors.black87, // Removed hardcoded color
                                           ),
                                           const SizedBox(width: 8),
                                         ],
@@ -786,7 +801,7 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                     .textTheme
                                                     .titleMedium
                                                     ?.copyWith(
-                                                      color: Colors.black87,
+                                                      // color: Colors.black87, // Removed hardcoded color
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       fontSize: 15,
@@ -823,7 +838,9 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                       Container(
                                                         width: 1,
                                                         height: 20,
-                                                        color: Colors.black12,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).dividerColor,
                                                       ),
                                                       const SizedBox(width: 8),
 
@@ -877,7 +894,12 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
                                                         );
                                                   }
                                                 },
-                                                color: Colors.black87,
+                                                color:
+                                                    Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium
+                                                        ?.color ??
+                                                    Colors.black87,
                                               ),
                                             ),
                                           ),

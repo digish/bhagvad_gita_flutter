@@ -15,6 +15,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'ui/theme/app_theme.dart';
 
 import 'navigation/app_router.dart';
 import 'providers/audio_provider.dart';
@@ -87,11 +88,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: router,
-      title: 'Bhagavad Gita',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      debugShowCheckedModeBanner: false,
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, child) {
+        return MaterialApp.router(
+          routerConfig: router,
+          title: 'Bhagavad Gita',
+          themeMode: settings.themeMode,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

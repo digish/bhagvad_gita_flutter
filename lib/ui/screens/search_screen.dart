@@ -24,6 +24,7 @@ import '../../models/shloka_result.dart';
 import '../../providers/bookmark_provider.dart';
 // import '../../main.dart'; // For routeObserver - Removed
 import '../../data/static_data.dart';
+import '../theme/app_colors.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -117,8 +118,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         ],
       );
     } else {
-      return const SimpleGradientBackground(
-        startColor: Color(0xFFF48FB1),
+      return SimpleGradientBackground(
+        startColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).scaffoldBackgroundColor
+            : const Color(0xFFF48FB1),
         showMandala: false,
       );
     }
@@ -132,7 +135,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final shouldShowResults = isSearching || isKeyboardOpen;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // ✨ RESTORED: The floating action button for navigation.
       // It's hidden when the keyboard is visible.
@@ -291,14 +294,22 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                     return ListTile(
                                       leading: Icon(
                                         Icons.search,
-                                        color: !settings.showBackground
+                                        color:
+                                            !settings.showBackground &&
+                                                Theme.of(context).brightness ==
+                                                    Brightness.light
                                             ? Colors.brown.withOpacity(0.7)
                                             : Colors.white70,
                                       ),
                                       title: Text(
                                         "See all results for '${provider.searchQuery}'",
                                         style: TextStyle(
-                                          color: !settings.showBackground
+                                          color:
+                                              !settings.showBackground &&
+                                                  Theme.of(
+                                                        context,
+                                                      ).brightness ==
+                                                      Brightness.light
                                               ? Colors.brown.shade900
                                               : Colors.white,
                                           fontStyle: FontStyle.italic,
@@ -327,7 +338,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       child: Text(
                                         item.title,
                                         style: TextStyle(
-                                          color: !settings.showBackground
+                                          color:
+                                              !settings.showBackground &&
+                                                  Theme.of(
+                                                        context,
+                                                      ).brightness ==
+                                                      Brightness.light
                                               ? Colors.pink.shade900
                                                     .withOpacity(0.7)
                                               : Colors.amber.withOpacity(0.8),
@@ -363,12 +379,17 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                               key: _themeToggleKey,
                               heroTag: 'simple_theme_toggle',
                               mini: true,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).primaryColor.withOpacity(0.8),
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.onPrimary,
+                              // Use Theme Extension for colors
+                              backgroundColor:
+                                  Theme.of(
+                                    context,
+                                  ).extension<AppColors>()?.simpleThemeToggle ??
+                                  Theme.of(context).primaryColor,
+                              foregroundColor:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Colors.white,
                               onPressed: () {
                                 _captureThemeTogglePosition();
                                 setState(() {
@@ -402,11 +423,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   // ✨ RESTORED: The helper method to build the SpeedDial widget.
   Widget _buildSpeedDial(BuildContext context) {
+    final appColors = Theme.of(context).extension<AppColors>();
     return SpeedDial(
       icon: Icons.menu_book_outlined,
       activeIcon: Icons.close,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      backgroundColor:
+          appColors?.speedDialBg ?? Theme.of(context).colorScheme.primary,
+      foregroundColor:
+          appColors?.speedDialFg ?? Theme.of(context).colorScheme.onPrimary,
       overlayColor: Colors.black,
       overlayOpacity: 0.5,
       spacing: 12,
@@ -454,13 +478,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   Widget _buildSearchBar(SearchProvider provider) {
     final settings = Provider.of<SettingsProvider>(context);
-    final isLightMode = !settings.showBackground;
-    final textColor = isLightMode ? Colors.black87 : Colors.white;
-    final hintColor = isLightMode ? Colors.black54 : Colors.white70;
-    final fillColor = isLightMode
+    final isLightStyle =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+    final textColor = isLightStyle ? Colors.black87 : Colors.white;
+    final hintColor = isLightStyle ? Colors.black54 : Colors.white70;
+    final fillColor = isLightStyle
         ? Colors.black.withOpacity(0.05)
         : Colors.white.withOpacity(0.15);
-    final borderColor = isLightMode
+    final borderColor = isLightStyle
         ? Colors.black.withOpacity(0.1)
         : Colors.amberAccent.withOpacity(0.6);
 
@@ -620,33 +646,36 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
     final settings = Provider.of<SettingsProvider>(context);
     // Determine styles based on theme
-    final isSimpleTheme = !settings.showBackground;
+    // Determine styles based on theme
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
 
-    final cardColor = isSimpleTheme
+    final cardColor = isSimpleLight
         ? Colors.white.withOpacity(0.6)
         : Colors.black.withOpacity(0.3);
 
-    final borderColor = isSimpleTheme
+    final borderColor = isSimpleLight
         ? Colors.pink.withOpacity(0.2)
         : Colors.white.withOpacity(0.1);
 
-    final titleColor = isSimpleTheme
+    final titleColor = isSimpleLight
         ? Colors.pink.shade900.withOpacity(0.8)
         : Colors.amberAccent.withOpacity(0.8);
 
-    final speakerColor = isSimpleTheme
+    final speakerColor = isSimpleLight
         ? Colors.brown.shade700.withOpacity(0.7)
         : Colors.white.withOpacity(0.6);
 
-    final textColor = isSimpleTheme
+    final textColor = isSimpleLight
         ? Colors.brown.shade900
         : Colors.white.withOpacity(0.95);
 
-    final subtitleColor = isSimpleTheme
+    final subtitleColor = isSimpleLight
         ? Colors.brown.shade800.withOpacity(0.6)
         : Colors.white.withOpacity(0.5);
 
-    final iconColor = isSimpleTheme
+    final iconColor = isSimpleLight
         ? Colors.pink.shade700.withOpacity(0.7)
         : Colors.white70;
 
@@ -654,7 +683,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       padding: const EdgeInsets.only(top: 24.0, left: 16.0, right: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          boxShadow: isSimpleTheme
+          boxShadow: isSimpleLight
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),

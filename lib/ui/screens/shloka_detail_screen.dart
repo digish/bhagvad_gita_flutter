@@ -61,7 +61,11 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
         title: Text("Verse ${widget.shlokaId}"),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const BackButton(color: Colors.black),
+        leading: BackButton(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black,
+        ),
       ),
       body: Stack(
         children: [
@@ -111,7 +115,9 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
                           showShlokIndex: true,
                           showColoredCard: true,
                           showEmblem: false, // Don't need animation here
-                          isLightTheme: true,
+                          isLightTheme:
+                              Theme.of(context).brightness ==
+                              Brightness.light, // ✨ Dynamic theme
                         ),
                       ),
                     ),

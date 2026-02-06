@@ -95,15 +95,23 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
               // Vital stability fix: ClipRect prevents the custom shader from rendering
               // to 'infinity', which crashes the iOS Simulator's Metal driver (MTLSimDriver).
               return ClipRect(
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: _ShaderPainter(
-                    shader: snapshot.data!,
-                    time:
-                        _timeController.value *
-                        _timeController.duration!.inMilliseconds /
-                        1000.0,
-                    resolution: MediaQuery.of(context).size,
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Colors.black.withOpacity(0.6)
+                        : Colors.transparent,
+                    BlendMode.darken,
+                  ),
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: _ShaderPainter(
+                      shader: snapshot.data!,
+                      time:
+                          _timeController.value *
+                          _timeController.duration!.inMilliseconds /
+                          1000.0,
+                      resolution: MediaQuery.of(context).size,
+                    ),
                   ),
                 ),
               );

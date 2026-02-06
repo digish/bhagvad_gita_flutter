@@ -475,7 +475,9 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     bool includeCommentaries = true,
   }) async {
     final sql = _buildQuery(language, script);
-    final List<Map<String, dynamic>> maps = await _db.rawQuery(sql);
+    final fullSql =
+        "$sql ORDER BY CAST(m.chapter_no AS INTEGER), CAST(m.shloka_no AS INTEGER)";
+    final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
 
     Map<String, List<Commentary>> commentariesMap = {};
     if (includeCommentaries) {

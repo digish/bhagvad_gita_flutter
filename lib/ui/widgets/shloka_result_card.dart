@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import '../../models/shloka_result.dart';
 import '../../navigation/app_router.dart';
 import '../../providers/settings_provider.dart';
+import '../../ui/theme/app_colors.dart';
 import 'dart:ui';
 
 class ShlokaResultCard extends StatelessWidget {
@@ -33,7 +34,9 @@ class ShlokaResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = Provider.of<SettingsProvider>(context);
-    final isSimpleTheme = !settings.showBackground;
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
 
     String displayShlok = shloka.shlok;
     final List<String> snippets = [];
@@ -70,25 +73,43 @@ class ShlokaResultCard extends StatelessWidget {
         : [searchQuery];
 
     // Theme-based styling
-    final cardColor = isSimpleTheme
+    final appColors = Theme.of(context).extension<AppColors>();
+    final cardColor = isSimpleLight
         ? Colors.white.withOpacity(0.6)
         : Colors.grey[900]!.withOpacity(0.7);
 
-    final borderColor = isSimpleTheme
-        ? Colors.pink.withOpacity(0.2)
-        : const Color(0xFFFFD700).withOpacity(0.5);
+    // In "Non-Simple" Light Mode (Fancy Mode), we use a Dark Card on a Pink Background.
+    // So we must use Dark Theme colors (Gold/White) for contrast, not AppColors.light (Pink/Brown).
+    final forceDarkColors =
+        !isSimpleLight && Theme.of(context).brightness == Brightness.light;
 
-    final titleColor = isSimpleTheme
-        ? Colors.pink.shade900.withOpacity(0.8)
-        : const Color(0xFFFFD700);
+    final borderColor = forceDarkColors
+        ? const Color(0xFFFFD700).withOpacity(0.5)
+        : (appColors?.cardBorder ??
+              (isSimpleLight
+                  ? Colors.pink.withOpacity(0.2)
+                  : const Color(0xFFFFD700).withOpacity(0.5)));
 
-    final textColor = isSimpleTheme
-        ? Colors.brown.shade900
-        : Colors.white.withOpacity(0.85);
+    final titleColor = forceDarkColors
+        ? const Color(0xFFFFD700)
+        : (appColors?.cardTitle ??
+              (isSimpleLight
+                  ? Colors.pink.shade900.withOpacity(0.8)
+                  : const Color(0xFFFFD700)));
 
-    final highlightColor = isSimpleTheme
-        ? const Color(0xFFD81B60) // Deep Pink for highlight
-        : const Color(0xFFFFD700); // Gold
+    final textColor = forceDarkColors
+        ? Colors.white.withOpacity(0.85)
+        : (appColors?.cardText ??
+              (isSimpleLight
+                  ? Colors.brown.shade900
+                  : Colors.white.withOpacity(0.85)));
+
+    final highlightColor = forceDarkColors
+        ? const Color(0xFFFFD700)
+        : (appColors?.highlightColor ??
+              (isSimpleLight
+                  ? const Color(0xFFD81B60)
+                  : const Color(0xFFFFD700)));
 
     List<TextSpan> buildHighlightedText(String text, List<String> terms) {
       if (terms.isEmpty) return [TextSpan(text: text)];
@@ -136,7 +157,7 @@ class ShlokaResultCard extends StatelessWidget {
             style: TextStyle(
               color: highlightColor,
               fontWeight: FontWeight.bold,
-              backgroundColor: isSimpleTheme
+              backgroundColor: isSimpleLight
                   ? highlightColor.withOpacity(0.1)
                   : Colors.transparent,
             ),
@@ -154,7 +175,7 @@ class ShlokaResultCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
-          boxShadow: isSimpleTheme
+          boxShadow: isSimpleLight
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
