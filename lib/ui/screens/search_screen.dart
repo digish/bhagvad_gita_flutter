@@ -74,7 +74,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     super.initState();
     _revealController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1500),
     );
     _pulseController = AnimationController(
       vsync: this,
@@ -125,6 +125,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     required bool isKeyboardOpen,
     required bool shouldShowResults,
     bool excludeDecoration = false,
+    Animation<double>? scaleAnimation,
   }) {
     if (showBackground) {
       return Stack(
@@ -137,8 +138,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               child: IgnorePointer(
                 ignoring: shouldShowResults,
                 child: isKeyboardOpen
-                    ? const DecorativeForeground(opacity: 0.2)
-                    : const DecorativeForeground(opacity: 1.0),
+                    ? DecorativeForeground(
+                        opacity: 0.2,
+                        scaleAnimation: scaleAnimation,
+                      )
+                    : DecorativeForeground(
+                        opacity: 1.0,
+                        scaleAnimation: scaleAnimation,
+                      ),
               ),
             ),
         ],
@@ -156,6 +163,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     required bool showBackground,
     required bool isKeyboardOpen,
     required bool shouldShowResults,
+    Animation<double>? scaleAnimation,
   }) {
     if (showBackground) {
       return AnimatedOpacity(
@@ -164,8 +172,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         child: IgnorePointer(
           ignoring: shouldShowResults,
           child: isKeyboardOpen
-              ? const DecorativeForeground(opacity: 0.2)
-              : const DecorativeForeground(opacity: 1.0),
+              ? DecorativeForeground(
+                  opacity: 0.2,
+                  scaleAnimation: scaleAnimation,
+                )
+              : DecorativeForeground(
+                  opacity: 1.0,
+                  scaleAnimation: scaleAnimation,
+                ),
         ),
       );
     } else {
@@ -179,14 +193,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final isSearching = provider.searchQuery.isNotEmpty;
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final shouldShowResults = isSearching || isKeyboardOpen;
+    final width = MediaQuery.of(context).size.width;
+    final bool isTablet = width > 600;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // ✨ RESTORED: The floating action button for navigation.
       // It's hidden when the keyboard is visible.
-      floatingActionButton:
-          (isKeyboardOpen || MediaQuery.of(context).size.width > 600)
+      floatingActionButton: (isKeyboardOpen || width > 600)
           ? null
           : _buildSpeedDial(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -201,12 +216,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           // and we are not currently animating a change we initiated locally.
           if (settings.showBackground != _isBackgroundRequested &&
               !_revealController.isAnimating) {
-            final width = MediaQuery.of(context).size.width;
             final isLandscape = width > MediaQuery.of(context).size.height;
-            final showRail = width > 600;
 
             // If change came from Rail (iPad/Tablet), start animation from likely button position
-            if (showRail) {
+            if (isTablet) {
               final double railWidth = isLandscape ? 220.0 : 100.0;
               final double bottomPadding = MediaQuery.of(
                 context,
@@ -217,20 +230,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   MediaQuery.of(context).size.height - bottomPadding - 40;
 
               _revealCenter = Offset(buttonX, buttonY);
-
-              // Update our local tracking to match new target
-              // We need to trigger the animation "backwards" or "forwards" depending on state?
-              // The logic below assumes we want to reveal the NEW state.
-              // So we set _isBackgroundRequested to the OLD state (what is currently visible),
-              // then start animation to reveal the NEW state (settings.showBackground).
-
-              // Actually, the LiquidReveal reveals the *child* (which is the requested state).
-              // So we want to reveal 'settings.showBackground'.
-              // The 'background' (base layer) should be inputs that match !_isBackgroundRequested.
-
-              // Let's defer to the standard flow:
-              // 1. We acknowledge the change is happening.
-              // 2. We start the animation.
               _isBackgroundRequested = settings.showBackground;
               _revealController.forward(from: 0);
             } else {
@@ -248,30 +247,54 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           return AnimatedBuilder(
             animation: _revealController,
             builder: (context, _) {
+              // 🌸 Sequence Logic:
+              // On Phones (!isTablet), we run a local LiquidReveal.
+              // On Tablets (isTablet), MainScaffold already has a global LiquidReveal.
+              // In both cases, we use Intervals to time the lotus growth.
+
+              final bool isAnimating = _revealController.isAnimating;
+
+              // Background Reveal Animation (0% -> 60% for tiered growth)
+              final revealProgress = isAnimating
+                  ? CurvedAnimation(
+                      parent: _revealController,
+                      curve: _isBackgroundRequested!
+                          ? const Interval(0.0, 0.6, curve: Curves.easeInOut)
+                          : const Interval(0.0, 1.0, curve: Curves.easeInOut),
+                    ).value
+                  : 1.0;
+
+              Widget baseBackground = _buildBackgroundOnly(
+                showBackground: !_isBackgroundRequested!,
+                isKeyboardOpen: isKeyboardOpen,
+                shouldShowResults: shouldShowResults,
+                excludeDecoration: true,
+              );
+
+              Widget newBackground = _buildBackgroundOnly(
+                showBackground: _isBackgroundRequested!,
+                isKeyboardOpen: isKeyboardOpen,
+                shouldShowResults: shouldShowResults,
+                excludeDecoration: true,
+              );
+
               return Stack(
                 children: [
-                  // Base Layer: Background Color (No Buttons)
-                  if (_revealController.isAnimating)
-                    _buildBackgroundOnly(
-                      showBackground: !_isBackgroundRequested!,
-                      isKeyboardOpen: isKeyboardOpen,
-                      shouldShowResults: shouldShowResults,
-                      excludeDecoration: true,
-                    ),
+                  // Base Layer: Background Color
+                  // ✨ Only show on PHONES. On Tablets, MainScaffold handles this via snapshot.
+                  if (isAnimating && !isTablet) baseBackground,
 
-                  // Top Layer: Background Color (No Buttons) - Revealing
-                  LiquidReveal(
-                    progress: _revealController.isAnimating
-                        ? _revealController.value
-                        : 1.0,
-                    center: _revealCenter,
-                    child: _buildBackgroundOnly(
-                      showBackground: _isBackgroundRequested!,
-                      isKeyboardOpen: isKeyboardOpen,
-                      shouldShowResults: shouldShowResults,
-                      excludeDecoration: true,
+                  // Top Layer: Revealing Background
+                  // ✨ FIX: Only wrap in LiquidReveal on PHONES.
+                  // On tablets, MainScaffold itself is wrapped in LiquidReveal.
+                  if (isTablet)
+                    newBackground
+                  else
+                    LiquidReveal(
+                      progress: revealProgress,
+                      center: _revealCenter,
+                      child: newBackground,
                     ),
-                  ),
 
                   // Wrap the interactive UI in a SafeArea
                   SafeArea(
@@ -484,24 +507,49 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
                   // Decoration Layer (Buttons) - ON TOP of content
                   // Base Layer Decoration
-                  if (_revealController.isAnimating)
+                  // Decoration Layer (Buttons) - ON TOP of content
+                  // Base Layer Decoration
+                  // ✨ Only show on PHONES.
+                  if (_revealController.isAnimating && !isTablet)
                     _buildDecorationOnly(
                       showBackground: !_isBackgroundRequested!,
                       isKeyboardOpen: isKeyboardOpen,
                       shouldShowResults: shouldShowResults,
+                      scaleAnimation: CurvedAnimation(
+                        parent: ReverseAnimation(_revealController),
+                        curve: _isBackgroundRequested!
+                            ? const Interval(
+                                0.0,
+                                0.4,
+                                curve: Curves.linear,
+                              ) // Rapid shrink when complex appearing? Actually irrelevant.
+                            : const Interval(
+                                0.0,
+                                1.0,
+                                curve: Curves.linear,
+                              ), // Normal shrink when going to simple.
+                      ),
                     ),
 
                   // Top Layer Decoration - Revealing
-                  LiquidReveal(
-                    progress: _revealController.isAnimating
-                        ? _revealController.value
-                        : 1.0,
-                    center: _revealCenter,
-                    child: _buildDecorationOnly(
-                      showBackground: _isBackgroundRequested!,
-                      isKeyboardOpen: isKeyboardOpen,
-                      shouldShowResults: shouldShowResults,
-                    ),
+                  // ✨ REMOVED LiquidReveal wrapper here to avoid masking artifacts.
+                  // The scaling alone handles the visual presence of the lotuses.
+                  _buildDecorationOnly(
+                    showBackground: _isBackgroundRequested!,
+                    isKeyboardOpen: isKeyboardOpen,
+                    shouldShowResults: shouldShowResults,
+                    scaleAnimation: _revealController.isAnimating
+                        ? CurvedAnimation(
+                            parent: _revealController,
+                            curve: _isBackgroundRequested!
+                                ? const Interval(0.6, 1.0, curve: Curves.linear)
+                                : const Interval(
+                                    0.0,
+                                    1.0,
+                                    curve: Curves.linear,
+                                  ),
+                          )
+                        : null,
                   ),
                 ],
               );

@@ -25,8 +25,13 @@ import '../../providers/settings_provider.dart';
 
 class DecorativeForeground extends StatelessWidget {
   final double opacity;
+  final Animation<double>? scaleAnimation;
 
-  const DecorativeForeground({super.key, this.opacity = 1.0});
+  const DecorativeForeground({
+    super.key,
+    this.opacity = 1.0,
+    this.scaleAnimation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,120 +47,129 @@ class DecorativeForeground extends StatelessWidget {
     // Adjusted offset for rail
     final double railOffset = isTablet ? 100.0 : 0.0;
 
+    // Derived animation for "Settling" effect (Bouncy)
+    final Animation<double> effectiveScale =
+        scaleAnimation ?? const AlwaysStoppedAnimation(1.0);
+    final Animation<double> bounceScale = CurvedAnimation(
+      parent: effectiveScale,
+      curve: Curves.easeOutBack,
+    );
+
     return Opacity(
       opacity: opacity,
       child: Stack(
         children: [
-          // ... (Your Positioned images remain the same)
+          // Left Leaves
           Positioned(
             top: 20,
-            left:
-                MediaQuery.of(context).size.width * 0.08 +
-                railOffset, // Shifted
-            child: Stack(
-              children: [
-                // Shadow
-                Transform.translate(
-                  offset: const Offset(4, 4),
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-                    child: ColorFiltered(
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withOpacity(0.5),
-                        BlendMode.srcATop,
-                      ),
-                      child: Image.asset(
-                        'assets/images/leaves_clustor12.png',
-                        width: leaves1Size,
-                        height: leaves1Size,
-                        fit: BoxFit.contain,
+            left: MediaQuery.of(context).size.width * 0.08 + railOffset,
+            child: ScaleTransition(
+              scale: bounceScale,
+              child: Stack(
+                children: [
+                  Transform.translate(
+                    offset: const Offset(4, 4),
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                      child: ColorFiltered(
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withOpacity(0.5),
+                          BlendMode.srcATop,
+                        ),
+                        child: Image.asset(
+                          'assets/images/leaves_clustor12.png',
+                          width: leaves1Size,
+                          height: leaves1Size,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Original Image
-                Image.asset(
-                  'assets/images/leaves_clustor12.png',
-                  width: leaves1Size,
-                  height: leaves1Size,
-                  fit: BoxFit.contain,
-                ),
-              ],
+                  Image.asset(
+                    'assets/images/leaves_clustor12.png',
+                    width: leaves1Size,
+                    height: leaves1Size,
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
             ),
           ),
+
+          // Right Leaves
           Positioned(
             top: 20,
-            left:
-                MediaQuery.of(context).size.width * 0.7 + railOffset, // Shifted
-            child: Stack(
-              children: [
-                // Shadow
-                Transform.translate(
-                  offset: const Offset(4, 4),
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-                    child: ColorFiltered(
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withOpacity(0.5),
-                        BlendMode.srcATop,
-                      ),
-                      child: Image.asset(
-                        'assets/images/leaves_clustor11.png',
-                        width: leaves2Size,
-                        height: leaves2Size,
-                        fit: BoxFit.contain,
+            left: MediaQuery.of(context).size.width * 0.7 + railOffset,
+            child: ScaleTransition(
+              scale: bounceScale,
+              child: Stack(
+                children: [
+                  Transform.translate(
+                    offset: const Offset(4, 4),
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                      child: ColorFiltered(
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withOpacity(0.5),
+                          BlendMode.srcATop,
+                        ),
+                        child: Image.asset(
+                          'assets/images/leaves_clustor11.png',
+                          width: leaves2Size,
+                          height: leaves2Size,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Original Image
-                Image.asset(
-                  'assets/images/leaves_clustor11.png',
-                  width: leaves2Size,
-                  height: leaves2Size,
-                  fit: BoxFit.contain,
-                ),
-              ],
+                  Image.asset(
+                    'assets/images/leaves_clustor11.png',
+                    width: leaves2Size,
+                    height: leaves2Size,
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
             ),
           ),
 
           // "Adhyay" (Chapters) Spinner
           Positioned(
             top: 30,
-            left:
-                MediaQuery.of(context).size.width * 0.22 +
-                railOffset, // Shifted
-            child: CenteredSpinner(
-              isSpinning: false,
-              anchor: _buildLotus(
-                // This calls the updated method
-                imageAsset: 'assets/images/lotus_white22.png',
-                heroTag: 'whiteLotusHero',
-                onTap: () => context.push(AppRoutes.chapters),
-                size: lotusSize,
-              ),
-              child: SizedBox(
-                width: ringDimension,
-                height: ringDimension,
-                child: Center(
-                  child: Transform.translate(
-                    offset: const Offset(0, 55), // Shift text below the lotus
-                    child: Text(
-                      StaticData.localizeTerm(
-                        'adhyay',
-                        Provider.of<SettingsProvider>(context).script,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFFD700),
-                        shadows: [
-                          Shadow(
-                            blurRadius: 2,
-                            color: Colors.black,
-                            offset: Offset(1, 1),
-                          ),
-                        ],
+            left: MediaQuery.of(context).size.width * 0.22 + railOffset,
+            child: ScaleTransition(
+              scale: bounceScale,
+              child: CenteredSpinner(
+                isSpinning: false,
+                anchor: _buildLotus(
+                  imageAsset: 'assets/images/lotus_white22.png',
+                  heroTag: 'whiteLotusHero',
+                  onTap: () => context.push(AppRoutes.chapters),
+                  size: lotusSize,
+                ),
+                child: SizedBox(
+                  width: ringDimension,
+                  height: ringDimension,
+                  child: Center(
+                    child: Transform.translate(
+                      offset: const Offset(0, 55),
+                      child: Text(
+                        StaticData.localizeTerm(
+                          'adhyay',
+                          Provider.of<SettingsProvider>(context).script,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFD700),
+                          shadows: [
+                            Shadow(
+                              blurRadius: 2,
+                              color: Colors.black,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -167,41 +181,41 @@ class DecorativeForeground extends StatelessWidget {
           // "Parayan" Spinner
           Positioned(
             top: 100,
-            left:
-                MediaQuery.of(context).size.width * 0.01 +
-                railOffset, // Shifted
-            child: CenteredSpinner(
-              isSpinning: false,
-              spinDirection: SpinDirection.counterClockwise,
-              anchor: _buildLotus(
-                // This also calls the updated method
-                imageAsset: 'assets/images/lotus_blue12.png',
-                heroTag: 'blueLotusHero',
-                onTap: () => context.push(AppRoutes.parayan),
-                size: lotusSize,
-              ),
-              child: SizedBox(
-                width: ringDimension,
-                height: ringDimension,
-                child: Center(
-                  child: Transform.translate(
-                    offset: const Offset(0, 55), // Shift text below the lotus
-                    child: Text(
-                      StaticData.localizeTerm(
-                        'parayan',
-                        Provider.of<SettingsProvider>(context).script,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFFD700),
-                        shadows: [
-                          Shadow(
-                            blurRadius: 2,
-                            color: Colors.black,
-                            offset: Offset(1, 1),
-                          ),
-                        ],
+            left: MediaQuery.of(context).size.width * 0.01 + railOffset,
+            child: ScaleTransition(
+              scale: bounceScale,
+              child: CenteredSpinner(
+                isSpinning: false,
+                spinDirection: SpinDirection.counterClockwise,
+                anchor: _buildLotus(
+                  imageAsset: 'assets/images/lotus_blue12.png',
+                  heroTag: 'blueLotusHero',
+                  onTap: () => context.push(AppRoutes.parayan),
+                  size: lotusSize,
+                ),
+                child: SizedBox(
+                  width: ringDimension,
+                  height: ringDimension,
+                  child: Center(
+                    child: Transform.translate(
+                      offset: const Offset(0, 55),
+                      child: Text(
+                        StaticData.localizeTerm(
+                          'parayan',
+                          Provider.of<SettingsProvider>(context).script,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFD700),
+                          shadows: [
+                            Shadow(
+                              blurRadius: 2,
+                              color: Colors.black,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -213,19 +227,20 @@ class DecorativeForeground extends StatelessWidget {
           // "Credits" Spinner
           Positioned(
             top: 65,
-            right:
-                MediaQuery.of(context).size.width *
-                0.15, // No shift needed for right-aligned
-            child: CenteredSpinner(
-              isSpinning: false,
-              spinDirection: SpinDirection.clockwise,
-              anchor: _buildLotus(
-                imageAsset: 'assets/images/lotus_gold.png', // New asset
-                heroTag: 'creditsLotusHero', // New hero tag
-                onTap: () => context.push(AppRoutes.credits),
-                size: lotusSize,
+            right: MediaQuery.of(context).size.width * 0.15,
+            child: ScaleTransition(
+              scale: bounceScale,
+              child: CenteredSpinner(
+                isSpinning: false,
+                spinDirection: SpinDirection.clockwise,
+                anchor: _buildLotus(
+                  imageAsset: 'assets/images/lotus_gold.png',
+                  heroTag: 'creditsLotusHero',
+                  onTap: () => context.push(AppRoutes.credits),
+                  size: lotusSize,
+                ),
+                child: const SizedBox.shrink(),
               ),
-              child: const SizedBox.shrink(),
             ),
           ),
         ],
@@ -233,7 +248,6 @@ class DecorativeForeground extends StatelessWidget {
     );
   }
 
-  // Helper method to build the lotus
   Widget _buildLotus({
     required String imageAsset,
     required String heroTag,
@@ -249,7 +263,6 @@ class DecorativeForeground extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Background glow effect
             Opacity(
               opacity: 0.5,
               child: ImageFiltered(
@@ -267,12 +280,8 @@ class DecorativeForeground extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Main interactive lotus
             Hero(
               tag: heroTag,
-
-              // ✨ ADD THE CUSTOM ANIMATION BUILDER HERE ✨
               flightShuttleBuilder:
                   (
                     flightContext,
@@ -282,28 +291,11 @@ class DecorativeForeground extends StatelessWidget {
                     toHeroContext,
                   ) {
                     final rotationAnimation = animation.drive(
-                      Tween<double>(begin: 0.0, end: 1.0), // 1 full rotation
+                      Tween<double>(begin: 0.0, end: 1.0),
                     );
-                    final scaleAnimation = animation.drive(
-                      TweenSequence([
-                        TweenSequenceItem(
-                          tween: Tween(begin: 1.0, end: 1.0),
-                          weight: 50,
-                        ),
-                        TweenSequenceItem(
-                          tween: Tween(begin: 1.0, end: 1.0),
-                          weight: 50,
-                        ),
-                      ]),
-                    );
-
                     return RotationTransition(
                       turns: rotationAnimation,
-                      child: ScaleTransition(
-                        scale: scaleAnimation,
-                        // Use the widget from the destination Hero as the shuttle
-                        child: (toHeroContext.widget as Hero).child,
-                      ),
+                      child: (toHeroContext.widget as Hero).child,
                     );
                   },
               child: Image.asset(imageAsset, fit: BoxFit.contain),
