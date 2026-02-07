@@ -120,8 +120,10 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
         }
         // ✨ FIX: Return a solid color instead of a loader to prevent "White Flash"
         // This matches the ripple's base color so the transition is seamless.
+        // ✨ FIX: Return a solid opaque color to prevent transparency/white flash
+        // Using a dark blue/black to match the water ripple aesthetic.
         return Container(
-          color: Theme.of(context).primaryColor.withOpacity(0.1),
+          color: const Color(0xFF1E88E5), // Opaque Blue
         );
       },
     );

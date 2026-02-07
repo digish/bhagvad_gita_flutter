@@ -286,6 +286,19 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
               return Stack(
                 children: [
+                  // ✨ FIX: Safety Layer to prevent "White Flash" during transitions
+                  // Matches the BOTTOM layer's color (the one being covered/revealed over).
+                  if (isAnimating && !isTablet)
+                    Container(
+                      color: _isBackgroundRequested!
+                          ? const Color(
+                              0xFFFCE4EC,
+                            ) // Going to Complex (Pink is bottom)
+                          : const Color(
+                              0xFF1E88E5,
+                            ), // Going to Simple (Blue is bottom)
+                    ),
+
                   // Base Layer: Background Color
                   // ✨ Only show on PHONES. On Tablets, MainScaffold handles this via snapshot.
                   if (isAnimating && !isTablet) baseBackground,
@@ -1230,15 +1243,6 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : Colors.black87,
                                   fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                "Seek divine guidance.",
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                  fontSize: 12,
                                 ),
                               ),
                             ],
