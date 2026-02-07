@@ -47,11 +47,78 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
       // Handle initial query if provided
       if (widget.initialQuery != null && !_hasSentInitialQuery) {
         _hasSentInitialQuery = true;
+
+        // Wait for credits to load before processing
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _provider?.sendMessage(widget.initialQuery!);
+            _processInitialQuery();
           }
         });
+      }
+    }
+  }
+
+  Future<void> _processInitialQuery() async {
+    final credits = context.read<CreditProvider>();
+
+    // If credits are still loading, wait a bit
+    if (credits.isLoading) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted && credits.isLoading) {
+        // Still loading? Wait again. Simple polling for now as it's quick.
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
+    if (mounted && widget.initialQuery != null) {
+      _processQuery(widget.initialQuery!);
+    }
+  }
+
+  Future<void> _processQuery(String text) async {
+    if (text.trim().isEmpty) return;
+
+    final credits = context.read<CreditProvider>();
+    final settings = context.read<SettingsProvider>();
+
+    // Safety check: Ensure credits are loaded
+    if (credits.isLoading) {
+      // Show a transient loading indicator or just return if it's manual
+      // For manual send, user likely waited. For auto, _processInitialQuery handles wait.
+      return;
+    }
+
+    // Skip credit check if user has their own API Key
+    final hasCustomKey =
+        settings.customAiApiKey != null && settings.customAiApiKey!.isNotEmpty;
+
+    if (!hasCustomKey && !credits.hasCredit()) {
+      // If we have an empty controller (initial query case), populate it
+      // so user can see what they were trying to ask before they see the dialog
+      if (_controller.text.isEmpty) {
+        _controller.text = text;
+      }
+      _showLowBalanceDialog();
+      return;
+    }
+
+    try {
+      if (!hasCustomKey) {
+        await credits.consumeCredit();
+      }
+      if (mounted) {
+        context.read<AskGitaProvider>().sendMessage(text);
+        // Only clear if the text was in the controller (user typed it or we populated it)
+        if (_controller.text.isNotEmpty) {
+          _controller.clear();
+        }
+        settings.markAskAiUsed();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -80,37 +147,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   }
 
   Future<void> _handleSend() async {
-    final text = _controller.text;
-    if (text.trim().isEmpty) return;
-
-    final credits = context.read<CreditProvider>();
-    final settings = context.read<SettingsProvider>();
-
-    // Skip credit check if user has their own API Key
-    final hasCustomKey =
-        settings.customAiApiKey != null && settings.customAiApiKey!.isNotEmpty;
-
-    if (!hasCustomKey && !credits.hasCredit()) {
-      _showLowBalanceDialog();
-      return;
-    }
-
-    try {
-      if (!hasCustomKey) {
-        await credits.consumeCredit();
-      }
-      if (mounted) {
-        context.read<AskGitaProvider>().sendMessage(text);
-        _controller.clear();
-        settings.markAskAiUsed();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
+    await _processQuery(_controller.text);
   }
 
   void _showLowBalanceDialog() {
@@ -406,6 +443,16 @@ class _ChatBubble extends StatelessWidget {
           shareableQuote = shareableQuote.substring(0, 150) + '...';
         }
       }
+
+      // ✨ Clean up markings in overall text
+      displayText = displayText
+          .replaceAll(RegExp(r'<[Cc]>'), '\n')
+          .replaceAll('*', '\n');
+
+      // Ensure "Divine Advice" is treated as a header if present at start
+      if (displayText.startsWith('Divine Advice')) {
+        displayText = '# ' + displayText;
+      }
     }
 
     return Column(
@@ -417,20 +464,48 @@ class _ChatBubble extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isUser ? theme.primaryColor : theme.cardColor,
+            gradient: isUser
+                ? LinearGradient(
+                    colors: [
+                      theme.primaryColor,
+                      theme.primaryColor.withValues(alpha: 0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : LinearGradient(
+                    colors: theme.brightness == Brightness.dark
+                        ? [const Color(0xFF252525), const Color(0xFF1E1E1E)]
+                        : [
+                            const Color(0xFFFFF8F0),
+                            Colors.white,
+                          ], // Warm silk feel for AI
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
               bottomLeft: isUser
-                  ? const Radius.circular(16)
+                  ? const Radius.circular(20)
                   : const Radius.circular(4),
               bottomRight: isUser
                   ? const Radius.circular(4)
-                  : const Radius.circular(16),
+                  : const Radius.circular(20),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isUser ? 0.1 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
             border: isUser
                 ? null
-                : Border.all(color: Colors.grey.withOpacity(0.2)),
+                : Border.all(
+                    color: theme.primaryColor.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
           ),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.85,
@@ -442,18 +517,67 @@ class _ChatBubble extends StatelessWidget {
                 MarkdownBody(
                   data: displayText,
                   styleSheet: MarkdownStyleSheet(
+                    // General Paragraph text
                     p: TextStyle(
                       color: isUser
                           ? Colors.white
-                          : theme.textTheme.bodyMedium?.color,
+                          : theme.textTheme.bodyLarge?.color,
                       fontSize: context.watch<SettingsProvider>().fontSize,
+                      height: 1.6, // Comfortable reading height
+                      letterSpacing: 0.3,
                     ),
-                    listBullet: TextStyle(
+                    // Bold Text (Strong) - Used as sub-headers often
+                    strong: TextStyle(
+                      fontWeight: FontWeight.w800, // Extra bold for emphasis
                       color: isUser
                           ? Colors.white
-                          : theme.textTheme.bodyMedium?.color,
+                          : theme.primaryColor, // Distinct color for structure
+                    ),
+                    // Headings
+                    h1: TextStyle(
+                      color: isUser ? Colors.white : theme.primaryColor,
+                      fontSize: context.watch<SettingsProvider>().fontSize + 6,
+                      fontWeight: FontWeight.w900,
+                      height: 1.5,
+                    ),
+                    h2: TextStyle(
+                      color: isUser ? Colors.white : theme.primaryColor,
+                      fontSize: context.watch<SettingsProvider>().fontSize + 4,
+                      fontWeight: FontWeight.bold,
+                      height: 1.5,
+                    ),
+                    h3: TextStyle(
+                      color: isUser ? Colors.white : theme.primaryColor,
+                      fontSize: context.watch<SettingsProvider>().fontSize + 2,
+                      fontWeight: FontWeight.bold,
+                      height: 1.5,
+                    ),
+                    // Lists
+                    listBullet: TextStyle(
+                      color: isUser ? Colors.white : theme.primaryColor,
+                      fontSize: context.watch<SettingsProvider>().fontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    listIndent: 24.0, // Proper indentation
+                    // Blockquotes
+                    blockquote: TextStyle(
+                      color: isUser ? Colors.white70 : Colors.grey[700],
+                      fontStyle: FontStyle.italic,
                       fontSize: context.watch<SettingsProvider>().fontSize,
                     ),
+                    blockquoteDecoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border(
+                        left: BorderSide(color: theme.primaryColor, width: 4),
+                      ),
+                    ),
+                    blockquotePadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    // Spacing between blocks (paragraphs, lists, etc.)
+                    blockSpacing: 16.0,
                   ),
                 ),
               if (message.isStreaming && message.text.isEmpty)
@@ -582,7 +706,7 @@ class _ChatBubble extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 180, // Adjusted height for new card
+            height: 240, // Increased height to show more lines comfortably
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -617,77 +741,141 @@ class _ChatShlokaCard extends StatelessWidget {
     // Use gold/orange for relevant verses to make them special
     final accentColor = isDark ? const Color(0xFFFFD700) : theme.primaryColor;
 
+    // ✨ Format Shloka Text: Replace * and <C> with newlines
+    final formattedShloka = shloka.shlok
+        .replaceAll(RegExp(r'<[Cc]>'), '\n')
+        .replaceAll('*', '\n')
+        .replaceAll(
+          RegExp(r'॥\s?[०-९\-]+॥'),
+          '॥',
+        ) // Clean up shloka numbers if any
+        .trim();
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withOpacity(0.3), width: 1.5),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF2C2C2C), const Color(0xFF1E1E1E)]
+              : [Colors.white, theme.primaryColor.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accentColor.withOpacity(isDark ? 0.4 : 0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: accentColor.withOpacity(isDark ? 0.15 : 0.1),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
             context.push(
               AppRoutes.shlokaDetail.replaceFirst(':id', shloka.id.toString()),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Stack(
+            children: [
+              // Decorative Background Lotus
+              Positioned(
+                right: -20,
+                bottom: -20,
+                child: Opacity(
+                  opacity: isDark ? 0.08 : 0.05,
+                  child: Image.asset(
+                    'assets/images/lotus_white22.png',
+                    width: 120,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.auto_stories, size: 16, color: accentColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Chapter ${shloka.chapterNo} • Verse ${shloka.shlokNo}',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: accentColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.menu_book_rounded,
+                            size: 14,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Chapter ${shloka.chapterNo} • Verse ${shloka.shlokNo}',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: accentColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Center(
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Text(
+                            formattedShloka,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontSize: 18,
+                              height: 1.4, // Slightly tighter to fit 2-3 lines
+                              letterSpacing: 0.5,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'NotoSerif',
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.95)
+                                  : const Color(0xFF2D2D2D),
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 5, // Allow more lines
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tap to read meaning',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.white38 : Colors.grey[500],
+                            fontStyle: FontStyle.italic,
+                            fontSize: 10,
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 12,
+                          color: accentColor.withOpacity(0.5),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      shloka.shlok,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontSize: 16,
-                        height: 1.6,
-                        fontWeight: FontWeight.w600, // Prominent weight
-                        fontFamily: 'NotoSerif', // Serif for beauty (if avail)
-                        color: isDark
-                            ? Colors.white.withOpacity(0.95)
-                            : const Color(0xFF2D2D2D),
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap to read full meaning',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark ? Colors.white54 : Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
