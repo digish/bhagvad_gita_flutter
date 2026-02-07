@@ -102,6 +102,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
       if (mounted) {
         context.read<AskGitaProvider>().sendMessage(text);
         _controller.clear();
+        settings.markAskAiUsed();
       }
     } catch (e) {
       if (mounted) {

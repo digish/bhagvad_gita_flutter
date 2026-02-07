@@ -30,6 +30,9 @@ class SettingsProvider extends ChangeNotifier {
   String? _customAiApiKey;
   String? get customAiApiKey => _customAiApiKey;
 
+  bool _hasUsedAskAi = false;
+  bool get hasUsedAskAi => _hasUsedAskAi;
+
   /* DEPRECATED: Replaced by CreditProvider */
   // int _aiQueryCount = 0;
   // int get aiQueryCount => _aiQueryCount;
@@ -74,6 +77,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('custom_ai_api_key');
+  }
+
+  Future<void> markAskAiUsed() async {
+    if (_hasUsedAskAi) return;
+    _hasUsedAskAi = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_ask_ai', true);
   }
 
   /* DEPRECATED: Replaced by CreditProvider */
@@ -218,6 +229,7 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     _customAiApiKey = prefs.getString('custom_ai_api_key');
+    _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
 
     /* DEPRECATED: Replaced by CreditProvider */
     // _lastQueryResetDate = prefs.getString('last_ai_query_reset_date') ?? DateTime.now().toIso8601String().split('T')[0];

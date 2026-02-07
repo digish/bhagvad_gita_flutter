@@ -95,6 +95,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       _lastKnownSources = Set.from(newSources);
       // Defer to avoid setState during build integration
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Sync Onboarding Bubble Support
         if (mounted) {
           _loadRandomShloka();
         }
@@ -317,6 +318,27 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       height: isKeyboardOpen ? 0 : 10,
                                     ),
                                     _buildSearchBar(provider),
+                                    if (!settings.hasUsedAskAi &&
+                                        !shouldShowResults &&
+                                        !_isAiMode)
+                                      _OnboardingBubble(
+                                        onTap: () {
+                                          // 1. Mark as used
+                                          settings.markAskAiUsed();
+                                          // 2. Switch mode or Navigate
+                                          // Option A: Just switch to AI mode in place
+                                          setState(() {
+                                            _isAiMode = true;
+                                          });
+                                        },
+                                        onDismiss: () {
+                                          // Just hide locally for this session, or forever?
+                                          // User said "ok to not show them", implies permanent dismissal
+                                          // or until they actually use it?
+                                          // Let's mark it as used so it doesn't pester them.
+                                          settings.markAskAiUsed();
+                                        },
+                                      ),
                                     if (settings.showRandomShloka &&
                                         !shouldShowResults)
                                       _buildRandomShlokaCard(),
@@ -1022,4 +1044,196 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       ),
     );
   }
+}
+
+class _OnboardingBubble extends StatefulWidget {
+  final VoidCallback onTap;
+  final VoidCallback onDismiss;
+
+  const _OnboardingBubble({required this.onTap, required this.onDismiss});
+
+  @override
+  State<_OnboardingBubble> createState() => _OnboardingBubbleState();
+}
+
+class _OnboardingBubbleState extends State<_OnboardingBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _floatAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.98,
+      end: 1.02,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _floatAnimation = Tween<double>(
+      begin: 0,
+      end: -8,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bubbleColor = isDark ? const Color(0xFF424242) : Colors.white;
+    final borderColor = isDark ? Colors.white24 : Colors.amber.withOpacity(0.5);
+
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _floatAnimation.value),
+            child: Transform.scale(scale: _scaleAnimation.value, child: child),
+          );
+        },
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The Tail pointing up to the toggle
+                Padding(
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: CustomPaint(
+                    size: const Size(20, 10),
+                    painter: _BubbleTailPainter(
+                      color: bubbleColor,
+                      borderColor: borderColor,
+                    ),
+                  ),
+                ),
+                // The Bubble Body
+                GestureDetector(
+                  onTap: widget.onTap,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 240),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bubbleColor,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(color: borderColor, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: Colors.amber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Try Ask Krishna",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                "Seek divine guidance.",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: widget.onDismiss,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+  final Color borderColor;
+
+  _BubbleTailPainter({required this.color, required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final path = Path();
+    path.moveTo(size.width / 2, 0); // Tip pointing up
+    path.lineTo(0, size.height);
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+
+    // Draw only the two slanted sides for the border to merge with bubble
+    final borderPath = Path();
+    borderPath.moveTo(0, size.height);
+    borderPath.lineTo(size.width / 2, 0);
+    borderPath.lineTo(size.width, size.height);
+    canvas.drawPath(borderPath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
