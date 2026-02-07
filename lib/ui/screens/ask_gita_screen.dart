@@ -9,6 +9,7 @@ import '../../providers/ask_gita_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
+import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
 import '../widgets/font_size_control.dart';
 import '../../navigation/app_router.dart';
 import '../../models/shloka_result.dart';
@@ -22,8 +23,10 @@ class AskGitaScreen extends StatefulWidget {
 }
 
 class _AskGitaScreenState extends State<AskGitaScreen> {
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode(); // ✨ Track input focus
+  bool _isInputFocused = false;
   bool _hasSentInitialQuery = false;
 
   AskGitaProvider? _provider;
@@ -42,7 +45,16 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     if (_provider != newProvider) {
       _provider?.removeListener(_scrollToBottom);
       _provider = newProvider;
-      _provider?.addListener(_scrollToBottom);
+      _provider?.addListener(() {
+        _scrollToBottom();
+      });
+
+      // ✨ Listen to focus changes
+      _inputFocusNode.addListener(() {
+        setState(() {
+          _isInputFocused = _inputFocusNode.hasFocus;
+        });
+      });
 
       // Handle initial query if provided
       if (widget.initialQuery != null && !_hasSentInitialQuery) {
@@ -71,11 +83,11 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     }
 
     if (mounted && widget.initialQuery != null) {
-      _processQuery(widget.initialQuery!);
+      _sendMessage(widget.initialQuery!);
     }
   }
 
-  Future<void> _processQuery(String text) async {
+  Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
     final credits = context.read<CreditProvider>();
@@ -95,8 +107,8 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     if (!hasCustomKey && !credits.hasCredit()) {
       // If we have an empty controller (initial query case), populate it
       // so user can see what they were trying to ask before they see the dialog
-      if (_controller.text.isEmpty) {
-        _controller.text = text;
+      if (_textController.text.isEmpty) {
+        _textController.text = text;
       }
       _showLowBalanceDialog();
       return;
@@ -109,8 +121,8 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
       if (mounted) {
         context.read<AskGitaProvider>().sendMessage(text);
         // Only clear if the text was in the controller (user typed it or we populated it)
-        if (_controller.text.isNotEmpty) {
-          _controller.clear();
+        if (_textController.text.isNotEmpty) {
+          _textController.clear();
         }
         settings.markAskAiUsed();
       }
@@ -126,8 +138,9 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   @override
   void dispose() {
     _provider?.removeListener(_scrollToBottom);
-    _controller.dispose();
+    _textController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose(); // ✨ Dispose focus node
     super.dispose();
   }
 
@@ -147,7 +160,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   }
 
   Future<void> _handleSend() async {
-    await _processQuery(_controller.text);
+    await _sendMessage(_textController.text);
   }
 
   void _showLowBalanceDialog() {
@@ -313,6 +326,20 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
                       ),
                     ),
 
+                    // ✨ AI Suggestions above Input Area
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      child: AiSuggestionChips(
+                        isVisible:
+                            _isInputFocused && _textController.text.isEmpty,
+                        onSuggestionSelected: (question) {
+                          _textController.text = question;
+                          _sendMessage(question);
+                          _inputFocusNode.unfocus();
+                        },
+                      ),
+                    ),
+
                     // Input Area
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -343,7 +370,9 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
                               children: [
                                 Expanded(
                                   child: TextField(
-                                    controller: _controller,
+                                    controller: _textController,
+                                    focusNode:
+                                        _inputFocusNode, // ✨ Attach focus node
                                     decoration: InputDecoration(
                                       hintText: 'Ask Krishna...',
                                       border: OutlineInputBorder(

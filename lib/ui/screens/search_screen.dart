@@ -15,6 +15,7 @@ import '../widgets/shloka_result_card.dart';
 import '../widgets/word_result_card.dart';
 import '../widgets/decorative_foreground.dart';
 import '../widgets/simple_gradient_background.dart';
+import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -61,6 +62,9 @@ class _SearchScreenView extends StatefulWidget {
 
 class _SearchScreenViewState extends State<_SearchScreenView>
     with RouteAware, TickerProviderStateMixin {
+  late final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode(); // ✨ Track focus
+  bool _isSearchFocused = false;
   late AnimationController _revealController;
   late AnimationController _pulseController;
   late AnimationController
@@ -89,6 +93,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       duration: const Duration(seconds: 10),
     )..repeat();
     // Removed explicit postFrameCallback here; handled in didChangeDependencies
+
+    // ✨ Listen to focus changes
+    _searchFocusNode.addListener(() {
+      setState(() {
+        _isSearchFocused = _searchFocusNode.hasFocus;
+      });
+    });
   }
 
   @override
@@ -116,6 +127,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     _revealController.dispose();
     _pulseController.dispose();
     _lotusController.dispose();
+    _searchController.dispose(); // ✨ Dispose controller
+    _searchFocusNode.dispose(); // ✨ Dispose focus node
     super.dispose();
   }
 
@@ -333,6 +346,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                               right: 16.0,
                             ),
                             child: SingleChildScrollView(
+                              clipBehavior: Clip
+                                  .none, // ✨ Allow overflow during animation
                               child: ResponsiveWrapper(
                                 maxWidth: 600,
                                 child: Column(
@@ -362,6 +377,24 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       height: isKeyboardOpen ? 0 : 10,
                                     ),
                                     _buildSearchBar(provider),
+                                    // ✨ AI Suggestions
+                                    if (_isSearchFocused && _isAiMode)
+                                      AiSuggestionChips(
+                                        isVisible: true,
+                                        direction: Axis
+                                            .vertical, // ✨ Vertical suggestions
+                                        onSuggestionSelected: (suggestion) {
+                                          _searchController.text = suggestion;
+                                          provider.onSearchQueryChanged(
+                                            suggestion,
+                                          );
+                                          _searchFocusNode.unfocus();
+                                          context.push(
+                                            AppRoutes.askGita,
+                                            extra: suggestion,
+                                          );
+                                        },
+                                      ),
                                     if (!settings.hasUsedAskAi &&
                                         !shouldShowResults &&
                                         !_isAiMode)
@@ -563,20 +596,16 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                         showBackground: _isBackgroundRequested!,
                         isKeyboardOpen: isKeyboardOpen,
                         shouldShowResults: shouldShowResults,
-                        scaleAnimation: CurvedAnimation(
-                          parent: _revealController,
-                          curve: _isBackgroundRequested!
-                              ? const Interval(
-                                  0.4,
+                        scaleAnimation: _revealController.isAnimating
+                            ? CurvedAnimation(
+                                parent: _revealController,
+                                curve: const Interval(
+                                  0.6,
                                   1.0,
-                                  curve: Curves.easeInOut,
-                                ) // Delayed growth
-                              : const Interval(
-                                  0.0,
-                                  1.0,
-                                  curve: Curves.easeInOut,
+                                  curve: Curves.easeOutBack,
                                 ),
-                        ),
+                              )
+                            : null, // ✨ Fix: Default to 1.0 when not animating
                       ),
                     ),
                 ],
@@ -682,6 +711,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             border: Border.all(color: borderColor, width: 1.2),
           ),
           child: TextField(
+            focusNode: _searchFocusNode, // ✨ Attach FocusNode
             style: TextStyle(color: textColor),
             onChanged: (value) => provider.onSearchQueryChanged(value),
             onSubmitted: (value) {
