@@ -443,16 +443,6 @@ class _ChatBubble extends StatelessWidget {
           shareableQuote = shareableQuote.substring(0, 150) + '...';
         }
       }
-
-      // ✨ Clean up markings in overall text
-      displayText = displayText
-          .replaceAll(RegExp(r'<[Cc]>'), '\n')
-          .replaceAll('*', '\n');
-
-      // Ensure "Divine Advice" is treated as a header if present at start
-      if (displayText.startsWith('Divine Advice')) {
-        displayText = '# ' + displayText;
-      }
     }
 
     return Column(
@@ -464,48 +454,20 @@ class _ChatBubble extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            gradient: isUser
-                ? LinearGradient(
-                    colors: [
-                      theme.primaryColor,
-                      theme.primaryColor.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : LinearGradient(
-                    colors: theme.brightness == Brightness.dark
-                        ? [const Color(0xFF252525), const Color(0xFF1E1E1E)]
-                        : [
-                            const Color(0xFFFFF8F0),
-                            Colors.white,
-                          ], // Warm silk feel for AI
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+            color: isUser ? theme.primaryColor : theme.cardColor,
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(20),
-              topRight: const Radius.circular(20),
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
               bottomLeft: isUser
-                  ? const Radius.circular(20)
+                  ? const Radius.circular(16)
                   : const Radius.circular(4),
               bottomRight: isUser
                   ? const Radius.circular(4)
-                  : const Radius.circular(20),
+                  : const Radius.circular(16),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isUser ? 0.1 : 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
             border: isUser
                 ? null
-                : Border.all(
-                    color: theme.primaryColor.withValues(alpha: 0.1),
-                    width: 1,
-                  ),
+                : Border.all(color: Colors.grey.withOpacity(0.2)),
           ),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.85,
@@ -517,67 +479,18 @@ class _ChatBubble extends StatelessWidget {
                 MarkdownBody(
                   data: displayText,
                   styleSheet: MarkdownStyleSheet(
-                    // General Paragraph text
                     p: TextStyle(
                       color: isUser
                           ? Colors.white
-                          : theme.textTheme.bodyLarge?.color,
+                          : theme.textTheme.bodyMedium?.color,
                       fontSize: context.watch<SettingsProvider>().fontSize,
-                      height: 1.6, // Comfortable reading height
-                      letterSpacing: 0.3,
                     ),
-                    // Bold Text (Strong) - Used as sub-headers often
-                    strong: TextStyle(
-                      fontWeight: FontWeight.w800, // Extra bold for emphasis
+                    listBullet: TextStyle(
                       color: isUser
                           ? Colors.white
-                          : theme.primaryColor, // Distinct color for structure
-                    ),
-                    // Headings
-                    h1: TextStyle(
-                      color: isUser ? Colors.white : theme.primaryColor,
-                      fontSize: context.watch<SettingsProvider>().fontSize + 6,
-                      fontWeight: FontWeight.w900,
-                      height: 1.5,
-                    ),
-                    h2: TextStyle(
-                      color: isUser ? Colors.white : theme.primaryColor,
-                      fontSize: context.watch<SettingsProvider>().fontSize + 4,
-                      fontWeight: FontWeight.bold,
-                      height: 1.5,
-                    ),
-                    h3: TextStyle(
-                      color: isUser ? Colors.white : theme.primaryColor,
-                      fontSize: context.watch<SettingsProvider>().fontSize + 2,
-                      fontWeight: FontWeight.bold,
-                      height: 1.5,
-                    ),
-                    // Lists
-                    listBullet: TextStyle(
-                      color: isUser ? Colors.white : theme.primaryColor,
-                      fontSize: context.watch<SettingsProvider>().fontSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    listIndent: 24.0, // Proper indentation
-                    // Blockquotes
-                    blockquote: TextStyle(
-                      color: isUser ? Colors.white70 : Colors.grey[700],
-                      fontStyle: FontStyle.italic,
+                          : theme.textTheme.bodyMedium?.color,
                       fontSize: context.watch<SettingsProvider>().fontSize,
                     ),
-                    blockquoteDecoration: BoxDecoration(
-                      color: theme.primaryColor.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border(
-                        left: BorderSide(color: theme.primaryColor, width: 4),
-                      ),
-                    ),
-                    blockquotePadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    // Spacing between blocks (paragraphs, lists, etc.)
-                    blockSpacing: 16.0,
                   ),
                 ),
               if (message.isStreaming && message.text.isEmpty)
@@ -706,7 +619,7 @@ class _ChatBubble extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 240, // Increased height to show more lines comfortably
+            height: 220, // Increased height to prevent truncation
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -847,7 +760,7 @@ class _ChatShlokaCard extends StatelessWidget {
                                   : const Color(0xFF2D2D2D),
                             ),
                             textAlign: TextAlign.center,
-                            maxLines: 5, // Allow more lines
+                            maxLines: 10, // Allow even more lines
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
