@@ -64,3 +64,18 @@ A beautiful, modern, and open-source Flutter app for reading the Shrimad Bhagava
 ## 📜 License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## Ads Configuration
+
+This app uses Google AdMob for rewarded ads.
+
+### Setup
+
+1.  **AdMob Account**: Create apps for Android/iOS in AdMob.
+2.  **Ad Units**: Create a "Rewarded Ad" unit for each platform.
+3.  **App IDs**:
+    -   Update `android/app/src/main/AndroidManifest.xml`
+    -   Update `ios/Runner/Info.plist`
+4.  **Ad Unit IDs**:
+    -   Update `lib/services/ad_service.dart` with production IDs.
+

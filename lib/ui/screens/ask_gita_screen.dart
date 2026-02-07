@@ -247,43 +247,57 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
               ],
             ),
             child: SafeArea(
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: 'Ask Krishna...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: theme.scaffoldBackgroundColor,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          decoration: InputDecoration(
+                            hintText: 'Ask Krishna...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: theme.scaffoldBackgroundColor,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          textCapitalization: TextCapitalization.sentences,
+                          onSubmitted: (_) => _handleSend(),
                         ),
                       ),
-                      textCapitalization: TextCapitalization.sentences,
-                      onSubmitted: (_) => _handleSend(),
-                    ),
+                      const SizedBox(width: 8),
+                      FloatingActionButton(
+                        onPressed: provider.isLoading ? null : _handleSend,
+                        mini: true,
+                        elevation: 0,
+                        child: provider.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  FloatingActionButton(
-                    onPressed: provider.isLoading ? null : _handleSend,
-                    mini: true,
-                    elevation: 0,
-                    child: provider.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.send),
+                  const SizedBox(height: 8),
+                  Text(
+                    'AI-generated response. May contain errors.',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      fontSize: 10,
+                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                    ),
                   ),
                 ],
               ),
