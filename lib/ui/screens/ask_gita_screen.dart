@@ -409,16 +409,31 @@ class _ChatBubble extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                       color: theme.primaryColor.withOpacity(0.7),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded, size: 18),
-                      tooltip: 'Share Advice',
-                      onPressed: () {
-                        final footer =
-                            '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
-                        Share.share(displayText + footer);
+                    Builder(
+                      builder: (iconContext) {
+                        return IconButton(
+                          icon: const Icon(Icons.share_rounded, size: 18),
+                          tooltip: 'Share Advice',
+                          onPressed: () {
+                            final footer =
+                                '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
+
+                            // Calculate share position origin for iPad
+                            final box =
+                                iconContext.findRenderObject() as RenderBox?;
+                            final sharePositionOrigin = box != null
+                                ? box.localToGlobal(Offset.zero) & box.size
+                                : null;
+
+                            Share.share(
+                              displayText + footer,
+                              sharePositionOrigin: sharePositionOrigin,
+                            );
+                          },
+                          visualDensity: VisualDensity.compact,
+                          color: theme.primaryColor.withOpacity(0.7),
+                        );
                       },
-                      visualDensity: VisualDensity.compact,
-                      color: theme.primaryColor.withOpacity(0.7),
                     ),
                     // Create Image Button (Only for AI responses)
                     if (!isUser)

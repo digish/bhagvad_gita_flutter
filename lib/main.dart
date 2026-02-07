@@ -30,6 +30,7 @@ import 'services/ad_service.dart';
 import 'providers/ask_gita_provider.dart';
 
 import 'services/remote_config_service.dart';
+import 'services/timing_service.dart';
 
 Future<void> main() async {
   // <-- Make main async
@@ -49,6 +50,11 @@ Future<void> main() async {
 
   // Initialize Remote Config for AI Models
   await RemoteConfigService.fetchConfig();
+
+  // Initialize Karaoke Timings
+  // Fire and forget, or await if critical. It's fast, so we can await.
+  // Import handled via auto-import if possible, or I need to add import.
+  await TimingService.loadTimings();
 
   runApp(const AppInitializer());
 }

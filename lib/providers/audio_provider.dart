@@ -119,6 +119,8 @@ class AudioProvider extends ChangeNotifier {
   @override
   void dispose() {
     _audioPlayer.dispose();
+    WakelockPlus.disable(); // Ensure wakelock is released
+    debugPrint("[AUDIO_PROVIDER] Disposed. Wakelock disabled.");
     super.dispose();
   }
 
@@ -577,8 +579,10 @@ class AudioProvider extends ChangeNotifier {
       // Toggle Wakelock based on state
       if (state == PlaybackState.playing) {
         WakelockPlus.enable();
+        debugPrint("[AUDIO_PROVIDER] Wakelock ENABLED (Keeping screen on)");
       } else {
         WakelockPlus.disable();
+        debugPrint("[AUDIO_PROVIDER] Wakelock DISABLED (Allowing screen off)");
       }
 
       if (notify) notifyListeners();

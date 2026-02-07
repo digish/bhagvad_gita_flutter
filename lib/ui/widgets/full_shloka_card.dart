@@ -25,6 +25,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../widgets/sneaky_emblem.dart';
+import 'karaoke_text_display.dart';
 import 'add_to_list_sheet.dart';
 import 'share_options_sheet.dart';
 import 'commentary_sheet.dart';
@@ -446,18 +447,28 @@ class FullShlokaCard extends StatelessWidget {
                                 : const SizedBox(height: 16),
 
                           // 3. Sanskrit Text (Middle)
-                          RichText(
-                            textAlign: TextAlign.center,
-                            text: TextSpan(
-                              children: formatItalicText(
-                                shloka.shlok,
-                                TextStyle(
-                                  fontSize: config.baseFontSize,
-                                  fontStyle: FontStyle.normal,
-                                  color: primaryTextColor,
-                                  fontFamily: 'NotoSerif',
+                          KaraokeTextDisplay(
+                            shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
+                            originalText: shloka.shlok,
+                            style: TextStyle(
+                              fontSize: config.baseFontSize,
+                              fontStyle: FontStyle.normal,
+                              color: primaryTextColor,
+                              fontFamily: 'NotoSerif',
+                            ),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: formatItalicText(
+                                  shloka.shlok,
+                                  TextStyle(
+                                    fontSize: config.baseFontSize,
+                                    fontStyle: FontStyle.normal,
+                                    color: primaryTextColor,
+                                    fontFamily: 'NotoSerif',
+                                  ),
+                                  constraints.maxWidth - 32,
                                 ),
-                                constraints.maxWidth - 32,
                               ),
                             ),
                           ),

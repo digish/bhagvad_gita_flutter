@@ -44,30 +44,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         title: const Text('Share the Wisdom'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        actions: [
-          TextButton.icon(
-            onPressed: () async {
-              final bytes = await ImageGeneratorService.captureWidget(
-                _globalKey,
-              );
-              if (bytes != null && context.mounted) {
-                await ImageGeneratorService.shareImage(
-                  bytes: bytes,
-                  text:
-                      'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
-                );
-              }
-            },
-            icon: const Icon(Icons.share, color: Colors.orange),
-            label: const Text(
-              'Share',
-              style: TextStyle(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: Column(
         children: [
@@ -296,26 +273,14 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
           // 2. Controls Area
           Container(
             color: Colors.grey[900],
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Toggle Toggles
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FilterChip(
-                      label: const Text('Translation'),
-                      selected: _showTranslation,
-                      onSelected: (val) =>
-                          setState(() => _showTranslation = val),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Font Size Slider
+                // Tools Row (Font Size + Translation Toggle)
                 Row(
                   children: [
+                    // Font Size Slider
                     const Icon(Icons.text_fields, color: Colors.white54),
                     Expanded(
                       child: Slider(
@@ -325,6 +290,25 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                         activeColor: Colors.orange,
                         onChanged: (val) => setState(() => _fontSize = val),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Meaning Toggle
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => _showTranslation = !_showTranslation),
+                      style: IconButton.styleFrom(
+                        backgroundColor: _showTranslation
+                            ? Colors.orange.withOpacity(0.2)
+                            : Colors.transparent,
+                        foregroundColor: _showTranslation
+                            ? Colors.orange
+                            : Colors.white54,
+                        side: _showTranslation
+                            ? const BorderSide(color: Colors.orange, width: 1)
+                            : null,
+                      ),
+                      icon: const Icon(Icons.menu_book_rounded),
+                      tooltip: 'Show Meaning',
                     ),
                   ],
                 ),
@@ -363,6 +347,54 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                                   size: 20,
                                 )
                               : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Share Button (Moved here)
+                SizedBox(
+                  width: double.infinity,
+                  child: Builder(
+                    builder: (btnContext) {
+                      return FilledButton.icon(
+                        onPressed: () async {
+                          // Calculate share position origin for iPad
+                          final box =
+                              btnContext.findRenderObject() as RenderBox?;
+                          final sharePositionOrigin = box != null
+                              ? box.localToGlobal(Offset.zero) & box.size
+                              : null;
+
+                          final bytes =
+                              await ImageGeneratorService.captureWidget(
+                                _globalKey,
+                              );
+                          if (bytes != null && context.mounted) {
+                            await ImageGeneratorService.shareImage(
+                              bytes: bytes,
+                              text:
+                                  'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
+                              sharePositionOrigin: sharePositionOrigin,
+                            );
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.share),
+                        label: const Text(
+                          'Share Wisdom',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       );
                     },

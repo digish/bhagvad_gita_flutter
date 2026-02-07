@@ -29,6 +29,7 @@ class ImageGeneratorService {
   static Future<bool> shareImage({
     required Uint8List bytes,
     String text = 'Shared via Bhagavad Gita App',
+    Rect? sharePositionOrigin,
   }) async {
     try {
       final tempDir = await getTemporaryDirectory();
@@ -37,7 +38,11 @@ class ImageGeneratorService {
       );
       await file.writeAsBytes(bytes);
 
-      final result = await Share.shareXFiles([XFile(file.path)], text: text);
+      final result = await Share.shareXFiles(
+        [XFile(file.path)],
+        text: text,
+        sharePositionOrigin: sharePositionOrigin,
+      );
 
       return result.status == ShareResultStatus.success;
     } catch (e) {

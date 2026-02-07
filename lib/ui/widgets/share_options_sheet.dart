@@ -100,63 +100,109 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
                     const SizedBox(height: 32),
 
-                    // Share Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          widget.onShare(_selectedOptions);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 32),
+                    // ✨ REWRITE: Creative Side-by-side 'Cards'
+                    Row(
+                      children: [
+                        // 1. Share Text (Clean & Minimal)
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.onShare(_selectedOptions);
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              height: 100, // Fixed height for consistency
+                              decoration: BoxDecoration(
+                                color: theme.brightness == Brightness.dark
+                                    ? Colors.grey[800]!.withOpacity(0.5)
+                                    : Colors.grey[100],
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: theme.dividerColor.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.text_fields_rounded,
+                                    size: 32,
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.8),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Share Text',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.textTheme.bodyMedium?.color,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          elevation: 0,
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          foregroundColor: theme.colorScheme.onPrimaryContainer,
                         ),
-                        child: const Text(
-                          'Share',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                        const SizedBox(width: 16),
+                        // 2. Share Image (Stunning Gradient)
+                        if (widget.onCreateImage != null)
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                                widget.onCreateImage!();
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFF512F), // Saffron Orange
+                                      Color(0xFFDD2476), // Deep Pink/Magenta
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFFFF512F,
+                                      ).withOpacity(0.4),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.image_rounded,
+                                      size: 32,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Share Image',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          const Spacer(), // Balance layout if one button
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    // Create Visual Card Button
-                    if (widget.onCreateImage != null)
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            widget.onCreateImage!();
-                          },
-                          icon: const Icon(Icons.image_outlined),
-                          label: const Text(
-                            'Share as Image',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            side: BorderSide(
-                              color: theme.colorScheme.primary,
-                              width: 1.5,
-                            ),
-                            foregroundColor: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 16),
                   ],
                 ),
