@@ -364,9 +364,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                 milliseconds: 300,
                                               ),
                                               curve: Curves.easeInOut,
-                                              child: Lotus(
-                                                controller: _lotusController,
-                                              ), // 🌸 Pass shared controller
+                                              // ✨ Disabled decorative lotus for now
+                                              child: false
+                                                  ? Lotus(
+                                                      controller:
+                                                          _lotusController,
+                                                    ) // 🌸 Pass shared controller
+                                                  : const SizedBox.shrink(),
                                             )
                                           : const SizedBox.shrink(),
                                     ),
@@ -714,6 +718,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             border: Border.all(color: borderColor, width: 1.2),
           ),
           child: TextField(
+            controller: _searchController, // ✨ Bind controller
             focusNode: _searchFocusNode, // ✨ Attach FocusNode
             style: TextStyle(color: textColor),
             onChanged: (value) => provider.onSearchQueryChanged(value),

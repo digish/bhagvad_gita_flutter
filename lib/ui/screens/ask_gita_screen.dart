@@ -479,114 +479,66 @@ class _ChatBubble extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isUser ? theme.primaryColor : theme.cardColor,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: isUser
-                  ? const Radius.circular(16)
-                  : const Radius.circular(4),
-              bottomRight: isUser
-                  ? const Radius.circular(4)
-                  : const Radius.circular(16),
+        // ✨ Refactored Bubble Layout
+        if (isUser)
+          // USER MESSAGE: Simple bubble
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.primaryColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(4),
+              ),
             ),
-            border: isUser
-                ? null
-                : Border.all(color: Colors.grey.withOpacity(0.2)),
-          ),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.85,
-          ),
-          child: Column(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.85,
+            ),
+            child: MarkdownBody(
+              data: message.text,
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(
+                  color: Colors.white,
+                  fontSize: context.watch<SettingsProvider>().fontSize,
+                ),
+              ),
+            ),
+          )
+        else
+          // AI MESSAGE: Quote Card -> Actions -> Detailed Answer
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (displayText.isNotEmpty)
-                MarkdownBody(
-                  data: displayText,
-                  styleSheet: MarkdownStyleSheet(
-                    p: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : theme.textTheme.bodyMedium?.color,
-                      fontSize: context.watch<SettingsProvider>().fontSize,
-                    ),
-                    listBullet: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : theme.textTheme.bodyMedium?.color,
-                      fontSize: context.watch<SettingsProvider>().fontSize,
-                    ),
-                  ),
-                ),
+              // 1. Loading Indicator
               if (message.isStreaming && message.text.isEmpty)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (!isUser &&
-                  message.text.isNotEmpty &&
-                  !message.isStreaming) ...[
-                const SizedBox(height: 8),
-                const Divider(height: 1),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      tooltip: 'Copy Advice',
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: message.text));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Guidance copied to clipboard'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      visualDensity: VisualDensity.compact,
-                      color: theme.colorScheme.onSurface.withOpacity(
-                        0.7,
-                      ), // High contrast
-                    ),
-                    Builder(
-                      builder: (iconContext) {
-                        return IconButton(
-                          icon: const Icon(Icons.share_rounded, size: 18),
-                          tooltip: 'Share Advice',
+
+              // 2. Quote Card (The "Short Answer")
+              if (shareableQuote != null && shareableQuote.isNotEmpty)
+                _QuoteCard(text: shareableQuote),
+
+              // 3. Action Buttons (Directly below quote)
+              if (!message.isStreaming && message.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Create Art (Prominent)
+                      if (shareableQuote != null)
+                        _AnimatedGradientButton(
                           onPressed: () {
-                            final footer =
-                                '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
-
-                            // Calculate share position origin for iPad
-                            final box =
-                                iconContext.findRenderObject() as RenderBox?;
-                            final sharePositionOrigin = box != null
-                                ? box.localToGlobal(Offset.zero) & box.size
-                                : null;
-
-                            Share.share(
-                              displayText + footer,
-                              sharePositionOrigin: sharePositionOrigin,
-                            );
-                          },
-                          visualDensity: VisualDensity.compact,
-                          color: theme.colorScheme.onSurface.withOpacity(
-                            0.7,
-                          ), // High contrast
-                        );
-                      },
-                    ),
-                    // Create Image Button (Prominent & Animated)
-                    if (!isUser) ...[
-                      const SizedBox(width: 8),
-                      _AnimatedGradientButton(
-                        onPressed: () {
-                          if (shareableQuote != null) {
                             context.push(
                               AppRoutes.imageCreator,
                               extra: {
@@ -594,18 +546,67 @@ class _ChatBubble extends StatelessWidget {
                                 'source': 'Ask Gita AI',
                               },
                             );
-                          }
+                          },
+                          icon: Icons.brush,
+                          label: 'Create Art',
+                        ),
+                      const SizedBox(width: 8),
+                      // Copy
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 20),
+                        tooltip: 'Copy',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: message.text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
                         },
-                        icon: Icons.brush,
-                        label: 'Create Art',
+                        style: IconButton.styleFrom(
+                          backgroundColor: theme.cardColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Share
+                      Builder(
+                        builder: (iconContext) {
+                          return IconButton(
+                            icon: const Icon(Icons.share_rounded, size: 20),
+                            tooltip: 'Share',
+                            onPressed: () {
+                              final footer =
+                                  '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
+                              final box =
+                                  iconContext.findRenderObject() as RenderBox?;
+                              final sharePositionOrigin = box != null
+                                  ? box.localToGlobal(Offset.zero) & box.size
+                                  : null;
+
+                              Share.share(
+                                message.text + footer,
+                                sharePositionOrigin: sharePositionOrigin,
+                              );
+                            },
+                            style: IconButton.styleFrom(
+                              backgroundColor: theme.cardColor,
+                            ),
+                          );
+                        },
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ],
+
+              // 4. Detailed Answer (Collapsible)
+              if (displayText.isNotEmpty)
+                _DetailedResponse(
+                  text: displayText,
+                  isStreaming: message.isStreaming,
+                ),
             ],
           ),
-        ),
 
         // Show References (Shloka Cards) for AI messages
         if (!isUser &&
@@ -932,6 +933,146 @@ class _AnimatedGradientButtonState extends State<_AnimatedGradientButton>
           ),
         );
       },
+    );
+  }
+}
+
+class _QuoteCard extends StatelessWidget {
+  final String text;
+
+  const _QuoteCard({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: theme.primaryColor.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.format_quote_rounded, size: 32, color: theme.primaryColor),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              fontStyle: FontStyle.italic,
+              color: isDark ? Colors.white : Colors.black87,
+              height: 1.4,
+              fontFamily: 'NotoSerif',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Icon(Icons.format_quote_rounded, size: 32, color: theme.primaryColor),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailedResponse extends StatefulWidget {
+  final String text;
+  final bool isStreaming;
+
+  const _DetailedResponse({required this.text, this.isStreaming = false});
+
+  @override
+  State<_DetailedResponse> createState() => _DetailedResponseState();
+}
+
+class _DetailedResponseState extends State<_DetailedResponse> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // If streaming, always show expanded to follow generation
+    final isExpanded = widget.isStreaming || _isExpanded;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.cardColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Detailed Explanation',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ClipRect(
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              heightFactor: isExpanded ? 1.0 : 0.0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: MarkdownBody(
+                  data: widget.text,
+                  styleSheet: MarkdownStyleSheet(
+                    p: TextStyle(
+                      color: theme.textTheme.bodyMedium?.color,
+                      fontSize: context.watch<SettingsProvider>().fontSize,
+                      height: 1.5,
+                    ),
+                    listBullet: TextStyle(
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

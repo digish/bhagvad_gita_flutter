@@ -50,11 +50,19 @@ class SearchProvider extends ChangeNotifier {
 
   void onSearchQueryChanged(String query) {
     _searchQuery = query;
+
+    // ✨ Immediate clear for empty query (UX Optimization)
+    if (_searchQuery.isEmpty) {
+      if (_debounce?.isActive ?? false) _debounce?.cancel();
+      _searchResults = [];
+      notifyListeners();
+      return;
+    }
+
     if (_debounce?.isActive ?? false) _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      if (_searchQuery.isEmpty) {
-        _searchResults = [];
-      } else {
+      // Perform search only if query is not empty (already handled above, but for safety)
+      if (_searchQuery.isNotEmpty) {
         final words = await _dbHelper.searchWords(_searchQuery);
         final shlokas = await _dbHelper.searchShlokas(
           _searchQuery,
@@ -125,9 +133,12 @@ class SearchProvider extends ChangeNotifier {
         });
 
         _searchResults = newResults;
+        notifyListeners();
       }
-      notifyListeners();
     });
-    notifyListeners(); // Immediate notification for loading/clearing if needed
+
+    // Notify listeners immediately to update UI (e.g. show searching state or clear button)
+    // Actually, setting query already requires rebuild in some cases
+    // notifyListeners(); // Already called in debounce or immediate block
   }
 }
