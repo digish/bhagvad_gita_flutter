@@ -48,12 +48,11 @@ class DecorativeForeground extends StatelessWidget {
     final double railOffset = isTablet ? 100.0 : 0.0;
 
     // Derived animation for "Settling" effect (Bouncy)
-    final Animation<double> effectiveScale =
+    // ✨ FIX: Use passed animation directly. Do not re-curve it,
+    // as it might already be an overshoot curve (e.g. easeOutBack)
+    // which causes a crash if used as a parent for another CurvedAnimation.
+    final Animation<double> bounceScale =
         scaleAnimation ?? const AlwaysStoppedAnimation(1.0);
-    final Animation<double> bounceScale = CurvedAnimation(
-      parent: effectiveScale,
-      curve: Curves.easeOutBack,
-    );
 
     return Opacity(
       opacity: opacity,
