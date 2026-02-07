@@ -141,145 +141,169 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.text
-                    .replaceAll(RegExp(r'<c>', caseSensitive: false), '\n')
-                    .replaceAll('*', '\n'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: _fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  shadows: const [
-                    Shadow(
-                      blurRadius: 10,
-                      color: Colors.black45,
-                      offset: Offset(2, 2),
-                    ),
-                  ],
-                ),
-              ),
-              if (_showTranslation && widget.translation != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  widget.translation!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (widget.source != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    widget.source!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 32),
-              // Promo Footer "Island"
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
+        padding: EdgeInsets
+            .zero, // Remove padding from container to allow full stack
+        child: Stack(
+          children: [
+            // Main Content Centered
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // QR Code
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
+                    Text(
+                      widget.text
+                          .replaceAll(
+                            RegExp(r'<c>', caseSensitive: false),
+                            '\n',
+                          )
+                          .replaceAll('*', '\n'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: _fontSize,
+                        fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: QrImageView(
-                        data:
-                            'https://digish.github.io/project/index.html#bhagvadgita',
-                        version: QrVersions.auto,
-                        size: 42.0,
-                        backgroundColor: Colors.white,
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // App Icon
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
+                        shadows: const [
+                          Shadow(
+                            blurRadius: 10,
+                            color: Colors.black45,
+                            offset: Offset(2, 2),
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          'assets/icon/icon_square.png',
-                          width: 36,
-                          height: 36,
+                    ),
+                    if (_showTranslation && widget.translation != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        widget.translation!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    // App Name & Tagline
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Shrimad Bhagavad Gita',
-                          style: TextStyle(
+                    ],
+                    const SizedBox(height: 24),
+                    if (widget.source != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.source!,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Text(
-                          'Search within',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 10,
-                            letterSpacing: 0.5,
-                          ),
+                      ),
+                    const SizedBox(height: 40), // Spacer for branding
+                    // Promo Footer "Island" (Just Branding)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                          width: 1,
                         ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // App Icon
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                'assets/icon/icon_square.png',
+                                width: 24, // Smaller icon
+                                height: 24,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // App Name & Tagline
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Shrimad Bhagavad Gita',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Search within',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 8,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // QR Code at Bottom Left
+            Positioned(
+              left: 20,
+              bottom: 20,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: QrImageView(
+                  data:
+                      'https://digish.github.io/project/index.html#bhagvadgita',
+                  version: QrVersions.auto,
+                  size: 48.0,
+                  backgroundColor: Colors.white,
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -318,24 +342,27 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                   onChanged: (val) => setState(() => _fontSize = val),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () =>
-                    setState(() => _showTranslation = !_showTranslation),
-                style: IconButton.styleFrom(
-                  backgroundColor: _showTranslation
-                      ? Colors.orange.withOpacity(0.2)
-                      : Colors.transparent,
-                  foregroundColor: _showTranslation
-                      ? Colors.orange
-                      : Colors.white54,
-                  side: _showTranslation
-                      ? const BorderSide(color: Colors.orange, width: 1)
-                      : null,
+              if (widget.translation != null &&
+                  widget.translation!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () =>
+                      setState(() => _showTranslation = !_showTranslation),
+                  style: IconButton.styleFrom(
+                    backgroundColor: _showTranslation
+                        ? Colors.orange.withOpacity(0.2)
+                        : Colors.transparent,
+                    foregroundColor: _showTranslation
+                        ? Colors.orange
+                        : Colors.white54,
+                    side: _showTranslation
+                        ? const BorderSide(color: Colors.orange, width: 1)
+                        : null,
+                  ),
+                  icon: const Icon(Icons.menu_book_rounded),
+                  tooltip: 'Show Meaning',
                 ),
-                icon: const Icon(Icons.menu_book_rounded),
-                tooltip: 'Show Meaning',
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
