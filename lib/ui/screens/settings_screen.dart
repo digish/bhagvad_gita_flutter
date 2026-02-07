@@ -444,144 +444,213 @@ class SettingsScreen extends StatelessWidget {
                               const SizedBox(height: 32),
 
                               // --- AI Settings Section ---
-                              _buildSectionHeader('Divine Connection (AI)'),
+                              _buildSectionHeader('AI credits for Ask GITA'),
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
-                                child: Column(
-                                  children: [
-                                    Consumer<CreditProvider>(
-                                      builder: (context, credits, _) {
-                                        return ListTile(
+                                clipBehavior: Clip.antiAlias,
+                                child: Consumer<CreditProvider>(
+                                  builder: (context, credits, _) {
+                                    final hasCustomKey =
+                                        settings.customAiApiKey != null;
+
+                                    return Column(
+                                      children: [
+                                        // 1. Credit Balance / Status Card
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: hasCustomKey
+                                                  ? [
+                                                      Colors.purple.shade700,
+                                                      Colors
+                                                          .deepPurple
+                                                          .shade900,
+                                                    ]
+                                                  : [
+                                                      const Color(0xFFFFB75E),
+                                                      const Color(0xFFED8F03),
+                                                    ], // Gold gradient
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                hasCustomKey
+                                                    ? Icons.all_inclusive
+                                                    : Icons.auto_awesome,
+                                                size: 48,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                hasCustomKey
+                                                    ? 'Unlimited Access'
+                                                    : '${credits.balance}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 36,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                hasCustomKey
+                                                    ? 'Using Personal Key'
+                                                    : 'Divine Credits Available',
+                                                style: TextStyle(
+                                                  color: Colors.white
+                                                      .withOpacity(0.9),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // 2. Actions (If no custom key)
+                                        if (!hasCustomKey) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              16,
+                                              24,
+                                              16,
+                                              16,
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  height: 54,
+                                                  child: FilledButton.icon(
+                                                    onPressed: () {
+                                                      AdService.instance.showRewardedAd(
+                                                        onRewardEarned: (reward) {
+                                                          context
+                                                              .read<
+                                                                CreditProvider
+                                                              >()
+                                                              .addCredits(3);
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Karma earned! +3 Credits added. 🙏',
+                                                              ),
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
+                                                            ),
+                                                          );
+                                                        },
+                                                        onAdFailedToShow: () {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Ad not ready yet. Please try again.',
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      );
+                                                    },
+                                                    style: FilledButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.amber[800],
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      elevation: 2,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .play_circle_filled_rounded,
+                                                    ),
+                                                    label: const Text(
+                                                      'Watch Ad to add 3 Credits',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  'it helps supports cloud costs for using AI',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+
+                                        // 3. Custom Key Option (Always visible but subtle)
+                                        const Divider(height: 1),
+                                        ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 4,
+                                              ),
                                           leading: CircleAvatar(
-                                            backgroundColor: Colors.amber
-                                                .withOpacity(0.1),
-                                            child: const Icon(
-                                              Icons.auto_awesome,
-                                              color: Colors.amber,
+                                            backgroundColor: Colors.grey[100],
+                                            radius: 16,
+                                            child: Icon(
+                                              Icons.key,
+                                              size: 16,
+                                              color: Colors.grey[600],
                                             ),
                                           ),
                                           title: const Text(
-                                            'Divine Credits',
+                                            'Custom Gemini Key',
                                             style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                           subtitle: Text(
-                                            settings.customAiApiKey != null
-                                                ? '∞ Unrestricted (Using personal key)'
-                                                : '${credits.balance} Credits Available',
+                                            hasCustomKey
+                                                ? 'Tap to edit or remove'
+                                                : 'Use your own key',
                                             style: TextStyle(
-                                              color: credits.balance == 0
-                                                  ? Colors.red[700]
-                                                  : Colors.grey[700],
-                                              fontSize: 14,
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
                                             ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                    if (settings.customAiApiKey == null) ...[
-                                      const Divider(height: 1, indent: 72),
-                                      ListTile(
-                                        leading: const SizedBox(width: 40),
-                                        title: const Text(
-                                          'Get more queries',
-                                          style: TextStyle(fontSize: 14),
+                                          trailing: const Icon(
+                                            Icons.chevron_right,
+                                            size: 20,
+                                            color: Colors.grey,
+                                          ),
+                                          onTap: () => _showApiKeyDialog(
+                                            context,
+                                            settings,
+                                          ),
                                         ),
-                                        trailing: Wrap(
-                                          spacing: 8,
-                                          children: [
-                                            TextButton.icon(
-                                              onPressed: () {
-                                                AdService.instance.showRewardedAd(
-                                                  onRewardEarned: (reward) {
-                                                    context
-                                                        .read<CreditProvider>()
-                                                        .addCredits(5);
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Karma earned! +5 Credits added. 🙏',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  onAdFailedToShow: () {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Ad not ready yet. Please try again in a few seconds.',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                              icon: const Icon(
-                                                Icons.play_circle_outline,
-                                                size: 16,
-                                              ),
-                                              label: const Text('Watch Ad'),
-                                              style: TextButton.styleFrom(
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                              ),
-                                            ),
-                                            TextButton.icon(
-                                              onPressed: () {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Seva (Support) coming soon!',
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              icon: const Icon(
-                                                Icons.favorite_border,
-                                                size: 16,
-                                              ),
-                                              label: const Text('Seva'),
-                                              style: TextButton.styleFrom(
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    const Divider(height: 1, indent: 72),
-                                    ListTile(
-                                      leading: const SizedBox(width: 40),
-                                      title: const Text(
-                                        'Custom Gemini API Key',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                      subtitle: Text(
-                                        settings.customAiApiKey != null
-                                            ? 'Active'
-                                            : 'Use your own key for unlimited AI',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      trailing: Icon(
-                                        settings.customAiApiKey != null
-                                            ? Icons.edit
-                                            : Icons.add,
-                                        size: 18,
-                                      ),
-                                      onTap: () =>
-                                          _showApiKeyDialog(context, settings),
-                                    ),
-                                  ],
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                               Padding(

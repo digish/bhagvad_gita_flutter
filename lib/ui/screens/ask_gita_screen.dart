@@ -8,9 +8,9 @@ import '../../providers/ask_gita_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
-import '../widgets/shloka_result_card.dart';
 import '../widgets/font_size_control.dart';
 import '../../navigation/app_router.dart';
+import '../../models/shloka_result.dart';
 
 class AskGitaScreen extends StatefulWidget {
   final String? initialQuery;
@@ -407,7 +407,9 @@ class _ChatBubble extends StatelessWidget {
                         );
                       },
                       visualDensity: VisualDensity.compact,
-                      color: theme.primaryColor.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withOpacity(
+                        0.7,
+                      ), // High contrast
                     ),
                     Builder(
                       builder: (iconContext) {
@@ -431,7 +433,9 @@ class _ChatBubble extends StatelessWidget {
                             );
                           },
                           visualDensity: VisualDensity.compact,
-                          color: theme.primaryColor.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withOpacity(
+                            0.7,
+                          ), // High contrast
                         );
                       },
                     ),
@@ -452,7 +456,9 @@ class _ChatBubble extends StatelessWidget {
                           }
                         },
                         visualDensity: VisualDensity.compact,
-                        color: theme.primaryColor.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.withOpacity(
+                          0.7,
+                        ), // High contrast
                       ),
                   ],
                 ),
@@ -465,7 +471,7 @@ class _ChatBubble extends StatelessWidget {
         if (!isUser &&
             message.references != null &&
             message.references!.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
@@ -473,9 +479,12 @@ class _ChatBubble extends StatelessWidget {
               children: [
                 Text(
                   'Relevant Verses:',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.primaryColor.withOpacity(0.8),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(
+                      0.9,
+                    ), // High contrast
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 if (message.references!.length > 1)
@@ -487,32 +496,29 @@ class _ChatBubble extends StatelessWidget {
                       context.push('/shloka-list/ids:$ids');
                     },
                     icon: const Icon(Icons.list_alt, size: 16),
-                    label: const Text('View All in List'),
+                    label: const Text('View All'),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       visualDensity: VisualDensity.compact,
+                      foregroundColor: theme.colorScheme.primary,
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           SizedBox(
-            height: 205, // Increased height for safe display
+            height: 180, // Adjusted height for new card
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               itemCount: message.references!.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 2),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final shloka = message.references![index];
                 return SizedBox(
-                  width: 280, // Slightly wider for card content
-                  child: ShlokaResultCard(
-                    shloka: shloka,
-                    searchQuery: '', // No highlight needed here
-                    isCompact: true,
-                  ),
+                  width: 300,
+                  child: _ChatShlokaCard(shloka: shloka),
                 );
               },
             ),
@@ -520,6 +526,97 @@ class _ChatBubble extends StatelessWidget {
           const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+}
+
+class _ChatShlokaCard extends StatelessWidget {
+  final ShlokaResult shloka;
+
+  const _ChatShlokaCard({required this.shloka});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Use gold/orange for relevant verses to make them special
+    final accentColor = isDark ? const Color(0xFFFFD700) : theme.primaryColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentColor.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            context.push(
+              AppRoutes.shlokaDetail.replaceFirst(':id', shloka.id.toString()),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_stories, size: 16, color: accentColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Chapter ${shloka.chapterNo} • Verse ${shloka.shlokNo}',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: accentColor,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      shloka.shlok,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontSize: 16,
+                        height: 1.6,
+                        fontWeight: FontWeight.w600, // Prominent weight
+                        fontFamily: 'NotoSerif', // Serif for beauty (if avail)
+                        color: isDark
+                            ? Colors.white.withOpacity(0.95)
+                            : const Color(0xFF2D2D2D),
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap to read full meaning',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark ? Colors.white54 : Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
