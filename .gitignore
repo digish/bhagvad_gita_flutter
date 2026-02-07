@@ -108,3 +108,4 @@ test/test_geeta_v3.db
 # AI Models
 *.tflite
 assets/mobile_assets/vocab.txt
+aeneas_stable_env
