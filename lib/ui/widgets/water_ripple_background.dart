@@ -118,7 +118,11 @@ class _WaterRippleBackgroundState extends State<WaterRippleBackground>
             },
           );
         }
-        return const Center(child: CircularProgressIndicator());
+        // ✨ FIX: Return a solid color instead of a loader to prevent "White Flash"
+        // This matches the ripple's base color so the transition is seamless.
+        return Container(
+          color: Theme.of(context).primaryColor.withOpacity(0.1),
+        );
       },
     );
   }

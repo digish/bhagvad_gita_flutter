@@ -18,7 +18,10 @@ import 'package:flutter/scheduler.dart';
 import 'dart:ui';
 
 class Lotus extends StatefulWidget {
-  const Lotus({super.key});
+  final AnimationController?
+  controller; // 🌸 External controller for continuous rotation
+
+  const Lotus({super.key, this.controller});
 
   @override
   State<Lotus> createState() => _LotusState();
@@ -38,25 +41,27 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    final random = Random();
-
-    rotationAngle = 0.0;
-    rotationDirection = random.nextBool() ? 1.0 : -1.0;
-    rotationSpeed = _generateRandomSpeed();
-
-    _ticker = createTicker((elapsed) {
-      setState(() {
-        rotationAngle += rotationDirection * rotationSpeed;
-      });
-    });
-
-    _ticker.start();
-
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+    // 🌸 Only set up internal rotation if external controller is NOT provided
+    if (widget.controller == null) {
+      final random = Random();
+      rotationAngle = 0.0;
+      rotationDirection = random.nextBool() ? 1.0 : -1.0;
       rotationSpeed = _generateRandomSpeed();
-    });
 
-    // Pulse glow setup
+      _ticker = createTicker((elapsed) {
+        setState(() {
+          rotationAngle += rotationDirection * rotationSpeed;
+        });
+      });
+
+      _ticker.start();
+
+      _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+        rotationSpeed = _generateRandomSpeed();
+      });
+    }
+
+    // Pulse glow setup (Internal is fine for now, or could be shared too)
     _glowController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -74,14 +79,32 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _ticker.dispose();
-    _timer.cancel();
+    if (widget.controller == null) {
+      _ticker.dispose();
+      _timer.cancel();
+    }
     _glowController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.controller != null) {
+      // 🌸 Use external controller for continuous rotation across rebuilds
+      return RotationTransition(
+        turns: widget.controller!,
+        child: _buildLotusContent(context),
+      );
+    } else {
+      // Internal rotation logic
+      return Transform.rotate(
+        angle: rotationAngle,
+        child: _buildLotusContent(context),
+      );
+    }
+  }
+
+  Widget _buildLotusContent(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.shortestSide > 600;
     final isSmallPhone = size.width < 380;
@@ -97,41 +120,38 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
         ? 180
         : 230;
 
-    return Transform.rotate(
-      angle: rotationAngle,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Animated pulse glow
-          AnimatedBuilder(
-            animation: _glowOpacity,
-            builder: (context, child) => Opacity(
-              opacity: _glowOpacity.value,
-              child: ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  const Color.fromARGB(255, 255, 255, 255),
-                  BlendMode.srcATop,
-                ),
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                  child: Image.asset(
-                    'assets/images/lotus_top.png',
-                    width: glowSize,
-                    height: glowSize,
-                  ),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Animated pulse glow
+        AnimatedBuilder(
+          animation: _glowOpacity,
+          builder: (context, child) => Opacity(
+            opacity: _glowOpacity.value,
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                const Color.fromARGB(255, 255, 255, 255),
+                BlendMode.srcATop,
+              ),
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                child: Image.asset(
+                  'assets/images/lotus_top.png',
+                  width: glowSize,
+                  height: glowSize,
                 ),
               ),
             ),
           ),
+        ),
 
-          // Crisp lotus image
-          Image.asset(
-            'assets/images/lotus_top.png',
-            width: imageSize,
-            height: imageSize,
-          ),
-        ],
-      ),
+        // Crisp lotus image
+        Image.asset(
+          'assets/images/lotus_top.png',
+          width: imageSize,
+          height: imageSize,
+        ),
+      ],
     );
   }
 }

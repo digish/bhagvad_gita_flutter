@@ -63,6 +63,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     with RouteAware, TickerProviderStateMixin {
   late AnimationController _revealController;
   late AnimationController _pulseController;
+  late AnimationController
+  _lotusController; // 🌸 Continuous rotation controller
   Offset _revealCenter = Offset.zero;
   final GlobalKey _themeToggleKey = GlobalKey();
   bool? _isBackgroundRequested;
@@ -80,6 +82,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
+
+    // 🌸 Initialize continuous lotus rotation (10s per revolution)
+    _lotusController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
     // Removed explicit postFrameCallback here; handled in didChangeDependencies
   }
 
@@ -107,6 +115,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   void dispose() {
     _revealController.dispose();
     _pulseController.dispose();
+    _lotusController.dispose();
     super.dispose();
   }
 
@@ -125,7 +134,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     required bool isKeyboardOpen,
     required bool shouldShowResults,
     bool excludeDecoration = false,
-    Animation<double>? scaleAnimation,
   }) {
     if (showBackground) {
       return Stack(
@@ -140,12 +148,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                 child: isKeyboardOpen
                     ? DecorativeForeground(
                         opacity: 0.2,
-                        scaleAnimation: scaleAnimation,
+                        scaleAnimation:
+                            null, // Fixed: No longer passing custom scale
                       )
-                    : DecorativeForeground(
-                        opacity: 1.0,
-                        scaleAnimation: scaleAnimation,
-                      ),
+                    : DecorativeForeground(opacity: 1.0, scaleAnimation: null),
               ),
             ),
         ],
@@ -330,7 +336,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                 milliseconds: 300,
                                               ),
                                               curve: Curves.easeInOut,
-                                              child: const Lotus(),
+                                              child: Lotus(
+                                                controller: _lotusController,
+                                              ), // 🌸 Pass shared controller
                                             )
                                           : const SizedBox.shrink(),
                                     ),
@@ -518,39 +526,46 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                       scaleAnimation: CurvedAnimation(
                         parent: ReverseAnimation(_revealController),
                         curve: _isBackgroundRequested!
-                            ? const Interval(
-                                0.0,
-                                0.4,
-                                curve: Curves.linear,
-                              ) // Rapid shrink when complex appearing? Actually irrelevant.
-                            : const Interval(
-                                0.0,
-                                1.0,
-                                curve: Curves.linear,
-                              ), // Normal shrink when going to simple.
+                            ? const Interval(0.0, 0.6, curve: Curves.easeInOut)
+                            : const Interval(0.0, 1.0, curve: Curves.easeInOut),
                       ),
                     ),
 
                   // Top Layer Decoration - Revealing
-                  // ✨ REMOVED LiquidReveal wrapper here to avoid masking artifacts.
-                  // The scaling alone handles the visual presence of the lotuses.
-                  _buildDecorationOnly(
-                    showBackground: _isBackgroundRequested!,
-                    isKeyboardOpen: isKeyboardOpen,
-                    shouldShowResults: shouldShowResults,
-                    scaleAnimation: _revealController.isAnimating
-                        ? CurvedAnimation(
-                            parent: _revealController,
-                            curve: _isBackgroundRequested!
-                                ? const Interval(0.6, 1.0, curve: Curves.linear)
-                                : const Interval(
-                                    0.0,
-                                    1.0,
-                                    curve: Curves.linear,
-                                  ),
-                          )
-                        : null,
-                  ),
+                  // ✨ WRAPPED IN LiquidReveal again.
+                  // This is the correct way to handle masking and prevent white flash.
+                  if (isTablet)
+                    _buildDecorationOnly(
+                      showBackground: _isBackgroundRequested!,
+                      isKeyboardOpen: isKeyboardOpen,
+                      shouldShowResults: shouldShowResults,
+                      scaleAnimation:
+                          null, // No scale on tablet (Snapshot handles it)
+                    )
+                  else
+                    LiquidReveal(
+                      progress: revealProgress,
+                      center: _revealCenter,
+                      child: _buildDecorationOnly(
+                        showBackground: _isBackgroundRequested!,
+                        isKeyboardOpen: isKeyboardOpen,
+                        shouldShowResults: shouldShowResults,
+                        scaleAnimation: CurvedAnimation(
+                          parent: _revealController,
+                          curve: _isBackgroundRequested!
+                              ? const Interval(
+                                  0.4,
+                                  1.0,
+                                  curve: Curves.easeInOut,
+                                ) // Delayed growth
+                              : const Interval(
+                                  0.0,
+                                  1.0,
+                                  curve: Curves.easeInOut,
+                                ),
+                        ),
+                      ),
+                    ),
                 ],
               );
             },
