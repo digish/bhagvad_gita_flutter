@@ -378,7 +378,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                     ),
                                     _buildSearchBar(provider),
                                     // ✨ AI Suggestions
-                                    if (_isSearchFocused && _isAiMode)
+                                    // Only show if focused, in AI mode, AND text field is empty
+                                    if (_isSearchFocused &&
+                                        _isAiMode &&
+                                        provider.searchQuery.isEmpty)
                                       AiSuggestionChips(
                                         isVisible: true,
                                         direction: Axis
