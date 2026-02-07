@@ -9,13 +9,24 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
 
-  // AdMob Test IDs
+  // AdMob IDs
   String get rewardedAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/5224354917'; // Android Test ID
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/1712485313'; // iOS Test ID
+    // 1. Use Test IDs in Debug Mode
+    if (kDebugMode) {
+      if (Platform.isAndroid) {
+        return 'ca-app-pub-3940256099942544/5224354917'; // Android Test ID
+      } else if (Platform.isIOS) {
+        return 'ca-app-pub-3940256099942544/1712485313'; // iOS Test ID
+      }
     }
+
+    // 2. Use Production IDs in Release Mode
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-9968933785213782/2800557456'; // Production Android ID
+    } else if (Platform.isIOS) {
+      return 'ca-app-pub-9968933785213782/6979367816'; // Production iOS ID
+    }
+
     throw UnsupportedError('Unsupported platform');
   }
 
