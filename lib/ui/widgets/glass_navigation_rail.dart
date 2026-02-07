@@ -20,15 +20,22 @@ class GlassNavigationRail extends StatelessWidget {
     final isLandscape =
         MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: isDark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.white.withOpacity(0.1),
             border: Border(
               right: BorderSide(
-                color: Colors.white.withOpacity(0.2),
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.2),
                 width: 1.0,
               ),
             ),
@@ -65,8 +72,8 @@ class GlassNavigationRail extends StatelessWidget {
                             color: Color(0xFFFFD700), // Gold/Amber color
                             size: 32,
                           ),
-                          unselectedIconTheme: const IconThemeData(
-                            color: Colors.black87,
+                          unselectedIconTheme: IconThemeData(
+                            color: onSurface.withOpacity(0.6),
                             size: 24,
                           ),
                           selectedLabelTextStyle: const TextStyle(
@@ -74,8 +81,8 @@ class GlassNavigationRail extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
-                          unselectedLabelTextStyle: const TextStyle(
-                            color: Colors.black87,
+                          unselectedLabelTextStyle: TextStyle(
+                            color: onSurface.withOpacity(0.6),
                             fontSize: 12,
                           ),
                           destinations: destinations,

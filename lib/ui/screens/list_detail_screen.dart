@@ -164,7 +164,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               onPressed: () => _shareList(context),
               icon: const Icon(Icons.share),
               label: const Text('Share Collection'),
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
             ),
           );

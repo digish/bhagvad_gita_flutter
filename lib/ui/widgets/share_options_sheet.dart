@@ -116,11 +116,13 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                               height: 100, // Fixed height for consistency
                               decoration: BoxDecoration(
                                 color: theme.brightness == Brightness.dark
-                                    ? Colors.grey[800]!.withOpacity(0.5)
+                                    ? theme.colorScheme.surfaceContainerHighest
                                     : Colors.grey[100],
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: theme.dividerColor.withOpacity(0.1),
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.2,
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -129,15 +131,14 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                                   Icon(
                                     Icons.text_fields_rounded,
                                     size: 32,
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.8),
+                                    color: theme.colorScheme.primary,
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Share Text',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: theme.textTheme.bodyMedium?.color,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                 ],

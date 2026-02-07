@@ -196,14 +196,8 @@ class _MainScaffoldState extends State<MainScaffold>
                 label: const Text('Search'),
               ),
               NavigationRailDestination(
-                icon: const Icon(
-                  Icons.auto_awesome_outlined,
-                  color: Colors.black54,
-                ),
-                selectedIcon: const Icon(
-                  Icons.auto_awesome,
-                  color: Colors.orange,
-                ),
+                icon: const Icon(Icons.auto_awesome_outlined),
+                selectedIcon: const Icon(Icons.auto_awesome),
                 label: const Text('Ask Gita AI'),
               ),
               NavigationRailDestination(
@@ -231,16 +225,13 @@ class _MainScaffoldState extends State<MainScaffold>
                 label: const Text('Credits'),
               ),
               NavigationRailDestination(
-                icon: const Icon(Icons.bookmark_outline, color: Colors.black54),
-                selectedIcon: const Icon(Icons.bookmark, color: Colors.black),
+                icon: const Icon(Icons.bookmark_outline),
+                selectedIcon: const Icon(Icons.bookmark),
                 label: const Text('Collections'),
               ),
               NavigationRailDestination(
-                icon: const Icon(
-                  Icons.settings_outlined,
-                  color: Colors.black54,
-                ),
-                selectedIcon: const Icon(Icons.settings, color: Colors.black),
+                icon: const Icon(Icons.settings_outlined),
+                selectedIcon: const Icon(Icons.settings),
                 label: const Text('Settings'),
               ),
             ],

@@ -578,30 +578,35 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           child: const Icon(Icons.auto_awesome),
           label: 'Ask Gita AI',
           backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           onTap: () => context.push(AppRoutes.askGita),
         ),
         SpeedDialChild(
           child: const Icon(Icons.menu_book),
           label: 'Browse Chapters',
           backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           onTap: () => context.push(AppRoutes.chapters),
         ),
         SpeedDialChild(
           child: const Icon(Icons.bookmark),
           label: 'Collections',
           backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           onTap: () => context.push(AppRoutes.bookmarks),
         ),
         SpeedDialChild(
           child: const Icon(Icons.auto_stories),
           label: 'Full Parayan',
           backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           onTap: () => context.push(AppRoutes.parayan),
         ),
         SpeedDialChild(
           child: const Icon(Icons.settings),
           label: 'Settings',
           backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           onTap: () => context.push(AppRoutes.settings),
         ),
         if (defaultTargetPlatform != TargetPlatform.iOS)
@@ -609,6 +614,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             child: const Icon(Icons.headset),
             label: 'Manage Audio',
             backgroundColor: Theme.of(context).colorScheme.surface,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
             onTap: () => context.push(AppRoutes.audioManagement),
           ),
         SpeedDialChild(
