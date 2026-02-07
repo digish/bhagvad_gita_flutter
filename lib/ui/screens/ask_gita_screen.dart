@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:provider/provider.dart';
@@ -127,7 +128,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
           ),
           FilledButton.icon(
             icon: const Icon(Icons.play_circle_filled),
-            label: const Text('Watch Ad (+5 Credits)'),
+            label: Text('Watch Ad (+${CreditProvider.adRewardAmount} Credits)'),
             onPressed: () {
               Navigator.pop(context);
               _showAd();
@@ -141,12 +142,16 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   void _showAd() {
     AdService.instance.showRewardedAd(
       onRewardEarned: (reward) {
-        context.read<CreditProvider>().addCredits(5);
+        context.read<CreditProvider>().addCredits(
+          CreditProvider.adRewardAmount,
+        );
 
         // Also show confirmation
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Blessings Received! +5 Credits Added.'),
+            content: Text(
+              'Blessings Received! +${CreditProvider.adRewardAmount} Credits Added.',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -158,11 +163,31 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AskGitaProvider>();
     final theme = Theme.of(context);
-    // Use AppColors/AppTheme if available, else fallback
+    final width = MediaQuery.of(context).size.width;
+    final isLandscape = width > MediaQuery.of(context).size.height;
+    final showRail = width > 600;
+    final double leftPadding = MediaQuery.of(context).padding.left;
+    final double railWidth = isLandscape ? 220.0 : 100.0;
+
+    final effectiveLeftPadding = leftPadding > 0
+        ? leftPadding
+        : (showRail ? railWidth : 0.0);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Ask Gita AI'),
+        centerTitle: true,
+        backgroundColor:
+            theme.appBarTheme.backgroundColor?.withOpacity(0.9) ??
+            theme.colorScheme.surface.withOpacity(0.9),
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7), // Glassy App Bar
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         actions: [
           // Credit Balance Indicator
           Consumer<CreditProvider>(
@@ -218,88 +243,124 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Row(
         children: [
-          // Chat List
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.messages.length,
-              itemBuilder: (context, index) {
-                final msg = provider.messages[index];
-                return _ChatBubble(message: msg);
-              },
-            ),
-          ),
+          // Left Gutter for Rail (if landscape or wide enough)
+          if (effectiveLeftPadding > 0) SizedBox(width: effectiveLeftPadding),
 
-          // Input Area
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            hintText: 'Ask Krishna...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: theme.scaffoldBackgroundColor,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
+          // Main Content Area
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  children: [
+                    // Chat List
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          kToolbarHeight +
+                              MediaQuery.of(context).padding.top +
+                              16,
+                          16,
+                          16,
+                        ),
+                        itemCount: provider.messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = provider.messages[index];
+                          return _ChatBubble(message: msg);
+                        },
+                      ),
+                    ),
+
+                    // Input Area
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -5),
                           ),
-                          textCapitalization: TextCapitalization.sentences,
-                          onSubmitted: (_) => _handleSend(),
+                        ],
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      FloatingActionButton(
-                        onPressed: provider.isLoading ? null : _handleSend,
-                        mini: true,
-                        elevation: 0,
-                        child: provider.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                      child: SafeArea(
+                        top: false,
+                        left: false,
+                        right: false,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _controller,
+                                    decoration: InputDecoration(
+                                      hintText: 'Ask Krishna...',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      filled: true,
+                                      fillColor: theme.scaffoldBackgroundColor,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    onSubmitted: (_) => _handleSend(),
+                                  ),
                                 ),
-                              )
-                            : const Icon(Icons.send),
+                                const SizedBox(width: 8),
+                                FloatingActionButton(
+                                  onPressed: provider.isLoading
+                                      ? null
+                                      : _handleSend,
+                                  mini: true,
+                                  elevation: 0,
+                                  child: provider.isLoading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.send),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'AI-generated response. May contain errors.',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                fontSize: 10,
+                                color: theme.textTheme.bodySmall?.color
+                                    ?.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'AI-generated response. May contain errors.',
-                    style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      fontSize: 10,
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -453,27 +514,25 @@ class _ChatBubble extends StatelessWidget {
                         );
                       },
                     ),
-                    // Create Image Button (Only for AI responses)
-                    if (!isUser)
-                      IconButton(
-                        icon: const Icon(Icons.image_outlined, size: 18),
-                        tooltip: 'Share as Quote',
+                    // Create Image Button (Prominent & Animated)
+                    if (!isUser) ...[
+                      const SizedBox(width: 8),
+                      _AnimatedGradientButton(
                         onPressed: () {
                           if (shareableQuote != null) {
                             context.push(
                               AppRoutes.imageCreator,
                               extra: {
-                                'text': shareableQuote, // Use the smart quote
-                                'source': 'Ask Gita AI', // Dynamic source
+                                'text': shareableQuote,
+                                'source': 'Ask Gita AI',
                               },
                             );
                           }
                         },
-                        visualDensity: VisualDensity.compact,
-                        color: theme.colorScheme.onSurface.withOpacity(
-                          0.7,
-                        ), // High contrast
+                        icon: Icons.brush,
+                        label: 'Create Art',
                       ),
+                    ],
                   ],
                 ),
               ],
@@ -631,6 +690,117 @@ class _ChatShlokaCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedGradientButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final String label;
+  final IconData icon;
+
+  const _AnimatedGradientButton({
+    required this.onPressed,
+    required this.label,
+    required this.icon,
+  });
+
+  @override
+  State<_AnimatedGradientButton> createState() =>
+      _AnimatedGradientButtonState();
+}
+
+class _AnimatedGradientButtonState extends State<_AnimatedGradientButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: false);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFFF9800), // Orange
+                Color(0xFFFF5722), // Deep Orange
+                Color(0xFFE91E63), // Pink
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF5722).withOpacity(0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: widget.onPressed,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    // Adding a subtle shine effect using ShaderMask
+                    ShaderMask(
+                      shaderCallback: (bounds) {
+                        return LinearGradient(
+                          colors: const [
+                            Colors.white,
+                            Color(0xFFFFE0B2), // Light Orange/Gold tint
+                            Colors.white,
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                          begin: Alignment(-1.0 + (_controller.value * 2), 0.0),
+                          end: Alignment(0.0 + (_controller.value * 2), 0.0),
+                          tileMode: TileMode.clamp,
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.srcATop,
+                      child: Text(
+                        widget.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

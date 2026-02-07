@@ -5,6 +5,7 @@ class CreditProvider extends ChangeNotifier {
   static const String _prefKeyCredits = 'divine_credits_balance';
   static const String _prefKeyLastGrantDate = 'divine_credits_last_grant';
   static const int _dailyFreeGrant = 3;
+  static const int adRewardAmount = 3;
 
   int _balance = 0;
   bool _isLoading = true;

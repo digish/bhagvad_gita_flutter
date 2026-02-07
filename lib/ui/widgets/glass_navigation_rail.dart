@@ -35,38 +35,59 @@ class GlassNavigationRail extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              NavigationRail(
-                backgroundColor: Colors.transparent,
-                extended: isLandscape,
-                minExtendedWidth: 220,
-                selectedIndex: selectedIndex,
-                onDestinationSelected: onDestinationSelected,
-                labelType: isLandscape
-                    ? NavigationRailLabelType.none
-                    : NavigationRailLabelType.all,
-                indicatorColor: Colors.transparent,
-                groupAlignment: -1.0, // Top align
-                leading: SizedBox(
-                  height: MediaQuery.of(context).size.height < 600 ? 20 : 80,
-                ), // Responsive spacing
-                selectedIconTheme: const IconThemeData(
-                  color: Color(0xFFFFD700), // Gold/Amber color
-                  size: 32,
-                ),
-                unselectedIconTheme: const IconThemeData(
-                  color: Colors.black87,
-                  size: 24,
-                ),
-                selectedLabelTextStyle: const TextStyle(
-                  color: Color(0xFFFFD700),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                unselectedLabelTextStyle: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 12,
-                ),
-                destinations: destinations,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: NavigationRail(
+                          backgroundColor: Colors.transparent,
+                          extended: isLandscape,
+                          minExtendedWidth: 220,
+                          selectedIndex: selectedIndex,
+                          onDestinationSelected: onDestinationSelected,
+                          labelType: isLandscape
+                              ? NavigationRailLabelType.none
+                              : NavigationRailLabelType.all,
+                          indicatorColor: Colors.transparent,
+                          groupAlignment: -1.0, // Top align
+                          leading: SizedBox(
+                            height: MediaQuery.of(context).size.height < 400
+                                ? 10
+                                : (MediaQuery.of(context).size.height < 600
+                                      ? 20
+                                      : 80),
+                          ), // Responsive spacing
+                          selectedIconTheme: const IconThemeData(
+                            color: Color(0xFFFFD700), // Gold/Amber color
+                            size: 32,
+                          ),
+                          unselectedIconTheme: const IconThemeData(
+                            color: Colors.black87,
+                            size: 24,
+                          ),
+                          selectedLabelTextStyle: const TextStyle(
+                            color: Color(0xFFFFD700),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          unselectedLabelTextStyle: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 12,
+                          ),
+                          destinations: destinations,
+                          // Spacer to prevent overlap with sticky trailing widget
+                          trailing: trailing != null
+                              ? const SizedBox(height: 80)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               if (trailing != null)
                 Positioned(

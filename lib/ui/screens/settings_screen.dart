@@ -580,9 +580,9 @@ class SettingsScreen extends StatelessWidget {
                                                       Icons
                                                           .play_circle_filled_rounded,
                                                     ),
-                                                    label: const Text(
-                                                      'Watch Ad to add 3 Credits',
-                                                      style: TextStyle(
+                                                    label: Text(
+                                                      'Watch Ad to add ${CreditProvider.adRewardAmount} Credits',
+                                                      style: const TextStyle(
                                                         fontSize: 16,
                                                         fontWeight:
                                                             FontWeight.bold,

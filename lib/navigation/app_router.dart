@@ -182,32 +182,31 @@ final GoRouter router = GoRouter(
             return AskGitaScreen(initialQuery: query);
           },
         ),
-        GoRoute(
-          path: AppRoutes.imageCreator,
-          pageBuilder: (context, state) {
-            // Expecting params as a Map in 'extra'
-            final args = state.extra as Map<String, dynamic>? ?? {};
-            return CustomTransitionPage(
-              key: state.pageKey,
-              child: ImageCreatorScreen(
-                text: args['text'] ?? '',
-                translation: args['translation'],
-                source: args['source'],
-              ),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 1),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    );
-                  },
+      ],
+    ),
+    GoRoute(
+      path: AppRoutes.imageCreator,
+      pageBuilder: (context, state) {
+        // Expecting params as a Map in 'extra'
+        final args = state.extra as Map<String, dynamic>? ?? {};
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ImageCreatorScreen(
+            text: args['text'] ?? '',
+            translation: args['translation'],
+            source: args['source'],
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
             );
           },
-        ),
-      ],
+        );
+      },
     ),
   ],
 );

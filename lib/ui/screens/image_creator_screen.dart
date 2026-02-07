@@ -44,363 +44,402 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         title: const Text('Share the Wisdom'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        actions: const [],
+        elevation: 0,
       ),
-      body: Column(
-        children: [
-          // 1. Preview Area (Expanded)
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Center(
-                    child: RepaintBoundary(
-                      key: _globalKey,
-                      child: Container(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxWidth - 32,
-                          maxWidth: constraints.maxWidth - 32,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: _currentGradient,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.all(32),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                // Apply formatting to handle <c> and * as newlines
-                                widget.text
-                                    .replaceAll(
-                                      RegExp(r'<c>', caseSensitive: false),
-                                      '\n',
-                                    )
-                                    .replaceAll('*', '\n'),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: _fontSize,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: const [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: Colors.black45,
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (_showTranslation &&
-                                  widget.translation != null) ...[
-                                const SizedBox(height: 16),
-                                Text(
-                                  widget.translation!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white70,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 24),
-                              if (widget.source != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black26,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    widget.source!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 32),
-                              // Promo Footer
-                              const SizedBox(height: 32),
-                              // Promo Footer "Island"
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(
-                                    0.3,
-                                  ), // Slight contrast
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min, // Hug content
-                                  children: [
-                                    // QR Code
-                                    Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: QrImageView(
-                                        data:
-                                            'https://digish.github.io/project/index.html#bhagvadgita',
-                                        version: QrVersions.auto,
-                                        size:
-                                            42.0, // Sized to match icon+text height roughly
-                                        backgroundColor: Colors.white,
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // App Icon
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.4,
-                                            ),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Stack(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: Image.asset(
-                                              'assets/icon/icon_square.png',
-                                              width: 36,
-                                              height: 36,
-                                            ),
-                                          ),
-                                          // Glare Effect
-                                          Positioned.fill(
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: [
-                                                      Colors.white.withOpacity(
-                                                        0.3,
-                                                      ),
-                                                      Colors.white.withOpacity(
-                                                        0.0,
-                                                      ),
-                                                      Colors.white.withOpacity(
-                                                        0.0,
-                                                      ),
-                                                    ],
-                                                    stops: const [
-                                                      0.0,
-                                                      0.4,
-                                                      1.0,
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // App Name & Tagline
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Shrimad Bhagavad Gita',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Search within',
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(
-                                              0.8,
-                                            ),
-                                            fontSize: 10,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+          if (isLandscape) {
+            // Landscape Layout (Row)
+            return SafeArea(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Preview Area (Left - Expanded)
+                  Expanded(
+                    flex: 3,
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: _buildPreviewCard(constraints),
+                      ),
+                    ),
+                  ),
+
+                  // 2. Controls Area (Right - Fixed Width)
+                  Container(
+                    width: 350,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      border: Border(
+                        left: BorderSide(
+                          color: Colors.white.withOpacity(0.1),
+                          width: 1,
                         ),
                       ),
                     ),
+                    child: Column(
+                      children: [
+                        Expanded(child: _buildControls(isLandscape: true)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            // Portrait Layout (Column)
+            return Column(
+              children: [
+                // 1. Preview Area
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildPreviewCard(constraints),
+                    ),
+                  ),
+                ),
+                // 2. Controls Area
+                Container(
+                  color: Colors.grey[900],
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: SafeArea(top: false, child: _buildControls()),
+                ),
+              ],
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildPreviewCard(BoxConstraints constraints) {
+    // Calculate max size for square-ish card
+    final isLandscape = constraints.maxWidth > constraints.maxHeight;
+    final maxSize = isLandscape
+        ? constraints.maxHeight - 48
+        : constraints.maxWidth - 32;
+
+    return RepaintBoundary(
+      key: _globalKey,
+      child: Container(
+        constraints: BoxConstraints(minHeight: maxSize, maxWidth: maxSize),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _currentGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.text
+                    .replaceAll(RegExp(r'<c>', caseSensitive: false), '\n')
+                    .replaceAll('*', '\n'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: _fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [
+                    Shadow(
+                      blurRadius: 10,
+                      color: Colors.black45,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+              ),
+              if (_showTranslation && widget.translation != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  widget.translation!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              if (widget.source != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    widget.source!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 32),
+              // Promo Footer "Island"
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // QR Code
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: QrImageView(
+                        data:
+                            'https://digish.github.io/project/index.html#bhagvadgita',
+                        version: QrVersions.auto,
+                        size: 42.0,
+                        backgroundColor: Colors.white,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // App Icon
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/icon/icon_square.png',
+                          width: 36,
+                          height: 36,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // App Name & Tagline
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Shrimad Bhagavad Gita',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Search within',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControls({bool isLandscape = false}) {
+    // Shared controls widget
+    return SingleChildScrollView(
+      padding: isLandscape ? const EdgeInsets.all(24) : EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isLandscape) ...[
+            Text(
+              'Customize',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Font Size & Toggle Row
+          Row(
+            children: [
+              const Icon(Icons.text_fields, color: Colors.white54),
+              Expanded(
+                child: Slider(
+                  value: _fontSize,
+                  min: 14,
+                  max: 48,
+                  activeColor: Colors.orange,
+                  onChanged: (val) => setState(() => _fontSize = val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () =>
+                    setState(() => _showTranslation = !_showTranslation),
+                style: IconButton.styleFrom(
+                  backgroundColor: _showTranslation
+                      ? Colors.orange.withOpacity(0.2)
+                      : Colors.transparent,
+                  foregroundColor: _showTranslation
+                      ? Colors.orange
+                      : Colors.white54,
+                  side: _showTranslation
+                      ? const BorderSide(color: Colors.orange, width: 1)
+                      : null,
+                ),
+                icon: const Icon(Icons.menu_book_rounded),
+                tooltip: 'Show Meaning',
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Gradient Selector
+          Text(
+            'Theme',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 60,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _divineGradients.length,
+              itemBuilder: (context, index) {
+                final gradient = _divineGradients[index];
+                final isSelected = _currentGradient == gradient;
+                return GestureDetector(
+                  onTap: () => setState(() => _currentGradient = gradient),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: isSelected ? 50 : 40,
+                    height: isSelected ? 50 : 40,
+                    margin: const EdgeInsets.only(right: 12, top: 5, bottom: 5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: gradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: isSelected
+                          ? Border.all(color: Colors.white, width: 3)
+                          : Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 1,
+                            ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: gradient.first.withOpacity(0.5),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check, color: Colors.white, size: 20)
+                        : null,
                   ),
                 );
               },
             ),
           ),
+          const SizedBox(height: 32),
 
-          // 2. Controls Area
-          Container(
-            color: Colors.grey[900],
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Tools Row (Font Size + Translation Toggle)
-                Row(
-                  children: [
-                    // Font Size Slider
-                    const Icon(Icons.text_fields, color: Colors.white54),
-                    Expanded(
-                      child: Slider(
-                        value: _fontSize,
-                        min: 14,
-                        max: 48,
-                        activeColor: Colors.orange,
-                        onChanged: (val) => setState(() => _fontSize = val),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Meaning Toggle
-                    IconButton(
-                      onPressed: () =>
-                          setState(() => _showTranslation = !_showTranslation),
-                      style: IconButton.styleFrom(
-                        backgroundColor: _showTranslation
-                            ? Colors.orange.withOpacity(0.2)
-                            : Colors.transparent,
-                        foregroundColor: _showTranslation
-                            ? Colors.orange
-                            : Colors.white54,
-                        side: _showTranslation
-                            ? const BorderSide(color: Colors.orange, width: 1)
-                            : null,
-                      ),
-                      icon: const Icon(Icons.menu_book_rounded),
-                      tooltip: 'Show Meaning',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Gradient Selector
-                SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _divineGradients.length,
-                    itemBuilder: (context, index) {
-                      final gradient = _divineGradients[index];
-                      final isSelected = _currentGradient == gradient;
-                      return GestureDetector(
-                        onTap: () =>
-                            setState(() => _currentGradient = gradient),
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: gradient,
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            border: isSelected
-                                ? Border.all(color: Colors.white, width: 3)
-                                : null,
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 20,
-                                )
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Share Button (Moved here)
-                SizedBox(
-                  width: double.infinity,
-                  child: Builder(
-                    builder: (btnContext) {
-                      return FilledButton.icon(
-                        onPressed: () async {
-                          // Calculate share position origin for iPad
-                          final box =
-                              btnContext.findRenderObject() as RenderBox?;
-                          final sharePositionOrigin = box != null
-                              ? box.localToGlobal(Offset.zero) & box.size
-                              : null;
+          // Share Button
+          SizedBox(
+            width: double.infinity,
+            child: Builder(
+              builder: (btnContext) {
+                return FilledButton.icon(
+                  onPressed: () async {
+                    final box = btnContext.findRenderObject() as RenderBox?;
+                    final sharePositionOrigin = box != null
+                        ? box.localToGlobal(Offset.zero) & box.size
+                        : null;
 
-                          final bytes =
-                              await ImageGeneratorService.captureWidget(
-                                _globalKey,
-                              );
-                          if (bytes != null && context.mounted) {
-                            await ImageGeneratorService.shareImage(
-                              bytes: bytes,
-                              text:
-                                  'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
-                              sharePositionOrigin: sharePositionOrigin,
-                            );
-                          }
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.share),
-                        label: const Text(
-                          'Share Wisdom',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    final bytes = await ImageGeneratorService.captureWidget(
+                      _globalKey,
+                    );
+                    if (bytes != null && context.mounted) {
+                      await ImageGeneratorService.shareImage(
+                        bytes: bytes,
+                        text:
+                            'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
+                        sharePositionOrigin: sharePositionOrigin,
                       );
-                    },
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                    shadowColor: Colors.orange.withOpacity(0.4),
                   ),
-                ),
-              ],
+                  icon: const Icon(Icons.share),
+                  label: const Text(
+                    'Share Wisdom',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                );
+              },
             ),
           ),
         ],
