@@ -1,6 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../services/image_generator_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../widgets/lotus.dart';
 
 class ImageCreatorScreen extends StatefulWidget {
   final String text;
@@ -22,15 +25,23 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
   // State for controls
   double _fontSize = 24.0;
   bool _showTranslation = true;
-  List<Color> _currentGradient = [Colors.deepOrange, Colors.orangeAccent];
+  bool _showGlass = true;
+  bool _showPatterns = true;
+  bool _isSerif = true;
+  List<Color> _currentGradient = [
+    const Color(0xFFFF9933),
+    const Color(0xFFFFCC33),
+  ];
 
   final List<List<Color>> _divineGradients = [
-    [Colors.deepOrange, Colors.orangeAccent], // Saffron
-    [const Color(0xFF047BC0), Colors.lightBlueAccent], // Krishna Blue
-    [const Color(0xFFD81B60), Colors.pinkAccent], // Bhakti Pink
-    [const Color(0xFF4A148C), Colors.purpleAccent], // Royal Wisdom
-    [const Color(0xFF1B5E20), Colors.greenAccent], // Nature
-    [Colors.black, Colors.grey.shade800], // Dark Void
+    [const Color(0xFFFF9933), const Color(0xFFFFCC33)], // Royal Saffron
+    [const Color(0xFFE6BE8A), const Color(0xFFB8860B)], // Divine Gold
+    [const Color(0xFF047BC0), const Color(0xFF00BFFF)], // Krishna Blue
+    [const Color(0xFF4A148C), const Color(0xFF9C27B0)], // Royal Wisdom (Purple)
+    [const Color(0xFF1B5E20), const Color(0xFF43A047)], // Vaikuntha Green
+    [const Color(0xFFB71C1C), const Color(0xFFEF5350)], // Bhakti Red
+    [const Color(0xFF0F2027), const Color(0xFF203A43)], // Midnight Meditation
+    [Colors.black, Colors.grey.shade900], // Cosmic Void
   ];
 
   // Capture Key
@@ -122,9 +133,6 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         ? constraints.maxHeight - 48
         : constraints.maxWidth - 32;
 
-    // ✨ Debug logs to verify dimensions
-    debugPrint('ImageCreator: maxSize=$maxSize, constraints=$constraints');
-
     return RepaintBoundary(
       key: _globalKey,
       child: Container(
@@ -148,72 +156,141 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // 1. Fundamental Content (Non-Positioned to ensure Stack has size)
+            // 1. Decorative Patterns (Lotus corners)
+            if (_showPatterns) ...[
+              Positioned(
+                top: -30,
+                left: -30,
+                child: Opacity(
+                  opacity: 0.15,
+                  child: Transform.rotate(
+                    angle: 0.5,
+                    child: const Lotus(size: 150),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: -30,
+                right: -30,
+                child: Opacity(
+                  opacity: 0.15,
+                  child: Transform.rotate(
+                    angle: -0.5,
+                    child: const Lotus(size: 150),
+                  ),
+                ),
+              ),
+            ],
+
+            // 2. Fundamental Content
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 40,
                   vertical: 40,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.text
-                          .replaceAll(
-                            RegExp(r'<c>', caseSensitive: false),
-                            '\n',
-                          )
-                          .replaceAll('*', '\n'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: _fontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontFamily: 'NotoSerif',
-                        shadows: const [
-                          Shadow(
-                            blurRadius: 10,
-                            color: Colors.black45,
-                            offset: Offset(2, 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: _showGlass ? 10 : 0,
+                      sigmaY: _showGlass ? 10 : 0,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: _showGlass
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(24),
+                        border: _showGlass
+                            ? Border.all(
+                                color: Colors.white.withOpacity(0.2),
+                                width: 1,
+                              )
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.text
+                                .replaceAll(
+                                  RegExp(r'<c>', caseSensitive: false),
+                                  '\n',
+                                )
+                                .replaceAll('*', '\n'),
+                            textAlign: TextAlign.center,
+                            style: _isSerif
+                                ? GoogleFonts.notoSerif(
+                                    fontSize: _fontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: const [
+                                      Shadow(
+                                        blurRadius: 10,
+                                        color: Colors.black45,
+                                        offset: Offset(2, 2),
+                                      ),
+                                    ],
+                                  )
+                                : GoogleFonts.outfit(
+                                    fontSize: _fontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: const [
+                                      Shadow(
+                                        blurRadius: 10,
+                                        color: Colors.black45,
+                                        offset: Offset(2, 2),
+                                      ),
+                                    ],
+                                  ),
                           ),
+                          if (_showTranslation &&
+                              widget.translation != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              widget.translation!,
+                              textAlign: TextAlign.center,
+                              style: _isSerif
+                                  ? GoogleFonts.notoSerif(
+                                      fontSize: 16,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontStyle: FontStyle.italic,
+                                    )
+                                  : GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                            ),
+                          ],
+                          if (widget.source != null) ...[
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                widget.source!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    if (_showTranslation && widget.translation != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.translation!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                    if (widget.source != null) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          widget.source!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -309,7 +386,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         children: [
           if (isLandscape) ...[
             Text(
-              'Customize',
+              'Customize Wisdom',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.9),
                 fontSize: 18,
@@ -319,102 +396,162 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             const SizedBox(height: 24),
           ],
 
-          // Font Size & Toggle Row
-          Row(
-            children: [
-              const Icon(Icons.text_fields, color: Colors.white54),
-              Expanded(
-                child: Slider(
-                  value: _fontSize,
-                  min: 14,
-                  max: 48,
-                  activeColor: Colors.orange,
-                  onChanged: (val) => setState(() => _fontSize = val),
+          // 1. Text Options Group
+          _buildControlGroup('Typography', [
+            // Font Selection Toggle
+            Row(
+              children: [
+                const Icon(
+                  Icons.font_download_outlined,
+                  color: Colors.white54,
+                  size: 20,
                 ),
-              ),
-              if (widget.translation != null &&
-                  widget.translation!.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () =>
-                      setState(() => _showTranslation = !_showTranslation),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _showTranslation
-                        ? Colors.orange.withOpacity(0.2)
-                        : Colors.transparent,
-                    foregroundColor: _showTranslation
-                        ? Colors.orange
-                        : Colors.white54,
-                    side: _showTranslation
-                        ? const BorderSide(color: Colors.orange, width: 1)
-                        : null,
+                const SizedBox(width: 12),
+                const Text('Style', style: TextStyle(color: Colors.white70)),
+                const Spacer(),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(
+                      value: true,
+                      label: Text('Serif'),
+                      icon: Icon(Icons.menu_book),
+                    ),
+                    ButtonSegment(
+                      value: false,
+                      label: Text('Sans'),
+                      icon: Icon(Icons.art_track),
+                    ),
+                  ],
+                  selected: {_isSerif},
+                  onSelectionChanged: (val) =>
+                      setState(() => _isSerif = val.first),
+                  style: SegmentedButton.styleFrom(
+                    backgroundColor: Colors.grey[850],
+                    selectedBackgroundColor: Colors.orange.withOpacity(0.2),
+                    selectedForegroundColor: Colors.orange,
                   ),
-                  icon: const Icon(Icons.menu_book_rounded),
-                  tooltip: 'Show Meaning',
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Gradient Selector
-          Text(
-            'Theme',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
             ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _divineGradients.length,
-              itemBuilder: (context, index) {
-                final gradient = _divineGradients[index];
-                final isSelected = _currentGradient == gradient;
-                return GestureDetector(
-                  onTap: () => setState(() => _currentGradient = gradient),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: isSelected ? 50 : 40,
-                    height: isSelected ? 50 : 40,
-                    margin: const EdgeInsets.only(right: 12, top: 5, bottom: 5),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: gradient,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: isSelected
-                          ? Border.all(color: Colors.white, width: 3)
-                          : Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                              width: 1,
-                            ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: gradient.first.withOpacity(0.5),
-                                blurRadius: 10,
-                                spreadRadius: 2,
+            const SizedBox(height: 16),
+            // Font Size Slider
+            Row(
+              children: [
+                const Icon(Icons.format_size, color: Colors.white54, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _fontSize,
+                    min: 14,
+                    max: 48,
+                    activeColor: Colors.orange,
+                    onChanged: (val) => setState(() => _fontSize = val),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.translation != null &&
+                widget.translation!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.menu_book_rounded,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Show Translation',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const Spacer(),
+                  Switch(
+                    value: _showTranslation,
+                    onChanged: (val) => setState(() => _showTranslation = val),
+                    activeColor: Colors.orange,
+                  ),
+                ],
+              ),
+            ],
+          ]),
+
+          // 2. Theme & Effects Group
+          _buildControlGroup('Aesthetics', [
+            // Glass & Patterns Row
+            Row(
+              children: [
+                _buildAestheticToggle(
+                  icon: Icons.blur_on,
+                  label: 'Glass',
+                  value: _showGlass,
+                  onChanged: (val) => setState(() => _showGlass = val),
+                ),
+                const SizedBox(width: 12),
+                _buildAestheticToggle(
+                  icon: Icons.eco_outlined,
+                  label: 'Patterns',
+                  value: _showPatterns,
+                  onChanged: (val) => setState(() => _showPatterns = val),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Gradient Selector
+            Text(
+              'Color Theme',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _divineGradients.length,
+                itemBuilder: (context, index) {
+                  final gradient = _divineGradients[index];
+                  final isSelected = _currentGradient == gradient;
+                  return GestureDetector(
+                    onTap: () => setState(() => _currentGradient = gradient),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: isSelected ? 40 : 32,
+                      height: isSelected ? 40 : 32,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: gradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 2)
+                            : Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                                width: 1,
                               ),
-                            ]
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 16,
+                            )
                           : null,
                     ),
-                    child: isSelected
-                        ? const Icon(Icons.check, color: Colors.white, size: 20)
-                        : null,
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 32),
+          ]),
+
+          const SizedBox(height: 24),
 
           // Share Button
           SizedBox(
@@ -450,7 +587,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                     elevation: 4,
                     shadowColor: Colors.orange.withOpacity(0.4),
                   ),
-                  icon: const Icon(Icons.share),
+                  icon: const Icon(Icons.share_rounded),
                   label: const Text(
                     'Share Wisdom',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -460,6 +597,79 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildControlGroup(String title, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAestheticToggle({
+    required IconData icon,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: value ? Colors.orange.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: value
+                  ? Colors.orange.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: value ? Colors.orange : Colors.white54,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: value ? Colors.orange : Colors.white70,
+                  fontSize: 12,
+                  fontWeight: value ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

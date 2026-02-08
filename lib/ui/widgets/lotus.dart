@@ -20,8 +20,9 @@ import 'dart:ui';
 class Lotus extends StatefulWidget {
   final AnimationController?
   controller; // 🌸 External controller for continuous rotation
+  final double? size; // 🌸 Optional custom size
 
-  const Lotus({super.key, this.controller});
+  const Lotus({super.key, this.controller, this.size});
 
   @override
   State<Lotus> createState() => _LotusState();
@@ -105,20 +106,24 @@ class _LotusState extends State<Lotus> with TickerProviderStateMixin {
   }
 
   Widget _buildLotusContent(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.shortestSide > 600;
-    final isSmallPhone = size.width < 380;
+    final mqSize = MediaQuery.of(context).size;
+    final isTablet = mqSize.shortestSide > 600;
+    final isSmallPhone = mqSize.width < 380;
 
-    final double glowSize = isTablet
-        ? 400
-        : isSmallPhone
-        ? 200
-        : 250;
-    final double imageSize = isTablet
-        ? 360
-        : isSmallPhone
-        ? 180
-        : 230;
+    final double glowSize =
+        widget.size ??
+        (isTablet
+            ? 400
+            : isSmallPhone
+            ? 200
+            : 250);
+    final double imageSize = widget.size != null
+        ? widget.size! * 0.9
+        : (isTablet
+              ? 360
+              : isSmallPhone
+              ? 180
+              : 230);
 
     return Stack(
       alignment: Alignment.center,
