@@ -104,7 +104,23 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final bool showRail = width > 600;
+
+    // 📲 Phone Landscape Auto-Toggle Logic
+    // If we're on a phone in landscape, and backgrounds are ON, trigger the reveal animation to turn them OFF.
+    if (!isTablet && isLandscape) {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      if (settings.showBackground && !_revealController.isAnimating) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (settings.showBackground && !_revealController.isAnimating) {
+            _handleThemeToggle();
+          }
+        });
+      }
+    }
 
     if (!showRail) {
       return Stack(children: [widget.child, const GlobalMiniPlayer()]);
@@ -131,7 +147,7 @@ class _MainScaffoldState extends State<MainScaffold>
                 center: _revealCenter,
                 child: RepaintBoundary(
                   key: _repaintBoundaryKey,
-                  child: _buildScaffoldLayout(context),
+                  child: _buildScaffoldLayout(context, isTablet, isLandscape),
                 ),
               ),
               // MODIFICATION: Add GlobalMiniPlayer here, outside the LiquidReveal/RepaintBoundary
@@ -143,9 +159,11 @@ class _MainScaffoldState extends State<MainScaffold>
     );
   }
 
-  Widget _buildScaffoldLayout(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final bool isLandscape = width > MediaQuery.of(context).size.height;
+  Widget _buildScaffoldLayout(
+    BuildContext context,
+    bool isTablet,
+    bool isLandscape,
+  ) {
     final double railWidth = isLandscape ? 220.0 : 100.0;
 
     return Stack(
@@ -168,24 +186,28 @@ class _MainScaffoldState extends State<MainScaffold>
           child: GlassNavigationRail(
             selectedIndex: _calculateSelectedIndex(context),
             onDestinationSelected: (int index) => _onItemTapped(index, context),
-            trailing: FloatingActionButton(
-              key: _railThemeToggleKey,
-              heroTag: 'rail_theme_toggle',
-              mini: true,
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.8),
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 0,
-              onPressed: _handleThemeToggle,
-              child: Consumer<SettingsProvider>(
-                builder: (context, settings, _) {
-                  return Icon(
-                    settings.showBackground
-                        ? Icons.format_paint_outlined
-                        : Icons.format_paint,
-                  );
-                },
-              ),
-            ),
+            trailing: (!isTablet && isLandscape)
+                ? null // ✨ Hide toggle in landscape on phones
+                : FloatingActionButton(
+                    key: _railThemeToggleKey,
+                    heroTag: 'rail_theme_toggle',
+                    mini: true,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.8),
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    elevation: 0,
+                    onPressed: _handleThemeToggle,
+                    child: Consumer<SettingsProvider>(
+                      builder: (context, settings, _) {
+                        return Icon(
+                          settings.showBackground
+                              ? Icons.format_paint_outlined
+                              : Icons.format_paint,
+                        );
+                      },
+                    ),
+                  ),
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(
                 icon: _buildLotusIcon('assets/images/lotus_top.png', false),

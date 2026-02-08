@@ -214,7 +214,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final shouldShowResults = isSearching || isKeyboardOpen || _isSearchFocused;
     final width = MediaQuery.of(context).size.width;
-    final bool isTablet = width > 600;
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -524,8 +526,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           ),
 
                         // Simple Theme Toggle Button (Bottom Left)
+                        // Should only be visible on phones in PORTRAIT mode.
                         if (MediaQuery.of(context).viewInsets.bottom == 0 &&
-                            MediaQuery.of(context).size.width <= 600)
+                            width <=
+                                600 && // Phone check (width-based is more reliable for hidden state)
+                            !isLandscape) // Portrait check
                           Positioned(
                             left: 16,
                             bottom: 16,
