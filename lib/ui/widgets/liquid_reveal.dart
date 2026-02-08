@@ -40,20 +40,28 @@ class LiquidRevealClipper extends CustomClipper<Path> {
     final double maxRadius = _calculateMaxRadius(size, center);
     final currentRadius = maxRadius * progress;
 
-    // To create a "liquid" feel, we create a polygon with many points
-    // and add some wave variance to the radius at each point.
-    const int points = 60;
+    // Golden Ink / Organic Splatter Effect
+    // Higher resolution for better organic details
+    const int points = 120;
+
     for (int i = 0; i <= points; i++) {
       final double angle = (i / points) * 2 * math.pi;
 
-      // Liquid effect: radius varies with angle and progress
-      // We use multiple sine waves for a more complex, organic shape
-      final double wave1 = math.sin(angle * 3 + progress * 15) * 20;
-      final double wave2 = math.cos(angle * 5 - progress * 10) * 15;
+      // 1. Large Lobes (The main "splatter" shape)
+      final double wave1 = math.sin(angle * 5 + progress * 8) * 40;
 
-      // The waves should diminish as the reveal finishes to fill the corners cleanly
-      final double waveStrength = math.sin(progress * math.pi);
-      final double r = currentRadius + (wave1 + wave2) * waveStrength;
+      // 2. Irregularity (Asymmetry)
+      final double wave2 = math.cos(angle * 13 - progress * 12) * 25;
+
+      // 3. Fine Detail (Rough "ink bleed" edges)
+      final double wave3 = math.sin(angle * 29 + progress * 20) * 12;
+
+      // Combine waves, scaling them down as the circle fills the screen
+      // so the edges become smooth right at the end (clean finish)
+      final double waveStrength =
+          math.sin(progress * math.pi) * (1.2 - progress * 0.2);
+
+      final double r = currentRadius + (wave1 + wave2 + wave3) * waveStrength;
 
       final double x = center.dx + r * math.cos(angle);
       final double y = center.dy + r * math.sin(angle);
