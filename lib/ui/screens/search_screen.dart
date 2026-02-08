@@ -211,7 +211,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final provider = Provider.of<SearchProvider>(context);
     final isSearching = provider.searchQuery.isNotEmpty;
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    final shouldShowResults = isSearching || isKeyboardOpen;
+    final shouldShowResults = isSearching || isKeyboardOpen || _isSearchFocused;
     final width = MediaQuery.of(context).size.width;
     final bool isTablet = width > 600;
 
@@ -706,16 +706,56 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         : Colors.amberAccent.withOpacity(0.6);
     final activeAiColor = isLightStyle ? Colors.orange[900]! : Colors.amber;
 
+    // ✨ Dynamic Styling Logic
+    Color currentBorderColor;
+    double currentBorderWidth;
+    List<BoxShadow> currentBoxShadow;
+
+    if (_isAiMode) {
+      // AI Mode Active
+      currentBorderColor = activeAiColor;
+      currentBorderWidth = _isSearchFocused ? 2.0 : 1.2;
+      currentBoxShadow = _isSearchFocused
+          ? [
+              BoxShadow(
+                color: activeAiColor.withOpacity(0.4),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ]
+          : [];
+    } else {
+      // Standard Search
+      if (_isSearchFocused) {
+        // Focused: Use Primary Theme Color
+        currentBorderColor = isLightStyle
+            ? Theme.of(context).primaryColor
+            : Colors.pinkAccent;
+        currentBorderWidth = 2.0;
+        currentBoxShadow = []; // Cleaner look for standard search
+      } else {
+        // Idle
+        currentBorderColor = borderColor;
+        currentBorderWidth = 1.2;
+        currentBoxShadow = [];
+      }
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(50.0),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 300), // ✨ Consistent 300ms
+          curve: Curves.easeInOut,
           decoration: BoxDecoration(
             color: fillColor,
             borderRadius: BorderRadius.circular(50.0),
-            border: Border.all(color: borderColor, width: 1.2),
+            border: Border.all(
+              color: currentBorderColor,
+              width: currentBorderWidth,
+            ),
+            boxShadow: currentBoxShadow,
           ),
           child: TextField(
             controller: _searchController, // ✨ Bind controller
