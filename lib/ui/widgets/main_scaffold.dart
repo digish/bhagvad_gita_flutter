@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -73,6 +74,11 @@ class _MainScaffoldState extends State<MainScaffold>
   }
 
   void _handleThemeToggle() async {
+    if (_revealController.isAnimating) return;
+
+    // 0. Provide haptic feedback
+    HapticFeedback.lightImpact();
+
     // 1. Capture Snapshot of current state (OLD)
     await _captureSnapshot();
     if (_snapshotImage == null) {

@@ -1,11 +1,10 @@
-// lib/ui/screens/search_screen.dart
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../navigation/app_router.dart';
 import '../../providers/search_provider.dart';
@@ -550,6 +549,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : Colors.white,
                               onPressed: () {
+                                if (_revealController.isAnimating) return;
+
+                                HapticFeedback.lightImpact();
                                 _captureThemeTogglePosition();
                                 setState(() {
                                   _isBackgroundRequested =
