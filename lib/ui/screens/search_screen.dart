@@ -760,6 +760,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           child: TextField(
             controller: _searchController, // ✨ Bind controller
             focusNode: _searchFocusNode, // ✨ Attach FocusNode
+            textInputAction: _isAiMode
+                ? TextInputAction.send
+                : TextInputAction.search, // ✨ Dynamic Action Button
             style: TextStyle(color: textColor),
             onChanged: (value) => provider.onSearchQueryChanged(value),
             onSubmitted: (value) {
