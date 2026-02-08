@@ -174,6 +174,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         startColor: Theme.of(context).brightness == Brightness.dark
             ? Theme.of(context).scaffoldBackgroundColor
             : const Color(0xFFF48FB1),
+        showMandala: false, // ✨ Fix: Force simple mode to prevent white flash
       );
     }
   }
@@ -307,9 +308,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           ? const Color(
                               0xFFFCE4EC,
                             ) // Going to Complex (Pink is bottom)
-                          : const Color(
-                              0xFF1E88E5,
-                            ), // Going to Simple (Blue is bottom)
+                          : Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).scaffoldBackgroundColor
+                          : const Color(0xFFF48FB1), // ✨ Fix: Match Pink target
                     ),
 
                   // Base Layer: Background Color
