@@ -100,23 +100,37 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
               ),
             );
           } else {
-            // Portrait Layout (Column)
+            // Portrait Layout (Preview at Top, Controls at Bottom)
             return Column(
               children: [
-                // 1. Preview Area
+                // 1. Preview Area (Always Visible)
                 Expanded(
+                  flex: 3,
                   child: Center(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(24),
                       child: _buildPreviewCard(constraints),
                     ),
                   ),
                 ),
-                // 2. Controls Area
+
+                // 2. Compact Controls Area (Fixed at Bottom)
                 Container(
                   color: Colors.grey[900],
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  child: SafeArea(top: false, child: _buildControls()),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: const Divider(height: 1, color: Colors.white10),
+                ),
+                Container(
+                  color: Colors.grey[900],
+                  child: SafeArea(
+                    top: false,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: constraints.maxHeight * 0.4,
+                      ),
+                      child: _buildControls(isLandscape: false),
+                    ),
+                  ),
                 ),
               ],
             );
@@ -129,15 +143,18 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
   Widget _buildPreviewCard(BoxConstraints constraints) {
     // Calculate max size for square-ish card
     final isLandscape = constraints.maxWidth > constraints.maxHeight;
-    final maxSize = isLandscape
+    final maxWidth = isLandscape
         ? constraints.maxHeight - 48
         : constraints.maxWidth - 32;
 
     return RepaintBoundary(
       key: _globalKey,
       child: Container(
-        width: maxSize,
-        height: maxSize,
+        width: maxWidth,
+        // Content-aware dynamic sizing
+        constraints: BoxConstraints(
+          minHeight: maxWidth * 0.6, // Minimal aesthetic height
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: _currentGradient,
@@ -155,6 +172,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
+          alignment: Alignment.center,
           children: [
             // 1. Decorative Patterns (Lotus corners)
             if (_showPatterns) ...[
@@ -182,113 +200,112 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
               ),
             ],
 
-            // 2. Fundamental Content
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 40,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: _showGlass ? 10 : 0,
-                      sigmaY: _showGlass ? 10 : 0,
+            // 2. Fundamental Content (Shrink-wrap)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 32,
+                right: 32,
+                top: 40,
+                bottom: 80, // More bottom padding for App Island & QR
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: _showGlass ? 10 : 0,
+                    sigmaY: _showGlass ? 10 : 0,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: _showGlass
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
+                      border: _showGlass
+                          ? Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
+                            )
+                          : null,
                     ),
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: _showGlass
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(24),
-                        border: _showGlass
-                            ? Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.text
+                              .replaceAll(
+                                RegExp(r'<c>', caseSensitive: false),
+                                '\n',
                               )
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.text
-                                .replaceAll(
-                                  RegExp(r'<c>', caseSensitive: false),
-                                  '\n',
+                              .replaceAll('*', '\n'),
+                          textAlign: TextAlign.center,
+                          style: _isSerif
+                              ? GoogleFonts.notoSerif(
+                                  fontSize: _fontSize,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: const [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black45,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
                                 )
-                                .replaceAll('*', '\n'),
+                              : GoogleFonts.outfit(
+                                  fontSize: _fontSize,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: const [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black45,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                        if (_showTranslation && widget.translation != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.translation!,
                             textAlign: TextAlign.center,
                             style: _isSerif
                                 ? GoogleFonts.notoSerif(
-                                    fontSize: _fontSize,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    shadows: const [
-                                      Shadow(
-                                        blurRadius: 10,
-                                        color: Colors.black45,
-                                        offset: Offset(2, 2),
-                                      ),
-                                    ],
+                                    fontSize: 16,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontStyle: FontStyle.italic,
                                   )
                                 : GoogleFonts.outfit(
-                                    fontSize: _fontSize,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    shadows: const [
-                                      Shadow(
-                                        blurRadius: 10,
-                                        color: Colors.black45,
-                                        offset: Offset(2, 2),
-                                      ),
-                                    ],
+                                    fontSize: 16,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontStyle: FontStyle.italic,
                                   ),
                           ),
-                          if (_showTranslation &&
-                              widget.translation != null) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              widget.translation!,
-                              textAlign: TextAlign.center,
-                              style: _isSerif
-                                  ? GoogleFonts.notoSerif(
-                                      fontSize: 16,
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontStyle: FontStyle.italic,
-                                    )
-                                  : GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                            ),
-                          ],
-                          if (widget.source != null) ...[
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                widget.source!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
+                        if (widget.source != null) ...[
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              widget.source!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -379,7 +396,9 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
   Widget _buildControls({bool isLandscape = false}) {
     // Shared controls widget
     return SingleChildScrollView(
-      padding: isLandscape ? const EdgeInsets.all(24) : EdgeInsets.zero,
+      padding: isLandscape
+          ? const EdgeInsets.all(24)
+          : const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,52 +570,57 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             ),
           ]),
 
-          const SizedBox(height: 24),
-
-          // Share Button
-          SizedBox(
-            width: double.infinity,
-            child: Builder(
-              builder: (btnContext) {
-                return FilledButton.icon(
-                  onPressed: () async {
-                    final box = btnContext.findRenderObject() as RenderBox?;
-                    final sharePositionOrigin = box != null
-                        ? box.localToGlobal(Offset.zero) & box.size
-                        : null;
-
-                    final bytes = await ImageGeneratorService.captureWidget(
-                      _globalKey,
-                    );
-                    if (bytes != null && context.mounted) {
-                      await ImageGeneratorService.shareImage(
-                        bytes: bytes,
-                        text:
-                            'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
-                        sharePositionOrigin: sharePositionOrigin,
-                      );
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 4,
-                    shadowColor: Colors.orange.withOpacity(0.4),
-                  ),
-                  icon: const Icon(Icons.share_rounded),
-                  label: const Text(
-                    'Share Wisdom',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                );
-              },
-            ),
-          ),
+          if (!isLandscape) ...[
+            const SizedBox(height: 12),
+            _buildShareButton(context),
+            const SizedBox(height: 12),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildShareButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Builder(
+        builder: (btnContext) {
+          return FilledButton.icon(
+            onPressed: () async {
+              final box = btnContext.findRenderObject() as RenderBox?;
+              final sharePositionOrigin = box != null
+                  ? box.localToGlobal(Offset.zero) & box.size
+                  : null;
+
+              final bytes = await ImageGeneratorService.captureWidget(
+                _globalKey,
+              );
+              if (bytes != null && context.mounted) {
+                await ImageGeneratorService.shareImage(
+                  bytes: bytes,
+                  text:
+                      'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
+                  sharePositionOrigin: sharePositionOrigin,
+                );
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+              shadowColor: Colors.orange.withOpacity(0.4),
+            ),
+            icon: const Icon(Icons.share_rounded),
+            label: const Text(
+              'Share Wisdom',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          );
+        },
       ),
     );
   }

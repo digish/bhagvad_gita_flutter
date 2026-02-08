@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import '../../navigation/app_router.dart';
 import '../../providers/search_provider.dart';
 import '../widgets/darkened_animated_background.dart';
-import '../widgets/lotus.dart';
 import '../widgets/shloka_result_card.dart';
 import '../widgets/word_result_card.dart';
 import '../widgets/decorative_foreground.dart';
@@ -366,13 +365,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                 milliseconds: 300,
                                               ),
                                               curve: Curves.easeInOut,
-                                              // ✨ Disabled decorative lotus for now
-                                              child: false
-                                                  ? Lotus(
-                                                      controller:
-                                                          _lotusController,
-                                                    ) // 🌸 Pass shared controller
-                                                  : const SizedBox.shrink(),
+                                              child: const SizedBox.shrink(),
                                             )
                                           : const SizedBox.shrink(),
                                     ),
