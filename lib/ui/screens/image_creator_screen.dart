@@ -122,10 +122,14 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
         ? constraints.maxHeight - 48
         : constraints.maxWidth - 32;
 
+    // ✨ Debug logs to verify dimensions
+    debugPrint('ImageCreator: maxSize=$maxSize, constraints=$constraints');
+
     return RepaintBoundary(
       key: _globalKey,
       child: Container(
-        constraints: BoxConstraints(minHeight: maxSize, maxWidth: maxSize),
+        width: maxSize,
+        height: maxSize,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: _currentGradient,
@@ -141,14 +145,16 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             ),
           ],
         ),
-        padding: EdgeInsets
-            .zero, // Remove padding from container to allow full stack
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Main Content Centered
-            Padding(
-              padding: const EdgeInsets.all(32),
-              child: Center(
+            // 1. Fundamental Content (Non-Positioned to ensure Stack has size)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 40,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -164,6 +170,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                         fontSize: _fontSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
+                        fontFamily: 'NotoSerif',
                         shadows: const [
                           Shadow(
                             blurRadius: 10,
@@ -180,20 +187,20 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.white70,
+                          color: Colors.white,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    if (widget.source != null)
+                    if (widget.source != null) ...[
+                      const SizedBox(height: 24),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black26,
+                          color: Colors.black.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -201,94 +208,77 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    const SizedBox(height: 40), // Spacer for branding
-                    // Promo Footer "Island" (Just Branding)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // App Icon
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                'assets/icon/icon_square.png',
-                                width: 24, // Smaller icon
-                                height: 24,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // App Name & Tagline
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Shrimad Bhagavad Gita',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Search within',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 8,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ),
 
-            // QR Code at Bottom Left
+            // Gita App Island (Bottom Gravity Center)
             Positioned(
-              left: 20,
+              bottom: 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // App Icon
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/icon/icon_square.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // App Name
+                      const Text(
+                        'Shrimad Bhagavad Gita',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // QR Code (Bottom Right Gravity)
+            Positioned(
+              right: 20,
               bottom: 20,
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
+                      blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -297,7 +287,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                   data:
                       'https://digish.github.io/project/index.html#bhagvadgita',
                   version: QrVersions.auto,
-                  size: 48.0,
+                  size: 40.0, // Slightly smaller QR
                   backgroundColor: Colors.white,
                   padding: EdgeInsets.zero,
                 ),

@@ -1005,6 +1005,13 @@ class _DetailedResponseState extends State<_DetailedResponse> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // ✨ Use primary container for better visibility and contrast
+    final backgroundColor = isDark
+        ? theme.colorScheme.primaryContainer.withOpacity(0.15)
+        : theme.colorScheme.primaryContainer.withOpacity(0.08);
+    final borderColor = theme.colorScheme.primary.withOpacity(0.2);
 
     // If streaming, always show expanded to follow generation
     final isExpanded = widget.isStreaming || _isExpanded;
@@ -1012,66 +1019,165 @@ class _DetailedResponseState extends State<_DetailedResponse> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: theme.cardColor.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          if (isExpanded)
+            BoxShadow(
+              color: theme.colorScheme.primary.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header / Toggle
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Detailed Explanation',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: 14,
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_stories_rounded,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Deeper Wisdom & Analysis',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                   Icon(
                     isExpanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.primary,
+                    size: 20,
                   ),
                 ],
               ),
             ),
           ),
+
+          // Content Area
           ClipRect(
-            child: AnimatedAlign(
+            child: AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              heightFactor: isExpanded ? 1.0 : 0.0,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: MarkdownBody(
-                  data: widget.text,
-                  styleSheet: MarkdownStyleSheet(
-                    p: TextStyle(
-                      color: theme.textTheme.bodyMedium?.color,
-                      fontSize: context.watch<SettingsProvider>().fontSize,
-                      height: 1.5,
-                    ),
-                    listBullet: TextStyle(
-                      color: theme.textTheme.bodyMedium?.color,
-                    ),
-                  ),
+              child: isExpanded
+                  ? _buildFullContent(context, theme)
+                  : _buildCollapsedSnippet(context, theme),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsedSnippet(BuildContext context, ThemeData theme) {
+    // Generate a clean snippet (approx 120 chars)
+    String cleanText = widget.text.replaceAll(RegExp(r'[#*`\[\]]'), '').trim();
+    final snippet = cleanText.length > 120
+        ? cleanText.substring(0, 120).trim() + '...'
+        : cleanText;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            snippet,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              height: 1.5,
+              fontStyle: FontStyle.italic,
+              fontSize: 13,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _isExpanded = true),
+              icon: const Icon(Icons.menu_open_rounded, size: 14),
+              label: const Text('EXPLORE FULL EXPLANATION'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.08),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  letterSpacing: 1.1,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFullContent(BuildContext context, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: MarkdownBody(
+        data: widget.text,
+        styleSheet: MarkdownStyleSheet(
+          p: TextStyle(
+            color: theme.textTheme.bodyMedium?.color,
+            fontSize: context.read<SettingsProvider>().fontSize,
+            height: 1.6,
+          ),
+          h1: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+          h2: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+          listBullet: TextStyle(color: theme.colorScheme.primary),
+          blockquote: TextStyle(
+            color: theme.colorScheme.primary,
+            fontStyle: FontStyle.italic,
+          ),
+          blockquoteDecoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(color: theme.colorScheme.primary, width: 4),
+            ),
+          ),
+        ),
       ),
     );
   }
