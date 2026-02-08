@@ -99,19 +99,29 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                     borderRadius: BorderRadius.circular(
                       lerpDouble(28, 16, controller.value)!, // 56/2 = 28
                     ),
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.8),
+                        Colors.amber.withOpacity(0.2),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
                     image: DecorationImage(
                       image: AssetImage(
                         'assets/emblems/chapter/ch${chapter.toString().padLeft(2, '0')}.png',
                       ),
                       fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                        Colors.white.withOpacity(0.2),
+                        BlendMode.screen,
+                      ),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withOpacity(0.5),
-                        blurRadius: 10,
-                        spreadRadius: 2,
+                        color: Colors.amber.withOpacity(0.6),
+                        blurRadius: 15,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
@@ -473,24 +483,38 @@ class _ChapterCard extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.9),
-                                    width: 2,
+                                    color: const Color(
+                                      0xFFFFD700,
+                                    ).withOpacity(0.6), // Gold tint
+                                    width: 2.5,
+                                  ),
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.9),
+                                      Colors.amber.withOpacity(0.4),
+                                      Colors.transparent,
+                                    ],
+                                    stops: const [0.0, 0.6, 1.0],
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary.withOpacity(0.7),
-                                      spreadRadius: 2,
-                                      blurRadius: 12.0,
+                                      color: Colors.amber.withOpacity(0.8),
+                                      spreadRadius: 3,
+                                      blurRadius: 15.0,
                                       offset: Offset.zero,
                                     ),
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: Image.asset(
-                                    'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                                    fit: BoxFit.cover,
+                                  child: ColorFiltered(
+                                    colorFilter: ColorFilter.mode(
+                                      Colors.white.withOpacity(0.25),
+                                      BlendMode.screen,
+                                    ),
+                                    child: Image.asset(
+                                      'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -535,24 +559,38 @@ class _ChapterCard extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.9),
-                                    width: 2,
+                                    color: const Color(
+                                      0xFFFFD700,
+                                    ).withOpacity(0.6), // Gold tint
+                                    width: 2.5,
+                                  ),
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.9),
+                                      Colors.amber.withOpacity(0.4),
+                                      Colors.transparent,
+                                    ],
+                                    stops: const [0.0, 0.6, 1.0],
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary.withOpacity(0.7),
-                                      spreadRadius: 2,
-                                      blurRadius: 12.0,
+                                      color: Colors.amber.withOpacity(0.8),
+                                      spreadRadius: 3,
+                                      blurRadius: 15.0,
                                       offset: Offset.zero,
                                     ),
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: Image.asset(
-                                    'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-                                    fit: BoxFit.cover,
+                                  child: ColorFiltered(
+                                    colorFilter: ColorFilter.mode(
+                                      Colors.white.withOpacity(0.25),
+                                      BlendMode.screen,
+                                    ),
+                                    child: Image.asset(
+                                      'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
                               ),
