@@ -31,6 +31,7 @@ import java.io.FileInputStream
             targetSdk = flutter.targetSdkVersion
             versionCode = flutter.versionCode
             versionName = flutter.versionName
+            multiDexEnabled = true
         }
 
         bundle {
@@ -85,6 +86,16 @@ import java.io.FileInputStream
                 // END FIX FOR R8 ERROR
             }
         }
+
+        compileOptions {
+            isCoreLibraryDesugaringEnabled = true
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+        }
+
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
     }
 
     flutter {
@@ -97,4 +108,5 @@ import java.io.FileInputStream
             add("implementation", "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24")
             add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:1.9.24")
         }
+        coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
     }

@@ -225,8 +225,129 @@ class SettingsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
 
-                              // --- Daily Wisdom Reminders (Push) ---
-                              _buildSectionHeader('Reminders'),
+                              // --- Daily Journey Section ---
+                              _buildSectionHeader('Daily Journey'),
+                              // 1. Gita Wisdom (Daily Inspiration)
+                              Card(
+                                color: Theme.of(context).cardTheme.color,
+                                elevation: 4,
+                                child: Column(
+                                  children: [
+                                    SwitchListTile(
+                                      secondary: CircleAvatar(
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.1),
+                                        child: Icon(
+                                          Icons.lightbulb_outline,
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                      ),
+                                      title: const Text(
+                                        'Daily Gita Wisdom',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        'Show a random shloka on the search screen.',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      value: settings.showRandomShloka,
+                                      onChanged: (bool value) {
+                                        settings.setShowRandomShloka(value);
+                                      },
+                                      activeColor: Theme.of(
+                                        context,
+                                      ).primaryColor,
+                                    ),
+                                    if (settings.showRandomShloka) ...[
+                                      const Divider(height: 1, indent: 72),
+                                      Consumer<SettingsProvider>(
+                                        builder: (context, settings, _) {
+                                          final selectedSources =
+                                              settings.randomShlokaSources;
+                                          String subtitleText;
+                                          if (selectedSources.contains(-1)) {
+                                            subtitleText = 'Entire Gita';
+                                          } else if (selectedSources.isEmpty) {
+                                            subtitleText =
+                                                'No sources selected';
+                                          } else {
+                                            subtitleText =
+                                                '${selectedSources.length} source(s) selected';
+                                          }
+
+                                          return ListTile(
+                                            leading: const SizedBox(
+                                              width: 40,
+                                              height: 40,
+                                            ),
+                                            title: const Text(
+                                              'Source for Inspiration',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              subtitleText,
+                                              style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 14,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.arrow_drop_down,
+                                            ),
+                                            onTap: () {
+                                              _showSourceSelectionDialog(
+                                                context,
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                    const Divider(height: 1, indent: 72),
+                                    ListTile(
+                                      leading: const SizedBox(
+                                        width: 40,
+                                        height: 40,
+                                      ),
+                                      title: const Text(
+                                        'Home Screen Widget',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        'Show daily shlokas on your home screen.',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.help_outline,
+                                        size: 20,
+                                      ),
+                                      onTap: () {
+                                        _showWidgetInstructionsDialog(context);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // 2. Daily Wisdom Reminder
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
@@ -429,7 +550,20 @@ class SettingsScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              const SizedBox(height: 16),
 
+                              // 3. Consistency Roadmap
+                              _buildSettingCard(
+                                context,
+                                title: 'Consistency Roadmap',
+                                subtitle:
+                                    'Visualize your daily progress, earn milestones, and use lifelines to maintain consistency.',
+                                value: settings.streakSystemEnabled,
+                                onChanged: (value) {
+                                  settings.setStreakSystemEnabled(value);
+                                },
+                                icon: Icons.auto_awesome_rounded,
+                              ),
                               const SizedBox(height: 32),
 
                               // --- Content Section ---
@@ -471,100 +605,6 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-
-                              // --- Daily Inspiration Section ---
-                              _buildSectionHeader('Daily Inspiration'),
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Column(
-                                  children: [
-                                    SwitchListTile(
-                                      secondary: CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
-                                        child: Icon(
-                                          Icons.lightbulb_outline,
-                                          color: Theme.of(context).primaryColor,
-                                        ),
-                                      ),
-                                      title: const Text(
-                                        'Gita Wisdom',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        'Show a random shloka on the search screen.',
-                                        style: TextStyle(
-                                          color: Colors.grey[700],
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      value: settings.showRandomShloka,
-                                      onChanged: (bool value) {
-                                        settings.setShowRandomShloka(value);
-                                      },
-                                      activeColor: Theme.of(
-                                        context,
-                                      ).primaryColor,
-                                    ),
-                                    if (settings.showRandomShloka) ...[
-                                      const Divider(height: 1, indent: 72),
-                                      Consumer<SettingsProvider>(
-                                        builder: (context, settings, _) {
-                                          // Multi-selection UI
-                                          final selectedSources =
-                                              settings.randomShlokaSources;
-                                          String subtitleText;
-                                          if (selectedSources.contains(-1)) {
-                                            subtitleText = 'Entire Gita';
-                                          } else if (selectedSources.isEmpty) {
-                                            subtitleText =
-                                                'No sources selected';
-                                          } else {
-                                            subtitleText =
-                                                '${selectedSources.length} source(s) selected';
-                                          }
-
-                                          return ListTile(
-                                            leading: const SizedBox(
-                                              width: 40,
-                                              height: 40,
-                                            ), // Spacer for alignment
-                                            title: const Text(
-                                              'Source',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            subtitle: Text(
-                                              subtitleText,
-                                              style: TextStyle(
-                                                color: Colors.grey[700],
-                                                fontSize: 14,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            trailing: const Icon(
-                                              Icons.arrow_drop_down,
-                                            ), // mimic dropdown
-                                            onTap: () {
-                                              _showSourceSelectionDialog(
-                                                context,
-                                              );
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 32),
 
                               // --- Preferences Section ---
                               _buildSectionHeader('Preferences'),
@@ -1270,6 +1310,94 @@ class SettingsScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showWidgetInstructionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.widgets, color: Colors.amber),
+            SizedBox(width: 12),
+            Text('Home Screen Widget'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Add a widget to your home screen to see a new Shloka every day without opening the app.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            _buildInstructionStep(
+              '1',
+              'On Home Screen, long press any empty area.',
+            ),
+            _buildInstructionStep('2', 'Tap the (+) or "Widgets" button.'),
+            _buildInstructionStep('3', 'Search for "Gita" and add the widget!'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.lightbulb, size: 16, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Perfect for your morning commute or a quick moment of peace.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 10,
+            backgroundColor: Colors.amber.withOpacity(0.2),
+            child: Text(
+              number,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
     );
   }
 }

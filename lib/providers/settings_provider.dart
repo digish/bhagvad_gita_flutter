@@ -273,6 +273,7 @@ class SettingsProvider extends ChangeNotifier {
     _customAiApiKey = prefs.getString('custom_ai_api_key');
     _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
     _lastSoulStatusMessage = prefs.getString('last_soul_status_message');
+    _streakSystemEnabled = prefs.getBool('streak_system_enabled') ?? true;
 
     // Load Reminder Settings
     _reminderEnabled = prefs.getBool('reminder_enabled') ?? false;

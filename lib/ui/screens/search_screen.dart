@@ -121,15 +121,17 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         if (mounted) {
           _loadRandomShloka();
         }
+      });
+    }
 
-        // --- NEW: Check for Soul Status Message ---
-        if (settings.lastSoulStatusMessage != null) {
-          final message = settings.lastSoulStatusMessage!;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _showMayaDialog(context, message, settings);
-            }
-          });
+    // --- NEW: Check for Soul Status Message ---
+    // Check this every time dependencies change (e.g. settings rebuild)
+    if (settings.lastSoulStatusMessage != null &&
+        settings.streakSystemEnabled) {
+      final message = settings.lastSoulStatusMessage!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showMayaDialog(context, message, settings);
         }
       });
     }
@@ -476,7 +478,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       ),
                                     if (settings.showRandomShloka &&
                                         !shouldShowResults) ...[
-                                      _buildSoulStatusChip(settings),
+                                      if (settings.streakSystemEnabled)
+                                        _buildSoulStatusChip(settings),
                                       if (!settings.reminderEnabled)
                                         _buildReminderNudge(settings),
                                       _buildRandomShlokaCard(),
