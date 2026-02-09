@@ -14,6 +14,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/predefined_lists_data.dart';
+import '../models/soul_status.dart';
+import '../services/notification_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -33,12 +35,24 @@ class SettingsProvider extends ChangeNotifier {
   bool _hasUsedAskAi = false;
   bool get hasUsedAskAi => _hasUsedAskAi;
 
-  /* DEPRECATED: Replaced by CreditProvider */
-  // int _aiQueryCount = 0;
-  // int get aiQueryCount => _aiQueryCount;
-  // String _lastQueryResetDate = '';
-  // static const int dailyAiQuota = 5;
-  // bool get aiQuotaReached => _customAiApiKey == null && _aiQueryCount >= dailyAiQuota;
+  int _dailyStreak = 0;
+  int get dailyStreak => _dailyStreak;
+
+  String? _lastSoulStatusMessage;
+  String? get lastSoulStatusMessage => _lastSoulStatusMessage;
+
+  // --- Daily Reminders ---
+  bool _reminderEnabled = false;
+  bool get reminderEnabled => _reminderEnabled;
+
+  TimeOfDay _reminderTime = const TimeOfDay(
+    hour: 20,
+    minute: 30,
+  ); // Default 8:30 PM
+  TimeOfDay get reminderTime => _reminderTime;
+
+  bool _reminderNudgeDismissed = false;
+  bool get reminderNudgeDismissed => _reminderNudgeDismissed;
 
   SettingsProvider() {
     _loadSettings();
@@ -230,21 +244,70 @@ class SettingsProvider extends ChangeNotifier {
 
     _customAiApiKey = prefs.getString('custom_ai_api_key');
     _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
+    _lastSoulStatusMessage = prefs.getString('last_soul_status_message');
 
-    /* DEPRECATED: Replaced by CreditProvider */
-    // _lastQueryResetDate = prefs.getString('last_ai_query_reset_date') ?? DateTime.now().toIso8601String().split('T')[0];
-    // _aiQueryCount = prefs.getInt('ai_query_count') ?? 0;
+    // Load Reminder Settings
+    _reminderEnabled = prefs.getBool('reminder_enabled') ?? false;
+    final hour = prefs.getInt('reminder_hour') ?? 20;
+    final minute = prefs.getInt('reminder_minute') ?? 30;
+    _reminderTime = TimeOfDay(hour: hour, minute: minute);
 
-    // Daily Reset check during load
-    // final today = DateTime.now().toIso8601String().split('T')[0];
-    // if (_lastQueryResetDate != today) {
-    //   _aiQueryCount = 0;
-    //   _lastQueryResetDate = today;
-    //   await prefs.setString('last_ai_query_reset_date', today);
-    //   await prefs.setInt('ai_query_count', 0);
-    // }
+    _reminderNudgeDismissed =
+        prefs.getBool('reminder_nudge_dismissed') ?? false;
+
+    // --- Update Daily Streak ---
+    await _updateStreak(prefs);
 
     notifyListeners();
+  }
+
+  Future<void> _updateStreak(SharedPreferences prefs) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final lastOpened = prefs.getString('last_opened_date');
+    final currentStreak = prefs.getInt('daily_streak') ?? 0;
+
+    if (lastOpened == null) {
+      // First time user
+      _dailyStreak = 1;
+      await prefs.setString('last_opened_date', today);
+      await prefs.setInt('daily_streak', 1);
+      return;
+    }
+
+    if (lastOpened == today) {
+      // Already opened today
+      _dailyStreak = currentStreak;
+      return;
+    }
+
+    final lastDate = DateTime.parse(lastOpened);
+    final difference = DateTime.now().difference(lastDate).inDays;
+
+    if (difference == 1) {
+      // Consecutive day!
+      _dailyStreak = currentStreak + 1;
+    } else {
+      // Streak broken :(
+      if (currentStreak >= 3) {
+        // Only set drop message if it was a significant streak
+        _lastSoulStatusMessage = SoulStatus.getDropMessage(currentStreak);
+        await prefs.setString(
+          'last_soul_status_message',
+          _lastSoulStatusMessage!,
+        );
+      }
+      _dailyStreak = 1;
+    }
+
+    await prefs.setString('last_opened_date', today);
+    await prefs.setInt('daily_streak', _dailyStreak);
+  }
+
+  Future<void> clearSoulStatusMessage() async {
+    _lastSoulStatusMessage = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('last_soul_status_message');
   }
 
   Future<void> setShowRandomShloka(bool value) async {
@@ -331,9 +394,71 @@ class SettingsProvider extends ChangeNotifier {
     ); // Saves 'system', 'light', 'dark'
   }
 
+  // --- Daily Reminder Logic ---
+
+  Future<bool> setReminderEnabled(bool enabled) async {
+    if (enabled) {
+      // Trigger permission request at the point of enabling
+      final granted = await NotificationService.instance.requestPermissions();
+      if (!granted) {
+        // If user denied, we don't enable it but we notify listeners to update UI
+        _reminderEnabled = false;
+        notifyListeners();
+        return false;
+      }
+    }
+
+    _reminderEnabled = enabled;
+    if (enabled) {
+      _reminderNudgeDismissed = false; // Reset dismissal if they enable it
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('reminder_enabled', enabled);
+    if (enabled) {
+      await prefs.setBool('reminder_nudge_dismissed', false);
+    }
+
+    if (enabled) {
+      await _scheduleReminder();
+    } else {
+      await NotificationService.instance.cancelAll();
+    }
+    return true;
+  }
+
+  Future<void> setReminderTime(TimeOfDay time) async {
+    _reminderTime = time;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('reminder_hour', time.hour);
+    await prefs.setInt('reminder_minute', time.minute);
+
+    if (_reminderEnabled) {
+      await _scheduleReminder();
+    }
+  }
+
+  Future<void> _scheduleReminder() async {
+    await NotificationService.instance.scheduleDailyReminder(
+      hour: _reminderTime.hour,
+      minute: _reminderTime.minute,
+      title: 'Maintain your Spiritual Streak! 🙏',
+      body:
+          'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
+    );
+  }
+
   // Legacy/Compatibility method for single select (used by UI if not fully updated yet or for simple calls)
   Future<void> setRandomShlokaSource(int listId) async {
     // Treat as "Select Only This"
     await setRandomShlokaSources({listId});
+  }
+
+  Future<void> dismissReminderNudge() async {
+    _reminderNudgeDismissed = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('reminder_nudge_dismissed', true);
   }
 }

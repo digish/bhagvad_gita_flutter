@@ -31,6 +31,7 @@ import 'providers/ask_gita_provider.dart';
 
 import 'services/remote_config_service.dart';
 import 'services/timing_service.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   // <-- Make main async
@@ -52,9 +53,10 @@ Future<void> main() async {
   await RemoteConfigService.fetchConfig();
 
   // Initialize Karaoke Timings
-  // Fire and forget, or await if critical. It's fast, so we can await.
-  // Import handled via auto-import if possible, or I need to add import.
   await TimingService.loadTimings();
+
+  // Initialize Notifications
+  await NotificationService.instance.init();
 
   runApp(const AppInitializer());
 }

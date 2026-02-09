@@ -4,17 +4,22 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/image_generator_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../widgets/lotus.dart';
+import '../../models/soul_status.dart';
 
 class ImageCreatorScreen extends StatefulWidget {
-  final String text;
+  final String? text; // Make optional for achievements
   final String? translation;
   final String? source;
+  final int? streak;
+  final SoulStatus? achievementStatus;
 
   const ImageCreatorScreen({
     super.key,
-    required this.text,
+    this.text,
     this.translation,
     this.source,
+    this.streak,
+    this.achievementStatus,
   });
 
   @override
@@ -229,84 +234,9 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                             )
                           : null,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.text
-                              .replaceAll(
-                                RegExp(r'<c>', caseSensitive: false),
-                                '\n',
-                              )
-                              .replaceAll('*', '\n'),
-                          textAlign: TextAlign.center,
-                          style: _isSerif
-                              ? GoogleFonts.notoSerif(
-                                  fontSize: _fontSize,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: const [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: Colors.black45,
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ],
-                                )
-                              : GoogleFonts.outfit(
-                                  fontSize: _fontSize,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: const [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: Colors.black45,
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                        if (_showTranslation && widget.translation != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            widget.translation!,
-                            textAlign: TextAlign.center,
-                            style: _isSerif
-                                ? GoogleFonts.notoSerif(
-                                    fontSize: 16,
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontStyle: FontStyle.italic,
-                                  )
-                                : GoogleFonts.outfit(
-                                    fontSize: 16,
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                          ),
-                        ],
-                        if (widget.source != null) ...[
-                          const SizedBox(height: 24),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              widget.source!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    child: widget.achievementStatus != null
+                        ? _buildAchievementContent()
+                        : _buildWisdomContent(),
                   ),
                 ),
               ),
@@ -415,85 +345,91 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             const SizedBox(height: 24),
           ],
 
-          // 1. Text Options Group
-          _buildControlGroup('Typography', [
-            // Font Selection Toggle
-            Row(
-              children: [
-                const Icon(
-                  Icons.font_download_outlined,
-                  color: Colors.white54,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                const Text('Style', style: TextStyle(color: Colors.white70)),
-                const Spacer(),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      label: Text('Serif'),
-                      icon: Icon(Icons.menu_book),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      label: Text('Sans'),
-                      icon: Icon(Icons.art_track),
-                    ),
-                  ],
-                  selected: {_isSerif},
-                  onSelectionChanged: (val) =>
-                      setState(() => _isSerif = val.first),
-                  style: SegmentedButton.styleFrom(
-                    backgroundColor: Colors.grey[850],
-                    selectedBackgroundColor: Colors.orange.withOpacity(0.2),
-                    selectedForegroundColor: Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Font Size Slider
-            Row(
-              children: [
-                const Icon(Icons.format_size, color: Colors.white54, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Slider(
-                    value: _fontSize,
-                    min: 14,
-                    max: 48,
-                    activeColor: Colors.orange,
-                    onChanged: (val) => setState(() => _fontSize = val),
-                  ),
-                ),
-              ],
-            ),
-            if (widget.translation != null &&
-                widget.translation!.isNotEmpty) ...[
-              const SizedBox(height: 16),
+          // 1. Text Options Group (Hidden for Achievements)
+          if (widget.achievementStatus == null)
+            _buildControlGroup('Typography', [
+              // Font Selection Toggle
               Row(
                 children: [
                   const Icon(
-                    Icons.menu_book_rounded,
+                    Icons.font_download_outlined,
                     color: Colors.white54,
                     size: 20,
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Show Translation',
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  const Text('Style', style: TextStyle(color: Colors.white70)),
                   const Spacer(),
-                  Switch(
-                    value: _showTranslation,
-                    onChanged: (val) => setState(() => _showTranslation = val),
-                    activeColor: Colors.orange,
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Serif'),
+                        icon: Icon(Icons.menu_book),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Sans'),
+                        icon: Icon(Icons.art_track),
+                      ),
+                    ],
+                    selected: {_isSerif},
+                    onSelectionChanged: (val) =>
+                        setState(() => _isSerif = val.first),
+                    style: SegmentedButton.styleFrom(
+                      backgroundColor: Colors.grey[850],
+                      selectedBackgroundColor: Colors.orange.withOpacity(0.2),
+                      selectedForegroundColor: Colors.orange,
+                    ),
                   ),
                 ],
               ),
-            ],
-          ]),
+              const SizedBox(height: 16),
+              // Font Size Slider
+              Row(
+                children: [
+                  const Icon(
+                    Icons.format_size,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Slider(
+                      value: _fontSize,
+                      min: 14,
+                      max: 48,
+                      activeColor: Colors.orange,
+                      onChanged: (val) => setState(() => _fontSize = val),
+                    ),
+                  ),
+                ],
+              ),
+              if (widget.translation != null &&
+                  widget.translation!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.menu_book_rounded,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Show Translation',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: _showTranslation,
+                      onChanged: (val) =>
+                          setState(() => _showTranslation = val),
+                      activeColor: Colors.orange,
+                    ),
+                  ],
+                ),
+              ],
+            ]),
 
           // 2. Theme & Effects Group
           _buildControlGroup('Aesthetics', [
@@ -695,6 +631,160 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildWisdomContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          (widget.text ?? '')
+              .replaceAll(RegExp(r'<c>', caseSensitive: false), '\n')
+              .replaceAll('*', '\n'),
+          textAlign: TextAlign.center,
+          style: _isSerif
+              ? GoogleFonts.notoSerif(
+                  fontSize: _fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [
+                    Shadow(
+                      blurRadius: 10,
+                      color: Colors.black45,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                )
+              : GoogleFonts.outfit(
+                  fontSize: _fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [
+                    Shadow(
+                      blurRadius: 10,
+                      color: Colors.black45,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+        ),
+        if (_showTranslation && widget.translation != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            widget.translation!,
+            textAlign: TextAlign.center,
+            style: _isSerif
+                ? GoogleFonts.notoSerif(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                    fontStyle: FontStyle.italic,
+                  )
+                : GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                    fontStyle: FontStyle.italic,
+                  ),
+          ),
+        ],
+        if (widget.source != null) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              widget.source!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAchievementContent() {
+    final status = widget.achievementStatus!;
+    final streak = widget.streak ?? 0;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 1. Large Emblem
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: status.imageAssetName != null
+              ? Image.asset(
+                  'assets/soul_evolution/${status.imageAssetName}',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                )
+              : Icon(status.icon, size: 80, color: Colors.white),
+        ),
+        const SizedBox(height: 32),
+
+        // 2. Streak Number
+        Column(
+          children: [
+            Text(
+              '$streak',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 64,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Orbitron',
+                letterSpacing: 2,
+              ),
+            ),
+            Text(
+              'DAY STREAK',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 40),
+
+        // 3. Status Title & Description
+        Text(
+          status.title.toUpperCase(),
+          style: GoogleFonts.outfit(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            status.description,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.8),
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

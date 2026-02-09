@@ -20,6 +20,7 @@ import '../../services/ad_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/credit_provider.dart';
+import '../../services/notification_service.dart';
 import '../widgets/simple_gradient_background.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -221,6 +222,94 @@ class SettingsScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 16),
+
+                              // --- Daily Wisdom Reminders (Push) ---
+                              _buildSectionHeader('Reminders'),
+                              Card(
+                                color: Theme.of(context).cardTheme.color,
+                                elevation: 4,
+                                child: Column(
+                                  children: [
+                                    SwitchListTile(
+                                      secondary: CircleAvatar(
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.1),
+                                        child: Icon(
+                                          Icons.notifications_active_outlined,
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                      ),
+                                      title: const Text(
+                                        'Daily Wisdom Reminder',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        'Get a nudge at your preferred time.',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      value: settings.reminderEnabled,
+                                      onChanged: (bool value) async {
+                                        final success = await settings
+                                            .setReminderEnabled(value);
+                                        if (!success && value) {
+                                          if (context.mounted) {
+                                            _showNotificationPermissionDialog(
+                                              context,
+                                            );
+                                          }
+                                        }
+                                      },
+                                      activeColor: Theme.of(
+                                        context,
+                                      ).primaryColor,
+                                    ),
+                                    if (settings.reminderEnabled) ...[
+                                      const Divider(height: 1, indent: 72),
+                                      ListTile(
+                                        leading: const SizedBox(
+                                          width: 40,
+                                          height: 40,
+                                        ),
+                                        title: const Text(
+                                          'Reminder Time',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          settings.reminderTime.format(context),
+                                          style: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        trailing: const Icon(Icons.access_time),
+                                        onTap: () async {
+                                          final TimeOfDay? picked =
+                                              await showTimePicker(
+                                                context: context,
+                                                initialTime:
+                                                    settings.reminderTime,
+                                              );
+                                          if (picked != null) {
+                                            settings.setReminderTime(picked);
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
                               const SizedBox(height: 32),
 
                               // --- Content Section ---
@@ -1007,6 +1096,56 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showNotificationPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off_outlined, color: Colors.orange),
+              SizedBox(width: 12),
+              Text('Notifications Blocked'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'It seems notifications are disabled for this app. We need them to send you daily wisdom reminders.',
+              ),
+              SizedBox(height: 16),
+              const Text(
+                'Please enable them in your system settings to maintain your spiritual streak!',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                NotificationService.instance.openNotificationSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Open Settings'),
             ),
           ],
         );

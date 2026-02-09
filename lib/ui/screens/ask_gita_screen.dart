@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:provider/provider.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/ask_gita_provider.dart';
@@ -167,15 +167,15 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Running low on Credits?'),
+        title: const Text('Out of divine credits?'),
         content: const Text(
           'Gita AI uses advanced technology which requires server resources.\n\n'
-          'You have used your free daily credits. Would you like to earn more by performing a small Karma?',
+          'Would you like to replenish your credits immediately by performing a small Karma?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Wait for Tomorrow'),
+            child: const Text('Maybe Later'),
           ),
           FilledButton.icon(
             icon: const Icon(Icons.play_circle_filled),

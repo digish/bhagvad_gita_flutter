@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +26,8 @@ import '../../providers/bookmark_provider.dart';
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
 import '../../services/home_widget_service.dart';
+import '../../models/soul_status.dart';
+import 'image_creator_screen.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -72,6 +75,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   bool? _isBackgroundRequested;
   Set<int>? _lastKnownSources; // Cache for change detection
   bool _isAiMode = false;
+  int? _debugStreakOverride; // 🧪 Persist debug streak across screen
 
   @override
   void initState() {
@@ -116,8 +120,59 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         if (mounted) {
           _loadRandomShloka();
         }
+
+        // --- NEW: Check for Soul Status Message ---
+        if (settings.lastSoulStatusMessage != null) {
+          final message = settings.lastSoulStatusMessage!;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showMayaDialog(context, message, settings);
+            }
+          });
+        }
       });
     }
+  }
+
+  void _showMayaDialog(
+    BuildContext context,
+    String message,
+    SettingsProvider settings,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.amberAccent, width: 1),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.sync_problem, color: Colors.amberAccent),
+            SizedBox(width: 12),
+            Text('Maya Check!', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              settings.clearSoulStatusMessage();
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'I am back on the path',
+              style: TextStyle(color: Colors.amberAccent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -419,8 +474,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                         },
                                       ),
                                     if (settings.showRandomShloka &&
-                                        !shouldShowResults)
+                                        !shouldShowResults) ...[
+                                      _buildSoulStatusChip(settings),
+                                      if (!settings.reminderEnabled)
+                                        _buildReminderNudge(settings),
                                       _buildRandomShlokaCard(),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -923,6 +982,464 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     );
   }
 
+  Widget _buildSoulStatusChip(SettingsProvider settings) {
+    final int displayStreak = (kDebugMode && _debugStreakOverride != null)
+        ? _debugStreakOverride!
+        : settings.dailyStreak;
+    final status = SoulStatus.getStatus(displayStreak);
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
+      child: GestureDetector(
+        onTap: () => _showEvolutionRoadmap(context, settings),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSimpleLight
+                ? Colors.white.withOpacity(0.6)
+                : Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: status.color.withOpacity(0.5),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: status.color.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: status.imageAssetName != null
+                    ? Image.asset(
+                        'assets/soul_evolution/${status.imageAssetName}',
+                        fit: BoxFit.contain,
+                      )
+                    : Icon(status.icon, color: status.color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    status.title,
+                    style: TextStyle(
+                      color: isSimpleLight
+                          ? Colors.brown.shade900
+                          : Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${displayStreak} Day Streak',
+                    style: TextStyle(
+                      color: isSimpleLight
+                          ? Colors.brown.shade700
+                          : Colors.white60,
+                      fontSize: 10,
+                    ),
+                  ),
+                  if (kDebugMode && _debugStreakOverride != null)
+                    const Text(
+                      'DEBUG MODE',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEvolutionRoadmap(BuildContext context, SettingsProvider settings) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final int displayStreak =
+              _debugStreakOverride ?? settings.dailyStreak;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 40,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.amberAccent.withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 24,
+                      right: 16,
+                      top: 24,
+                      bottom: 20,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.auto_awesome,
+                                    color: Colors.amberAccent,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'AURA ASCENT',
+                                    style: TextStyle(
+                                      color: Colors.amberAccent.withOpacity(
+                                        0.8,
+                                      ),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 3,
+                                    ),
+                                  ),
+                                  if (kDebugMode) ...[
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withOpacity(
+                                          0.2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'DEBUG',
+                                        style: TextStyle(
+                                          color: Colors.redAccent,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.baseline,
+                                          textBaseline: TextBaseline.alphabetic,
+                                          children: [
+                                            Flexible(
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  '$displayStreak',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 48,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily: 'Orbitron',
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'DAY STREAK',
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(
+                                                  0.5,
+                                                ),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          SoulStatus.getStatus(
+                                            displayStreak,
+                                          ).title,
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(
+                                              0.35,
+                                            ),
+                                            fontSize: 12,
+                                            fontStyle: FontStyle.italic,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Big last achieved emblem
+                                  Builder(
+                                    builder: (context) {
+                                      final status = SoulStatus.getStatus(
+                                        displayStreak,
+                                      );
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 12,
+                                        ),
+                                        child: status.imageAssetName != null
+                                            ? Image.asset(
+                                                'assets/soul_evolution/${status.imageAssetName}',
+                                                width: 72,
+                                                height: 72,
+                                                fit: BoxFit.contain,
+                                              )
+                                            : Icon(
+                                                status.icon,
+                                                size: 50,
+                                                color: Colors.amberAccent
+                                                    .withOpacity(0.8),
+                                              ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              if (kDebugMode)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: SliderTheme(
+                                    data: SliderThemeData(
+                                      trackHeight: 2,
+                                      thumbColor: Colors.redAccent,
+                                      activeTrackColor: Colors.redAccent
+                                          .withOpacity(0.5),
+                                      inactiveTrackColor: Colors.white10,
+                                      overlayColor: Colors.redAccent
+                                          .withOpacity(0.1),
+                                    ),
+                                    child: Slider(
+                                      value: displayStreak.toDouble(),
+                                      min: 0,
+                                      max: 365,
+                                      divisions: 365,
+                                      label: '$displayStreak Days',
+                                      onChanged: (val) {
+                                        setDialogState(() {
+                                          _debugStreakOverride = val.toInt();
+                                        });
+                                        // 🧪 Also update parent screen
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.white54,
+                            size: 20,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Roadmap List
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: SoulStatus.allMilestones.asMap().entries.map((
+                          entry,
+                        ) {
+                          final index = entry.key;
+                          final milestone = entry.value;
+                          final isReached =
+                              displayStreak >= milestone.threshold;
+                          final currentStatus = SoulStatus.getStatus(
+                            displayStreak,
+                          );
+                          final isCurrent =
+                              currentStatus.title == milestone.title;
+                          final isLast =
+                              index == SoulStatus.allMilestones.length - 1;
+
+                          return _RoadmapItem(
+                            milestone: milestone,
+                            isReached: isReached,
+                            isCurrent: isCurrent,
+                            isLast: isLast,
+                            streak: displayStreak,
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  // Footer Actions
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Builder(
+                            builder: (btnContext) {
+                              return ElevatedButton.icon(
+                                onPressed: () {
+                                  final status = SoulStatus.getStatus(
+                                    displayStreak,
+                                  );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ImageCreatorScreen(
+                                        streak: displayStreak,
+                                        achievementStatus: status,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.share),
+                                label: const Text('Share Progress'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amberAccent,
+                                  foregroundColor: Colors.black,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildReminderNudge(SettingsProvider settings) {
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+
+    if (settings.reminderNudgeDismissed) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 24, right: 24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSimpleLight
+              ? Colors.pink.withOpacity(0.05)
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              onTap: () {
+                settings.setReminderEnabled(true);
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.notification_add,
+                      size: 14,
+                      color: isSimpleLight ? Colors.pink : Colors.amberAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Remind me daily to maintain my streak',
+                      style: TextStyle(
+                        color: isSimpleLight
+                            ? Colors.pink[800]
+                            : Colors.amberAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: () => settings.dismissReminderNudge(),
+              icon: Icon(
+                Icons.close,
+                size: 14,
+                color: isSimpleLight ? Colors.pink[200] : Colors.white24,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              splashRadius: 12,
+              tooltip: 'Dismiss',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Random Shloka Logic & UI
   ShlokaResult? _randomShloka;
   String _randomShlokaListName = '';
@@ -1391,4 +1908,303 @@ class _BubbleTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RoadmapItem extends StatelessWidget {
+  final SoulStatus milestone;
+  final bool isReached;
+  final bool isCurrent;
+  final bool isLast;
+  final int streak;
+
+  const _RoadmapItem({
+    required this.milestone,
+    required this.isReached,
+    required this.isCurrent,
+    required this.isLast,
+    required this.streak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Reached stages: Big Golden Trophy + Sudarshan Chakra
+    // Future stages: Big Icon
+    final double outerCircleSize = 96.0;
+    // final double iconSize = 24.0; // This variable was unused, removed for linting.
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vertical Line & Dot
+          Column(
+            children: [
+              SizedBox(
+                width: outerCircleSize,
+                height: outerCircleSize,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (isCurrent)
+                      _SudarshanChakra(
+                        size: 96,
+                        color: Colors.amber,
+                        isSpinning: true,
+                      ),
+                    Container(
+                      width: 76,
+                      height: 76,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors
+                            .transparent, // Background removed as requested
+                        shape: BoxShape.circle,
+                        border: isCurrent
+                            ? Border.all(
+                                color: Colors.white.withOpacity(0.5),
+                                width: 1,
+                              )
+                            : null,
+                        boxShadow: isReached
+                            ? [
+                                BoxShadow(
+                                  color: milestone.color.withOpacity(0.4),
+                                  blurRadius: 15,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: milestone.imageAssetName != null
+                            ? ColorFiltered(
+                                colorFilter: isReached
+                                    ? const ColorFilter.mode(
+                                        Colors.transparent,
+                                        BlendMode.dst,
+                                      )
+                                    : const ColorFilter.matrix([
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                      ]),
+                                child: Image.asset(
+                                  'assets/soul_evolution/${milestone.imageAssetName}',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(
+                                        isReached
+                                            ? Icons.emoji_events
+                                            : milestone.icon,
+                                        size: 40,
+                                        color: isReached
+                                            ? Colors.amberAccent
+                                            : Colors.white24,
+                                      ),
+                                ),
+                              )
+                            : Icon(
+                                isReached ? Icons.emoji_events : milestone.icon,
+                                size: 40,
+                                color: isReached
+                                    ? Colors.amberAccent
+                                    : Colors.white24,
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: SizedBox(
+                    width: outerCircleSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 6,
+                          color: isReached
+                              ? milestone.color.withOpacity(0.5)
+                              : Colors.grey[800],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(width: 32),
+
+          // Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 48.0, top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    milestone.title,
+                    style: TextStyle(
+                      color: isReached ? Colors.white : Colors.white38,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    milestone.description,
+                    style: TextStyle(
+                      color: isReached ? Colors.white70 : Colors.white24,
+                      fontSize: 13,
+                      fontStyle: isReached ? FontStyle.italic : null,
+                    ),
+                  ),
+                  if (!isReached) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '${milestone.threshold - streak} days to go',
+                      style: const TextStyle(
+                        color: Colors.amberAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SudarshanChakra extends StatefulWidget {
+  final double size;
+  final Color color;
+  final bool isSpinning;
+
+  const _SudarshanChakra({
+    required this.size,
+    required this.color,
+    this.isSpinning = true,
+  });
+
+  @override
+  State<_SudarshanChakra> createState() => _SudarshanChakraState();
+}
+
+class _SudarshanChakraState extends State<_SudarshanChakra>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 4),
+      vsync: this,
+    );
+    if (widget.isSpinning) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_SudarshanChakra oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSpinning != oldWidget.isSpinning) {
+      if (widget.isSpinning) {
+        _controller.repeat();
+      } else {
+        _controller.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _controller.value * 2.0 * math.pi,
+          child: CustomPaint(
+            size: Size(widget.size, widget.size),
+            painter: _ChakraPainter(color: widget.color),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChakraPainter extends CustomPainter {
+  final Color color;
+  _ChakraPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final paint = Paint()
+      ..color = color.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Outer circle
+    canvas.drawCircle(center, radius, paint);
+
+    // Spokes/Blades
+    final int blades = 12;
+    for (int i = 0; i < blades; i++) {
+      final double angle = (i * 2 * math.pi) / blades;
+      final Offset p1 = Offset(
+        center.dx + (radius - 4) * math.cos(angle),
+        center.dy + (radius - 4) * math.sin(angle),
+      );
+      final Offset p2 = Offset(
+        center.dx + radius * math.cos(angle + 0.1),
+        center.dy + radius * math.sin(angle + 0.1),
+      );
+      canvas.drawLine(p1, p2, paint);
+    }
+
+    // Inner glowing ring
+    canvas.drawCircle(
+      center,
+      radius - 8,
+      paint..color = color.withOpacity(0.3),
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

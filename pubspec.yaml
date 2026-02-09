@@ -61,8 +61,9 @@ dependencies:
   uuid: ^4.4.2
   
   # UI
+  flutter_local_notifications: ^18.0.1
   flutter_speed_dial: ^7.0.0 
-  flutter_markdown: ^0.7.1 # For Chat UI
+  flutter_markdown_plus: ^1.0.7 # Successor to flutter_markdown
   scrollable_positioned_list: ^0.3.8
   just_audio: ^0.10.4
   audio_session: ^0.1.19 
@@ -127,6 +128,7 @@ flutter:
     - assets/audio/Chapter16_audio/
     - assets/audio/Chapter17_audio/
     - assets/audio/Chapter18_audio/
+    - assets/soul_evolution/
     
 
   fonts:
