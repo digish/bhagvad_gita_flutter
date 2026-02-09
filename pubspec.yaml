@@ -73,7 +73,7 @@ dependencies:
   home_widget: ^0.9.0
   google_generative_ai: ^0.4.6 # For Gemini API
   google_mobile_ads: ^5.3.0
-  qr_flutter: ^4.1.0
+  pretty_qr_code: ^3.6.0
 
 dev_dependencies:
   sqflite_common_ffi: ^2.3.3 # For running DB script on desktop

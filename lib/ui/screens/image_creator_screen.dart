@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/image_generator_service.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 import '../widgets/lotus.dart';
 import '../../models/soul_status.dart';
 
@@ -211,7 +211,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                 left: 32,
                 right: 32,
                 top: 40,
-                bottom: 110, // More bottom padding for taller branding block
+                bottom: 140, // More bottom padding for larger branding block
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
@@ -271,8 +271,9 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                           borderRadius: BorderRadius.circular(6),
                           child: Image.asset(
                             'assets/icon/icon_square.png',
-                            width: 20,
-                            height: 20,
+                            width:
+                                18, // Slightly more compact to give room to QR
+                            height: 18,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -280,7 +281,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                           'Shrimad Bhagavad Gita',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 9, // Slightly smaller app name
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
                           ),
@@ -288,13 +289,15 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   // QR Code
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(
+                      6,
+                    ), // Extra safe margin for scanning
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
@@ -303,13 +306,19 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                         ),
                       ],
                     ),
-                    child: QrImageView(
-                      data:
-                          'https://digish.github.io/project/index.html#bhagvadgita',
-                      version: QrVersions.auto,
-                      size: 32.0, // More compact QR
-                      backgroundColor: Colors.white,
-                      padding: EdgeInsets.zero,
+                    child: SizedBox(
+                      width: 56, // Significantly larger for easy scanning
+                      height: 56,
+                      child: PrettyQrView.data(
+                        data:
+                            'https://digish.github.io/project/index.html#bhagvadgita',
+                        decoration: const PrettyQrDecoration(
+                          image: PrettyQrDecorationImage(
+                            image: AssetImage('assets/icon/icon_square.png'),
+                          ),
+                          shape: PrettyQrSmoothSymbol(color: Colors.black),
+                        ),
+                      ),
                     ),
                   ),
                 ],
