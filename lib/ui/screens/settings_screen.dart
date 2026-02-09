@@ -830,8 +830,13 @@ class SettingsScreen extends StatelessWidget {
                                                           ).showSnackBar(
                                                             const SnackBar(
                                                               content: Text(
-                                                                'Ad not ready yet. Please try again.',
+                                                                'The rewards system is under development and will be enabled soon. Please try again later.',
                                                               ),
+                                                              backgroundColor:
+                                                                  Colors.orange,
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
                                                             ),
                                                           );
                                                         },

@@ -204,8 +204,22 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
               'Blessings Received! +${CreditProvider.adRewardAmount} Credits Added.',
             ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
+      },
+      onAdFailedToShow: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'The rewards system is under development and will be enabled soon. Please try again later.',
+              ),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       },
     );
   }
