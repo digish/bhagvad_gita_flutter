@@ -501,15 +501,21 @@ class _ChapterEmblemHeader extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white.withOpacity(0.9)
-                  : Colors.white24,
-              width: 2,
+              color: const Color(0xFFFFD700).withOpacity(0.6), // Gold tint
+              width: 2.5,
+            ),
+            gradient: RadialGradient(
+              colors: [
+                Colors.white.withOpacity(0.9),
+                Colors.amber.withOpacity(0.4),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.6, 1.0],
             ),
             boxShadow: [
               BoxShadow(
                 // Changed to a bright, golden glow
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                color: Colors.amber.withOpacity(0.8),
                 spreadRadius: 4,
                 blurRadius: 15.0,
                 offset: Offset.zero,
@@ -517,9 +523,15 @@ class _ChapterEmblemHeader extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Image.asset(
-            'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-            fit: BoxFit.cover,
+          child: ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.25),
+              BlendMode.screen,
+            ),
+            child: Image.asset(
+              'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+              fit: BoxFit.cover,
+            ),
           ),
         ),
       ),
@@ -875,7 +887,18 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
       height: currentSize,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.9), width: 2),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withOpacity(0.6), // Gold tint
+          width: 2.5,
+        ),
+        gradient: RadialGradient(
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Colors.amber.withOpacity(0.4),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.6, 1.0],
+        ),
         boxShadow: [
           BoxShadow(
             // Animate the glow properties
@@ -887,9 +910,15 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-        fit: BoxFit.cover,
+      child: ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          Colors.white.withOpacity(0.25),
+          BlendMode.screen,
+        ),
+        child: Image.asset(
+          'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

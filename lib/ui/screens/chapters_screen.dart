@@ -101,11 +101,11 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                     ),
                     gradient: RadialGradient(
                       colors: [
-                        Colors.white.withOpacity(0.8),
-                        Colors.amber.withOpacity(0.2),
+                        Colors.white.withOpacity(0.9),
+                        Colors.amber.withOpacity(0.4),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.5, 1.0],
+                      stops: const [0.0, 0.6, 1.0],
                     ),
                     image: DecorationImage(
                       image: AssetImage(
@@ -113,7 +113,7 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                       ),
                       fit: BoxFit.cover,
                       colorFilter: ColorFilter.mode(
-                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.25),
                         BlendMode.screen,
                       ),
                     ),
