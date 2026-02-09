@@ -77,6 +77,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   Set<int>? _lastKnownSources; // Cache for change detection
   bool _isAiMode = false;
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
+  String? _lastProcessedMayaMessage; // 🛡️ Prevent duplicate dialogs
 
   @override
   void initState() {
@@ -129,11 +130,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     if (settings.lastSoulStatusMessage != null &&
         settings.streakSystemEnabled) {
       final message = settings.lastSoulStatusMessage!;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _showMayaDialog(context, message, settings);
-        }
-      });
+      // Only show if we haven't already processed this exact message
+      if (message != _lastProcessedMayaMessage) {
+        _lastProcessedMayaMessage = message;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showMayaDialog(context, message, settings);
+          }
+        });
+      }
+    } else {
+      // Clear tracking if no message is present
+      _lastProcessedMayaMessage = null;
     }
   }
 
@@ -1288,70 +1296,72 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                   ),
                                 ),
                               // Debug action buttons
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () async {
-                                          await settings.debugAdvanceDay();
-                                          setDialogState(() {});
-                                          setState(() {});
-                                        },
-                                        icon: const Icon(
-                                          Icons.add_circle_outline,
-                                          size: 14,
-                                        ),
-                                        label: const Text(
-                                          '+1 Day',
-                                          style: TextStyle(fontSize: 11),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.greenAccent,
-                                          side: BorderSide(
-                                            color: Colors.greenAccent
-                                                .withOpacity(0.5),
+                              if (kDebugMode)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await settings.debugAdvanceDay();
+                                            setDialogState(() {});
+                                            setState(() {});
+                                          },
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                            size: 14,
                                           ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                          label: const Text(
+                                            '+1 Day',
+                                            style: TextStyle(fontSize: 11),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () async {
-                                          await settings.debugMissDays(1);
-                                          setDialogState(() {});
-                                          setState(() {});
-                                        },
-                                        icon: const Icon(
-                                          Icons.remove_circle_outline,
-                                          size: 14,
-                                        ),
-                                        label: const Text(
-                                          'Miss a Day',
-                                          style: TextStyle(fontSize: 11),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.orangeAccent,
-                                          side: BorderSide(
-                                            color: Colors.orangeAccent
-                                                .withOpacity(0.5),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.greenAccent,
+                                            side: BorderSide(
+                                              color: Colors.greenAccent
+                                                  .withOpacity(0.5),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await settings.debugMissDays(1);
+                                            setDialogState(() {});
+                                            setState(() {});
+                                          },
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                            size: 14,
+                                          ),
+                                          label: const Text(
+                                            'Miss a Day',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.orangeAccent,
+                                            side: BorderSide(
+                                              color: Colors.orangeAccent
+                                                  .withOpacity(0.5),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
