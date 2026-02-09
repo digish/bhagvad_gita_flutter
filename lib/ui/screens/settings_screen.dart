@@ -101,6 +101,7 @@ class SettingsScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
+                                        flex: 2,
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -122,31 +123,36 @@ class SettingsScreen extends StatelessWidget {
                                           ],
                                         ),
                                       ),
-                                      DropdownButton<String>(
-                                        value: settings.script,
-                                        underline: const SizedBox(),
-                                        onChanged: (String? newValue) {
-                                          if (newValue != null) {
-                                            settings.setScript(newValue);
-                                          }
-                                        },
-                                        items: SettingsProvider
-                                            .supportedScripts
-                                            .entries
-                                            .map((entry) {
-                                              return DropdownMenuItem<String>(
-                                                value: entry.key,
-                                                child: Text(
-                                                  entry.value,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.bodyMedium,
-                                                ),
-                                              );
-                                            })
-                                            .toList(),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        flex: 2,
+                                        child: DropdownButton<String>(
+                                          value: settings.script,
+                                          underline: const SizedBox(),
+                                          isExpanded: true,
+                                          onChanged: (String? newValue) {
+                                            if (newValue != null) {
+                                              settings.setScript(newValue);
+                                            }
+                                          },
+                                          items: SettingsProvider
+                                              .supportedScripts
+                                              .entries
+                                              .map((entry) {
+                                                return DropdownMenuItem<String>(
+                                                  value: entry.key,
+                                                  child: Text(
+                                                    entry.value,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.bodyMedium,
+                                                  ),
+                                                );
+                                              })
+                                              .toList(),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -177,6 +183,7 @@ class SettingsScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
+                                        flex: 2,
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -200,24 +207,36 @@ class SettingsScreen extends StatelessWidget {
                                           ],
                                         ),
                                       ),
-                                      DropdownButton<String>(
-                                        value: settings.language,
-                                        underline: const SizedBox(),
-                                        onChanged: (String? newValue) {
-                                          if (newValue != null) {
-                                            settings.setLanguage(newValue);
-                                          }
-                                        },
-                                        items: SettingsProvider
-                                            .supportedLanguages
-                                            .entries
-                                            .map((entry) {
-                                              return DropdownMenuItem<String>(
-                                                value: entry.key,
-                                                child: Text(entry.value),
-                                              );
-                                            })
-                                            .toList(),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        flex: 2,
+                                        child: DropdownButton<String>(
+                                          value: settings.language,
+                                          underline: const SizedBox(),
+                                          isExpanded: true,
+                                          onChanged: (String? newValue) {
+                                            if (newValue != null) {
+                                              settings.setLanguage(newValue);
+                                            }
+                                          },
+                                          items: SettingsProvider
+                                              .supportedLanguages
+                                              .entries
+                                              .map((entry) {
+                                                return DropdownMenuItem<String>(
+                                                  value: entry.key,
+                                                  child: Text(
+                                                    entry.value,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.bodyMedium,
+                                                  ),
+                                                );
+                                              })
+                                              .toList(),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -629,6 +648,7 @@ class SettingsScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
+                                        flex: 2,
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -650,28 +670,33 @@ class SettingsScreen extends StatelessWidget {
                                           ],
                                         ),
                                       ),
-                                      DropdownButton<ThemeMode>(
-                                        value: settings.themeMode,
-                                        underline: const SizedBox(),
-                                        onChanged: (ThemeMode? newValue) {
-                                          if (newValue != null) {
-                                            settings.setThemeMode(newValue);
-                                          }
-                                        },
-                                        items: const [
-                                          DropdownMenuItem(
-                                            value: ThemeMode.system,
-                                            child: Text('System'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: ThemeMode.light,
-                                            child: Text('Light'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: ThemeMode.dark,
-                                            child: Text('Dark'),
-                                          ),
-                                        ],
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        flex: 2,
+                                        child: DropdownButton<ThemeMode>(
+                                          value: settings.themeMode,
+                                          underline: const SizedBox(),
+                                          isExpanded: true,
+                                          onChanged: (ThemeMode? newValue) {
+                                            if (newValue != null) {
+                                              settings.setThemeMode(newValue);
+                                            }
+                                          },
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: ThemeMode.system,
+                                              child: Text('System'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ThemeMode.light,
+                                              child: Text('Light'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ThemeMode.dark,
+                                              child: Text('Dark'),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1212,24 +1237,26 @@ class SettingsScreen extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           title: const Text('Custom Gemini API Key'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Enter your personal Gemini API key. This will be stored only on your device and used instead of the app\'s default key.',
-                style: TextStyle(fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Gemini API Key',
-                  border: OutlineInputBorder(),
-                  hintText: 'AIzaSy...',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter your personal Gemini API key. This will be stored only on your device and used instead of the app\'s default key.',
+                  style: TextStyle(fontSize: 13),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Gemini API Key',
+                    border: OutlineInputBorder(),
+                    hintText: 'AIzaSy...',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             if (settings.customAiApiKey != null)
@@ -1275,21 +1302,23 @@ class SettingsScreen extends StatelessWidget {
             children: [
               Icon(Icons.notifications_off_outlined, color: Colors.orange),
               SizedBox(width: 12),
-              Text('Notifications Blocked'),
+              Flexible(child: Text('Notifications Blocked')),
             ],
           ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'It seems notifications are disabled for this app. We need them to send you daily wisdom reminders.',
-              ),
-              SizedBox(height: 16),
-              const Text(
-                'Please enable them in your system settings to maintain your spiritual streak!',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'It seems notifications are disabled for this app. We need them to send you daily wisdom reminders.',
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Please enable them in your system settings to maintain your spiritual streak!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1322,49 +1351,59 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Icon(Icons.widgets, color: Colors.amber),
             SizedBox(width: 12),
-            Text('Home Screen Widget'),
+            Flexible(
+              child: Text(
+                'Home Screen Widget',
+                style: TextStyle(fontSize: 18), // Slightly smaller if needed
+              ),
+            ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Add a widget to your home screen to see a new Shloka every day without opening the app.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 20),
-            _buildInstructionStep(
-              '1',
-              'On Home Screen, long press any empty area.',
-            ),
-            _buildInstructionStep('2', 'Tap the (+) or "Widgets" button.'),
-            _buildInstructionStep('3', 'Search for "Gita" and add the widget!'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add a widget to your home screen to see a new Shloka every day without opening the app.',
+                style: TextStyle(fontSize: 14),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.lightbulb, size: 16, color: Colors.amber),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Perfect for your morning commute or a quick moment of peace.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+              const SizedBox(height: 20),
+              _buildInstructionStep(
+                '1',
+                'On Home Screen, long press any empty area.',
+              ),
+              _buildInstructionStep('2', 'Tap the (+) or "Widgets" button.'),
+              _buildInstructionStep(
+                '3',
+                'Search for "Gita" and add the widget!',
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lightbulb, size: 16, color: Colors.amber),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Perfect for your morning commute or a quick moment of peace.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
