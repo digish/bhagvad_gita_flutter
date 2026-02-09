@@ -28,6 +28,7 @@ import '../theme/app_colors.dart';
 import '../../services/home_widget_service.dart';
 import '../../models/soul_status.dart';
 import 'image_creator_screen.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -1290,33 +1291,42 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
                   // Roadmap List
                   Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        children: SoulStatus.allMilestones.asMap().entries.map((
-                          entry,
-                        ) {
-                          final index = entry.key;
-                          final milestone = entry.value;
-                          final isReached =
-                              displayStreak >= milestone.threshold;
-                          final currentStatus = SoulStatus.getStatus(
-                            displayStreak,
-                          );
-                          final isCurrent =
-                              currentStatus.title == milestone.title;
-                          final isLast =
-                              index == SoulStatus.allMilestones.length - 1;
+                    child: Builder(
+                      builder: (context) {
+                        // Calculate current milestone index for auto-scroll
+                        final currentStatus = SoulStatus.getStatus(
+                          displayStreak,
+                        );
+                        final currentIndex = SoulStatus.allMilestones
+                            .indexWhere((m) => m.title == currentStatus.title);
 
-                          return _RoadmapItem(
-                            milestone: milestone,
-                            isReached: isReached,
-                            isCurrent: isCurrent,
-                            isLast: isLast,
-                            streak: displayStreak,
-                          );
-                        }).toList(),
-                      ),
+                        return ScrollablePositionedList.builder(
+                          itemCount: SoulStatus.allMilestones.length,
+                          initialScrollIndex: currentIndex >= 0
+                              ? currentIndex
+                              : 0,
+                          initialAlignment:
+                              0.3, // Position current item at 30% from top
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          itemBuilder: (context, index) {
+                            final milestone = SoulStatus.allMilestones[index];
+                            final isReached =
+                                displayStreak >= milestone.threshold;
+                            final isCurrent =
+                                currentStatus.title == milestone.title;
+                            final isLast =
+                                index == SoulStatus.allMilestones.length - 1;
+
+                            return _RoadmapItem(
+                              milestone: milestone,
+                              isReached: isReached,
+                              isCurrent: isCurrent,
+                              isLast: isLast,
+                              streak: displayStreak,
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
 
