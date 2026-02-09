@@ -1135,6 +1135,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                     ),
                                   ),
                                   if (kDebugMode) ...[
+                                    // Change to kDebugMode to re-enable debug badge
                                     const SizedBox(width: 12),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -1214,6 +1215,29 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
+                                        // Lifeline display
+                                        if (settings.availableLifelines >
+                                            0) ...[
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.favorite,
+                                                color: Colors.pink,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                '${settings.availableLifelines} ${settings.availableLifelines == 1 ? 'Lifeline' : 'Lifelines'}',
+                                                style: const TextStyle(
+                                                  color: Colors.pink,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -1274,6 +1298,71 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                     ),
                                   ),
                                 ),
+                              // Debug action buttons
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          await settings.debugAdvanceDay();
+                                          setDialogState(() {});
+                                          setState(() {});
+                                        },
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                          size: 14,
+                                        ),
+                                        label: const Text(
+                                          '+1 Day',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.greenAccent,
+                                          side: BorderSide(
+                                            color: Colors.greenAccent
+                                                .withOpacity(0.5),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          await settings.debugMissDays(1);
+                                          setDialogState(() {});
+                                          setState(() {});
+                                        },
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          size: 14,
+                                        ),
+                                        label: const Text(
+                                          'Miss a Day',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.orangeAccent,
+                                          side: BorderSide(
+                                            color: Colors.orangeAccent
+                                                .withOpacity(0.5),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1288,6 +1377,71 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                       ],
                     ),
                   ),
+
+                  // Peak Achievement Card
+                  if (settings.peakStreakCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.amber.withOpacity(0.2),
+                              Colors.orange.withOpacity(0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.amber.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.emoji_events,
+                              color: Colors.amber,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Peak Achievement',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[400],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${settings.peakMilestone.title} • Achieved ${settings.peakAchievementCount} ${settings.peakAchievementCount == 1 ? 'time' : 'times'}',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Max Streak: ${settings.peakStreakCount} Days',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.amber.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Roadmap List
                   Flexible(

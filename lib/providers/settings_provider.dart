@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/predefined_lists_data.dart';
 import '../models/soul_status.dart';
 import '../services/notification_service.dart';
+import '../services/daily_message_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -40,6 +41,33 @@ class SettingsProvider extends ChangeNotifier {
 
   String? _lastSoulStatusMessage;
   String? get lastSoulStatusMessage => _lastSoulStatusMessage;
+
+  bool _streakSystemEnabled = true;
+  bool get streakSystemEnabled => _streakSystemEnabled;
+
+  // --- Peak Achievement Tracking ---
+  int _peakStreakCount = 0;
+  int get peakStreakCount => _peakStreakCount;
+
+  int _peakAchievementCount = 0;
+  int get peakAchievementCount => _peakAchievementCount;
+
+  SoulStatus get peakMilestone {
+    // Find the milestone for the peak streak
+    for (int i = SoulStatus.allMilestones.length - 1; i >= 0; i--) {
+      if (_peakStreakCount >= SoulStatus.allMilestones[i].threshold) {
+        return SoulStatus.allMilestones[i];
+      }
+    }
+    return SoulStatus.allMilestones[0]; // Default to first milestone
+  }
+
+  // --- Automatic Lifeline System ---
+  int _availableLifelines = 0;
+  int get availableLifelines => _availableLifelines;
+
+  int _lastMilestoneThreshold =
+      0; // Track last milestone that granted lifelines
 
   // --- Daily Reminders ---
   bool _reminderEnabled = false;
@@ -255,6 +283,14 @@ class SettingsProvider extends ChangeNotifier {
     _reminderNudgeDismissed =
         prefs.getBool('reminder_nudge_dismissed') ?? false;
 
+    // Load Peak Achievement Data
+    _peakStreakCount = prefs.getInt('peak_streak_count') ?? 0;
+    _peakAchievementCount = prefs.getInt('peak_achievement_count') ?? 0;
+
+    // Load Lifeline Data
+    _availableLifelines = prefs.getInt('available_lifelines') ?? 0;
+    _lastMilestoneThreshold = prefs.getInt('last_milestone_threshold') ?? 0;
+
     // --- Update Daily Streak ---
     await _updateStreak(prefs);
 
@@ -287,20 +323,143 @@ class SettingsProvider extends ChangeNotifier {
       // Consecutive day!
       _dailyStreak = currentStreak + 1;
     } else {
-      // Streak broken :(
-      if (currentStreak >= 3) {
-        // Only set drop message if it was a significant streak
-        _lastSoulStatusMessage = SoulStatus.getDropMessage(currentStreak);
+      // Missed day(s)!
+      if (_availableLifelines > 0) {
+        // Use a lifeline - preserve streak
+        _availableLifelines--;
+        _dailyStreak = currentStreak; // Keep current streak
+
+        await prefs.setInt('available_lifelines', _availableLifelines);
+
+        _lastSoulStatusMessage =
+            '🛡️ Lifeline used! Your streak is protected. $_availableLifelines ${_availableLifelines == 1 ? 'lifeline' : 'lifelines'} remaining.';
         await prefs.setString(
           'last_soul_status_message',
           _lastSoulStatusMessage!,
         );
+      } else {
+        // No lifelines - streak breaks
+        if (currentStreak >= 3) {
+          _lastSoulStatusMessage = SoulStatus.getDropMessage(currentStreak);
+          await prefs.setString(
+            'last_soul_status_message',
+            _lastSoulStatusMessage!,
+          );
+        }
+        _dailyStreak = 1;
+        _lastMilestoneThreshold = 0;
+        await prefs.setInt('last_milestone_threshold', 0);
       }
-      _dailyStreak = 1;
     }
 
     await prefs.setString('last_opened_date', today);
     await prefs.setInt('daily_streak', _dailyStreak);
+
+    // Track peak achievements (Milestone-aware)
+    final currentStatus = _getCurrentMilestone(_dailyStreak);
+    final peakStatus = _getCurrentMilestone(_peakStreakCount);
+
+    if (_dailyStreak > _peakStreakCount) {
+      // New absolute record!
+      if (currentStatus.threshold > peakStatus.threshold) {
+        // Reached a brand new higher milestone category! Reset count to 1
+        _peakAchievementCount = 1;
+        await prefs.setInt('peak_achievement_count', 1);
+      }
+      // Update peak streak
+      _peakStreakCount = _dailyStreak;
+      await prefs.setInt('peak_streak_count', _peakStreakCount);
+    } else if (_dailyStreak == currentStatus.threshold &&
+        currentStatus.threshold == peakStatus.threshold &&
+        _dailyStreak > 0) {
+      // User just reached the START of their peak milestone category again!
+      if (difference == 1) {
+        // Only increment if advancing consecutively to the threshold
+        _peakAchievementCount++;
+        await prefs.setInt('peak_achievement_count', _peakAchievementCount);
+      }
+    }
+
+    // Grant lifelines on milestone reach (cap at 2)
+    if (currentStatus.threshold > _lastMilestoneThreshold &&
+        currentStatus.threshold > 0) {
+      // New milestone reached! Set lifelines to 2 (refill, don't stack)
+      _availableLifelines = 2;
+      _lastMilestoneThreshold = currentStatus.threshold;
+
+      await prefs.setInt('available_lifelines', _availableLifelines);
+      await prefs.setInt('last_milestone_threshold', _lastMilestoneThreshold);
+
+      // Set celebration message
+      _lastSoulStatusMessage =
+          '${currentStatus.title} achieved! 🎉 You have 2 lifelines to protect your streak!';
+      await prefs.setString(
+        'last_soul_status_message',
+        _lastSoulStatusMessage!,
+      );
+    }
+  }
+
+  // Helper method to get current milestone for a given streak
+  SoulStatus _getCurrentMilestone(int streak) {
+    for (int i = SoulStatus.allMilestones.length - 1; i >= 0; i--) {
+      if (streak >= SoulStatus.allMilestones[i].threshold) {
+        return SoulStatus.allMilestones[i];
+      }
+    }
+    return SoulStatus.allMilestones[0];
+  }
+
+  // DEBUG ONLY: Simulate advancing to the next day
+  Future<void> debugAdvanceDay() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Set last_opened_date to yesterday to simulate a day passing
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final yesterdayString = yesterday.toIso8601String().split('T')[0];
+    await prefs.setString('last_opened_date', yesterdayString);
+
+    // Trigger the streak update logic
+    await _updateStreak(prefs);
+
+    notifyListeners();
+  }
+
+  // DEBUG ONLY: Simulate missing a day (direct simulation, not date-based)
+  Future<void> debugMissDays(int daysToMiss) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Directly simulate the miss logic for each day
+    for (int i = 0; i < daysToMiss; i++) {
+      if (_availableLifelines > 0) {
+        // Use a lifeline - preserve streak
+        _availableLifelines--;
+        await prefs.setInt('available_lifelines', _availableLifelines);
+
+        _lastSoulStatusMessage =
+            '🛡️ Lifeline used! Your streak is protected. $_availableLifelines ${_availableLifelines == 1 ? 'lifeline' : 'lifelines'} remaining.';
+        await prefs.setString(
+          'last_soul_status_message',
+          _lastSoulStatusMessage!,
+        );
+      } else {
+        // No lifelines - streak breaks
+        if (_dailyStreak >= 3) {
+          _lastSoulStatusMessage = SoulStatus.getDropMessage(_dailyStreak);
+          await prefs.setString(
+            'last_soul_status_message',
+            _lastSoulStatusMessage!,
+          );
+        }
+        _dailyStreak = 1;
+        _lastMilestoneThreshold = 0;
+        await prefs.setInt('daily_streak', _dailyStreak);
+        await prefs.setInt('last_milestone_threshold', 0);
+        break; // Stop after streak breaks
+      }
+    }
+
+    notifyListeners();
   }
 
   Future<void> clearSoulStatusMessage() async {
@@ -439,13 +598,22 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setStreakSystemEnabled(bool newValue) async {
+    _streakSystemEnabled = newValue;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('streak_system_enabled', newValue);
+  }
+
   Future<void> _scheduleReminder() async {
+    // Get today's unique motivational message
+    final message = DailyMessageService.getTodaysMessage();
+
     await NotificationService.instance.scheduleDailyReminder(
       hour: _reminderTime.hour,
       minute: _reminderTime.minute,
       title: 'Maintain your Spiritual Streak! 🙏',
-      body:
-          'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
+      body: message,
     );
   }
 

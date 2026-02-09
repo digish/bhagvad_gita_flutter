@@ -22,6 +22,7 @@ import '../../providers/bookmark_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/notification_service.dart';
 import '../widgets/simple_gradient_background.dart';
+import 'package:flutter/foundation.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -304,6 +305,125 @@ class SettingsScreen extends StatelessWidget {
                                             settings.setReminderTime(picked);
                                           }
                                         },
+                                      ),
+                                    ],
+                                    // 🧪 DEBUG: Test notification buttons
+                                    if (kDebugMode &&
+                                        settings.reminderEnabled) ...[
+                                      const Divider(height: 1, indent: 72),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 72,
+                                          right: 16,
+                                          top: 12,
+                                          bottom: 12,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Test Notifications (Debug)',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: ElevatedButton.icon(
+                                                    onPressed: () async {
+                                                      await NotificationService
+                                                          .instance
+                                                          .showTestNotificationAfterDelay();
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'Notification in 5 sec! Background the app now! 🔔',
+                                                            ),
+                                                            duration: Duration(
+                                                              seconds: 4,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.timer,
+                                                      size: 16,
+                                                    ),
+                                                    label: const Text(
+                                                      'In 5 Sec',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.orange,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: ElevatedButton.icon(
+                                                    onPressed: () async {
+                                                      await NotificationService
+                                                          .instance
+                                                          .scheduleTestNotificationInOneMinute();
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'Notification scheduled for 1 min! ⏰',
+                                                            ),
+                                                            duration: Duration(
+                                                              seconds: 2,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.schedule,
+                                                      size: 16,
+                                                    ),
+                                                    label: const Text(
+                                                      'In 1 Min',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.deepOrange,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ],

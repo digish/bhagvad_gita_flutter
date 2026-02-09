@@ -2,6 +2,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'daily_message_service.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._internal();
@@ -103,6 +104,82 @@ class NotificationService {
 
   Future<void> cancelAll() async {
     await _notificationsPlugin.cancelAll();
+  }
+
+  /// Test method to show an immediate notification (for development/testing only)
+  Future<void> showTestNotification() async {
+    await _notificationsPlugin.show(
+      999, // Test notification ID
+      'Maintain your Spiritual Streak! 🙏',
+      DailyMessageService.getTodaysMessage(),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_wisdom_channel',
+          'Daily Wisdom Reminders',
+          channelDescription:
+              'Witty reminders to read the Gita and maintain your streak.',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
+  /// Test method to show a notification after 5 seconds (gives time to background the app)
+  Future<void> showTestNotificationAfterDelay() async {
+    final tz.TZDateTime scheduledTime = tz.TZDateTime.now(
+      tz.local,
+    ).add(const Duration(seconds: 5));
+
+    await _notificationsPlugin.zonedSchedule(
+      997, // Test delayed notification ID
+      'Maintain your Spiritual Streak! 🙏',
+      DailyMessageService.getTodaysMessage(),
+      scheduledTime,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_wisdom_channel',
+          'Daily Wisdom Reminders',
+          channelDescription:
+              'Witty reminders to read the Gita and maintain your streak.',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  /// Schedule a test notification exactly 1 minute from now (for testing)
+  Future<void> scheduleTestNotificationInOneMinute() async {
+    final tz.TZDateTime scheduledTime = tz.TZDateTime.now(
+      tz.local,
+    ).add(const Duration(minutes: 1));
+
+    await _notificationsPlugin.zonedSchedule(
+      998, // Test scheduled notification ID
+      'Maintain your Spiritual Streak! 🙏',
+      'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
+      scheduledTime,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_wisdom_channel',
+          'Daily Wisdom Reminders',
+          channelDescription:
+              'Witty reminders to read the Gita and maintain your streak.',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
