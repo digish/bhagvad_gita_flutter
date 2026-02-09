@@ -217,12 +217,16 @@ class ShlokaResultCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: titleColor,
-                          letterSpacing: 0.5,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: titleColor,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                       SizedBox(height: isCompact ? 4 : 8),

@@ -363,16 +363,20 @@ class FullShlokaCard extends StatelessWidget {
                               if (config.showSpeaker &&
                                   shloka.speaker != null &&
                                   shloka.speaker!.isNotEmpty)
-                                Text(
-                                  // Localize speaker
-                                  '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
-                                  style: theme.textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: primaryTextColor.withOpacity(0.9),
-                                    letterSpacing: 0.5,
+                                Expanded(
+                                  child: Text(
+                                    // Localize speaker
+                                    '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTextColor.withOpacity(0.9),
+                                      letterSpacing: 0.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-
+                              const SizedBox(width: 8),
                               // 2. Chapter & Shloka Index (Right)
                               if (config.showShlokIndex)
                                 Builder(
@@ -414,26 +418,33 @@ class FullShlokaCard extends StatelessWidget {
                                           '$chapLabel $chapNum, $vsLabel $shlokNum';
                                     }
 
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: accentColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: accentColor.withOpacity(0.3),
+                                    return Flexible(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
                                         ),
-                                      ),
-                                      child: Text(
-                                        text,
-                                        style: theme.textTheme.labelMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: accentColor,
-                                              letterSpacing: 0.6,
-                                            ),
+                                        decoration: BoxDecoration(
+                                          color: accentColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: accentColor.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            text,
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: accentColor,
+                                                  letterSpacing: 0.6,
+                                                ),
+                                          ),
+                                        ),
                                       ),
                                     );
                                   },

@@ -211,7 +211,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                 left: 32,
                 right: 32,
                 top: 40,
-                bottom: 80, // More bottom padding for App Island & QR
+                bottom: 110, // More bottom padding for taller branding block
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
@@ -242,79 +242,77 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
               ),
             ),
 
-            // Gita App Island (Bottom Gravity Center)
+            // 3. Branding & Attribution Block (Bottom Center)
             Positioned(
-              bottom: 24,
+              bottom: 16,
               left: 0,
               right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // App Island
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // App Icon
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          'assets/icon/icon_square.png',
-                          width: 24,
-                          height: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // App Name
-                      const Text(
-                        'Shrimad Bhagavad Gita',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // QR Code (Bottom Right Gravity)
-            Positioned(
-              right: 20,
-              bottom: 20,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
+                    decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
-                  ],
-                ),
-                child: QrImageView(
-                  data:
-                      'https://digish.github.io/project/index.html#bhagvadgita',
-                  version: QrVersions.auto,
-                  size: 40.0, // Slightly smaller QR
-                  backgroundColor: Colors.white,
-                  padding: EdgeInsets.zero,
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.asset(
+                            'assets/icon/icon_square.png',
+                            width: 20,
+                            height: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Shrimad Bhagavad Gita',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // QR Code
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: QrImageView(
+                      data:
+                          'https://digish.github.io/project/index.html#bhagvadgita',
+                      version: QrVersions.auto,
+                      size: 32.0, // More compact QR
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
