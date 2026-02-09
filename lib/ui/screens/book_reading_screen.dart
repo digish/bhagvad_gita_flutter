@@ -271,12 +271,16 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              "Commentary by $_selectedAuthor",
-              style: GoogleFonts.notoSerif(
-                fontSize: 10,
-                color: textColor.withOpacity(0.5),
-                letterSpacing: 0.5,
+            Flexible(
+              child: Text(
+                "Commentary by $_selectedAuthor",
+                style: GoogleFonts.notoSerif(
+                  fontSize: 10,
+                  color: textColor.withOpacity(0.5),
+                  letterSpacing: 0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -415,17 +419,20 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                         if (commentary != null &&
                             commentary.content.isNotEmpty) ...[
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                "Commentary by $_selectedAuthor",
-                                style: GoogleFonts.cinzel(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor.withOpacity(0.5),
-                                  letterSpacing: 1.0,
+                              Expanded(
+                                child: Text(
+                                  "Commentary by $_selectedAuthor",
+                                  style: GoogleFonts.cinzel(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor.withOpacity(0.5),
+                                    letterSpacing: 1.0,
+                                  ),
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 8),
                               if (commentary.languageCode.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(

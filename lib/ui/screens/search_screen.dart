@@ -391,12 +391,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   SafeArea(
                     child: Stack(
                       children: [
-                        AnimatedAlign(
-                          alignment: shouldShowResults
-                              ? Alignment.topCenter
-                              : Alignment.center,
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeInOut,
+                        Align(
+                          alignment: Alignment.topCenter,
                           child: Padding(
                             // Removed hardcoded top padding, SafeArea handles it.
                             padding: const EdgeInsets.only(
@@ -412,26 +408,16 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      child: !shouldShowResults
-                                          ? AnimatedScale(
-                                              scale: isKeyboardOpen ? 0.7 : 1.0,
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              curve: Curves.easeInOut,
-                                              child: const SizedBox.shrink(),
-                                            )
-                                          : const SizedBox.shrink(),
-                                    ),
                                     AnimatedContainer(
                                       duration: const Duration(
-                                        milliseconds: 300,
+                                        milliseconds: 400,
                                       ),
-                                      height: isKeyboardOpen ? 0 : 10,
+                                      curve: Curves.easeInOut,
+                                      height: shouldShowResults
+                                          ? 16
+                                          : (settings.showBackground
+                                                ? 260
+                                                : 60),
                                     ),
                                     _buildSearchBar(provider),
                                     // ✨ AI Suggestions
@@ -1558,33 +1544,38 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            InkWell(
-              onTap: () {
-                settings.setReminderEnabled(true);
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.notification_add,
-                      size: 14,
-                      color: isSimpleLight ? Colors.pink : Colors.amberAccent,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Remind me daily to maintain my streak',
-                      style: TextStyle(
-                        color: isSimpleLight
-                            ? Colors.pink[800]
-                            : Colors.amberAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+            Flexible(
+              child: InkWell(
+                onTap: () {
+                  settings.setReminderEnabled(true);
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.notification_add,
+                        size: 14,
+                        color: isSimpleLight ? Colors.pink : Colors.amberAccent,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Remind me daily to maintain my streak',
+                          style: TextStyle(
+                            color: isSimpleLight
+                                ? Colors.pink[800]
+                                : Colors.amberAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.visible,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
