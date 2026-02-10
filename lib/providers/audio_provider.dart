@@ -257,25 +257,30 @@ class AudioProvider extends ChangeNotifier {
     try {
       if (_playbackMode == PlaybackMode.continuous) {
         // --- CONTINUOUS MODE (Playlist) ---
-        // Optimization: Get base path once for Android
-        String? chapterPackPath;
-        final chapterNum = int.parse(shlokas.first.chapterNo);
-        if (!_useLocalAssets && !Platform.isIOS) {
-          chapterPackPath = await _getShlokaAssetPathForChapter(chapterNum);
-        }
-
+        // --- CONTINUOUS MODE (Playlist) ---
         final List<AudioSource> sources = [];
+
+        // Cache for chapter pack paths to avoid redundant async calls
+        final Map<int, String?> chapterPathCache = {};
 
         for (var s in shlokas) {
           Uri? uri;
+          final sChapterNum = int.parse(s.chapterNo);
+
           if (_useLocalAssets || Platform.isIOS) {
             final path = await _getShlokaAssetPath(s); // Uses bundle logic
             if (path != null) uri = Uri.parse('asset:///$path');
           } else {
-            // Android Optimization: Build path manually from base
+            // Android Optimization: Resolve chapter path for each shloka
+            if (!chapterPathCache.containsKey(sChapterNum)) {
+              chapterPathCache[sChapterNum] =
+                  await _getShlokaAssetPathForChapter(sChapterNum);
+            }
+            final chapterPackPath = chapterPathCache[sChapterNum];
+
             if (chapterPackPath != null) {
               final sNum = int.parse(s.shlokNo).toString().padLeft(2, '0');
-              final cNum = chapterNum.toString().padLeft(2, '0');
+              final cNum = sChapterNum.toString().padLeft(2, '0');
               final finalPath = '$chapterPackPath/ch${cNum}_sh$sNum.opus';
               uri = Uri.file(finalPath);
             }
@@ -357,7 +362,7 @@ class AudioProvider extends ChangeNotifier {
 
   // Deprecated wrapper for backward compatibility if needed, or just remove it.
   Future<void> playOrPauseShloka(ShlokaResult shloka) async {
-    // This assumes single mode.
+    // This assumes single mode..
     playChapter(shlokas: [shloka], initialIndex: 0);
   }
 

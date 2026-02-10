@@ -2,7 +2,7 @@ name: bhagvadgeeta
 description: "A comprehensive guide to the Bhagavad Gita with recitation and meaning."
 publish_to: 'none' 
 
-version: 26.0.5+26051
+version: 26.0.6+26061
 
 environment:
   sdk: ^3.9.0
