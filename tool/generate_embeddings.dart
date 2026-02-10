@@ -11,7 +11,7 @@ final String dbPath = p.join(
   Directory.current.path,
   'assets',
   'database',
-  'geeta_v2.db',
+  'geeta_v4.db',
 );
 const String outputPath = 'assets/gita_embeddings.json';
 const String modelName = 'gemini-embedding-001'; // Correct model from list
@@ -23,9 +23,15 @@ void main(List<String> args) async {
   }
   final apiKey = args[0];
   int? limit;
-  if (args.length > 1) {
-    limit = int.tryParse(args[1]);
-    if (limit != null) {
+  String? targetChapter;
+
+  for (int i = 1; i < args.length; i++) {
+    if (args[i] == '--chapter' && i + 1 < args.length) {
+      targetChapter = args[i + 1];
+      print('🎯 Targeting ONLY Chapter: $targetChapter');
+      i++;
+    } else if (int.tryParse(args[i]) != null) {
+      limit = int.tryParse(args[i]);
       print('Running with LIMIT: $limit items');
     }
   }
@@ -54,6 +60,7 @@ void main(List<String> args) async {
     FROM master_shlokas m
     JOIN translations t ON m.id = t.shloka_id AND t.language_code = 'en'
     JOIN shloka_scripts s ON m.id = s.shloka_id AND s.script_code = 'en'
+    ${targetChapter != null ? "WHERE m.chapter_no = '$targetChapter'" : ""}
     ORDER BY CAST(m.chapter_no AS INTEGER), CAST(m.shloka_no AS INTEGER)
   ''');
 
@@ -72,8 +79,32 @@ void main(List<String> args) async {
       final existingJson = await outputFile.readAsString();
       if (existingJson.isNotEmpty) {
         final List<dynamic> loaded = jsonDecode(existingJson);
-        outputData = loaded.cast<Map<String, dynamic>>();
-        print('Loaded ${outputData.length} existing embeddings. Resuming...');
+        final List<Map<String, dynamic>> allExisting = loaded
+            .cast<Map<String, dynamic>>();
+
+        if (targetChapter != null) {
+          // Identify IDs in Chapter 13 to REMOVE them from the existing list
+          final chapterResults = await db.query(
+            'master_shlokas',
+            columns: ['id'],
+            where: 'chapter_no = ?',
+            whereArgs: [targetChapter],
+          );
+          final chapterIdsToRemove = chapterResults
+              .map((r) => r['id'].toString())
+              .toSet();
+
+          outputData = allExisting
+              .where((e) => !chapterIdsToRemove.contains(e['id'].toString()))
+              .toList();
+          print(
+            'REPLACING Chapter $targetChapter: Found ${chapterIdsToRemove.length} items to refresh.',
+          );
+        } else {
+          outputData = allExisting;
+        }
+
+        print('Loaded ${outputData.length} existing embeddings.');
       }
     } catch (e) {
       print('Error loading existing file: $e. Starting fresh.');
