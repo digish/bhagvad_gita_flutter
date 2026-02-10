@@ -1,8 +1,8 @@
 name: bhagvadgeeta
-description: "A comprehensive guide to the Bhagavad Gita with recitation and meaning."
+description: "A comprehensive guide to the BhagavadGita with recitation and meaning."
 publish_to: 'none' 
 
-version: 26.0.6+26061
+version: 26.0.7+26071
 
 environment:
   sdk: ^3.9.0

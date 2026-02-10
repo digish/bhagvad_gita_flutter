@@ -51,6 +51,8 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
 
   // Capture Key
   final GlobalKey _globalKey = GlobalKey();
+  final ScrollController _scrollController =
+      ScrollController(); // ✨ Added for scrollbar
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +99,35 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                     ),
                     child: Column(
                       children: [
-                        Expanded(child: _buildControls(isLandscape: true)),
+                        Expanded(
+                          child: RawScrollbar(
+                            controller: _scrollController,
+                            thumbVisibility: true,
+                            thickness: 4,
+                            radius: const Radius.circular(2),
+                            thumbColor: Colors.orange.withOpacity(0.3),
+                            child: ShaderMask(
+                              shaderCallback: (Rect bounds) {
+                                return const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black,
+                                    Colors.black,
+                                    Colors.transparent,
+                                  ],
+                                  stops: [0.0, 0.9, 1.0],
+                                ).createShader(bounds);
+                              },
+                              blendMode: BlendMode.dstIn,
+                              child: _buildControls(isLandscape: true),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: _buildShareButton(context),
+                        ),
                       ],
                     ),
                   ),
@@ -122,18 +152,45 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                 // 2. Compact Controls Area (Fixed at Bottom)
                 Container(
                   color: Colors.grey[900],
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: const Divider(height: 1, color: Colors.white10),
-                ),
-                Container(
-                  color: Colors.grey[900],
                   child: SafeArea(
                     top: false,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: constraints.maxHeight * 0.4,
-                      ),
-                      child: _buildControls(isLandscape: false),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Divider(height: 1, color: Colors.white10),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: constraints.maxHeight * 0.35,
+                          ),
+                          child: RawScrollbar(
+                            controller: _scrollController,
+                            thumbVisibility: true,
+                            thickness: 4,
+                            radius: const Radius.circular(2),
+                            thumbColor: Colors.orange.withOpacity(0.3),
+                            child: ShaderMask(
+                              shaderCallback: (Rect bounds) {
+                                return const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black,
+                                    Colors.black,
+                                    Colors.transparent,
+                                  ],
+                                  stops: [0.0, 0.85, 1.0],
+                                ).createShader(bounds);
+                              },
+                              blendMode: BlendMode.dstIn,
+                              child: _buildControls(isLandscape: false),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          child: _buildShareButton(context),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -333,6 +390,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
   Widget _buildControls({bool isLandscape = false}) {
     // Shared controls widget
     return SingleChildScrollView(
+      controller: _scrollController, // ✨ Shared controller for scrollbar sync
       padding: isLandscape
           ? const EdgeInsets.all(24)
           : const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -513,11 +571,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
             ),
           ]),
 
-          if (!isLandscape) ...[
-            const SizedBox(height: 12),
-            _buildShareButton(context),
-            const SizedBox(height: 12),
-          ],
+          if (!isLandscape) ...[const SizedBox(height: 12)],
         ],
       ),
     );
