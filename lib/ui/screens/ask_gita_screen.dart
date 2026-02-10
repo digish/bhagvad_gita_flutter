@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/ask_gita_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
@@ -335,7 +336,15 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
                         itemCount: provider.messages.length,
                         itemBuilder: (context, index) {
                           final msg = provider.messages[index];
-                          return _ChatBubble(message: msg);
+                          // Find the question for this AI response (usually at index-1)
+                          String? question;
+                          if (msg.sender == MessageSender.ai && index > 0) {
+                            final prev = provider.messages[index - 1];
+                            if (prev.sender == MessageSender.user) {
+                              question = prev.text;
+                            }
+                          }
+                          return _ChatBubble(message: msg, question: question);
                         },
                       ),
                     ),
@@ -453,8 +462,9 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
 
 class _ChatBubble extends StatelessWidget {
   final ChatMessage message;
+  final String? question;
 
-  const _ChatBubble({required this.message});
+  const _ChatBubble({required this.message, this.question});
 
   @override
   Widget build(BuildContext context) {
@@ -608,6 +618,43 @@ class _ChatBubble extends StatelessWidget {
                             ),
                           );
                         },
+                      ),
+                      const SizedBox(width: 8),
+                      // Report
+                      IconButton(
+                        icon: const Icon(Icons.flag_outlined, size: 20),
+                        tooltip: 'Report Content',
+                        onPressed: () async {
+                          final Uri emailLaunchUri = Uri(
+                            scheme: 'mailto',
+                            path: 'digish.pandya@gmail.com',
+                            query: encodeQueryParameters(<String, String>{
+                              'subject':
+                                  'Report AI Response - Bhagavad Gita App',
+                              'body':
+                                  'I would like to report an AI response.\n\n'
+                                  '${question != null ? "QUESTION:\n$question\n\n" : ""}'
+                                  'RESPONSE:\n'
+                                  '${message.text}\n\n'
+                                  'Reason for reporting:',
+                            }),
+                          );
+                          if (await canLaunchUrl(emailLaunchUri)) {
+                            await launchUrl(emailLaunchUri);
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not open email app'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: IconButton.styleFrom(
+                          backgroundColor: theme.cardColor,
+                          foregroundColor: Colors.redAccent.withOpacity(0.7),
+                        ),
                       ),
                     ],
                   ),
@@ -1195,4 +1242,12 @@ class _DetailedResponseState extends State<_DetailedResponse> {
       ),
     );
   }
+}
+
+String? encodeQueryParameters(Map<String, String> params) {
+  return params.entries
+      .map(
+        (e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+      )
+      .join('&');
 }
