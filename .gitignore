@@ -75,6 +75,7 @@ lib/generated_plugin_registrant.dart
 
 # Local configuration files
 lib/secrets.dart
+lib/core/secrets_config.dart
 
 # Audio and large assets (Optional, but recommended if they are very large)
 # assets/audio/
@@ -99,15 +100,20 @@ lib/secrets.dart
 /macos/Flutter/ephemeral
 /macos/Flutter/GeneratedPlu*
 # Large database files
-assets/database/geeta_v1.db
-assets/database/geeta_v2.db
-assets/database/geeta_v3.db
-assets/database/geeta_v4.db
-test/test_geeta_v2.db
-test/test_geeta_v3.db
-test/test_geeta_v4.db
+assets/database/*.db
+assets/database/timings.json
+assets/database/build/
+test/*.db
+assets/gita_embeddings.json
+
+# Backend Scripts & Processing
+tool/
+lib/data/scripts/
+aeneas_stable_env
 
 # AI Models
 *.tflite
 assets/mobile_assets/vocab.txt
-aeneas_stable_env
+# Local backup lists
+LOCAL_BACKUP_LIST.txt
+PROPRIETARY_BACKUP_LIST.txt

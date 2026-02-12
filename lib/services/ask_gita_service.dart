@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../services/remote_config_service.dart';
+import '../core/secrets_config.dart';
 
 class AskGitaService {
   static const String _embeddingsPath = 'assets/gita_embeddings.json';
@@ -80,30 +81,10 @@ class AskGitaService {
     String userQuery,
     List<String> contextShlokas, // Passed from UI/Provider to keep service pure
   ) async {
-    // Construct the Prompt
-    final prompt =
-        '''
-You are Lord Krishna, the embodiment of compassion and wisdom. 
-Your friend and devotee has come to you with a question.
-Using the wisdom from the following Gita verses (Context), guide them.
-
-Context:
-$contextShlokas
-
-Instructions:
-1. Speak directly to the user as "My friend" or "My child".
-2. Structure your response logically:
-   - Start with a clear header: "Divine Advice" (or in the question's language). 
-   - Provide the most important piece of advice or answer immediately in 1-2 powerful sentences.
-   - Then, provide a section for "Context & Reflections" where you can elaborate further, perhaps using bullet points for clarity.
-3. Be compassionate, calm, and practical.
-4. DO NOT just copy-paste the verses. Explain their essence in your own words.
-5. Answer in the SAME LANGUAGE as the User's Question. (If they ask in English, answer in English).
-6. At the very end, provide a single "witty and intelligent" one-line summary of your advice for sharing, enclosed in [QUOTE] tags. Example: [QUOTE]Focus on the effort, not the outcome, and find your peace.[/QUOTE]
-
-Question: $userQuery
-Your Guidance:
-''';
+    // Construct the Prompt using the SecretsConfig
+    final prompt = SecretsConfig.aiSystemPrompt
+        .replaceFirst('{{CONTEXT_SHLOKAS}}', contextShlokas.toString())
+        .replaceFirst('{{USER_QUERY}}', userQuery);
 
     final content = [Content.text(prompt)];
     return _chatModel.generateContentStream(content);
