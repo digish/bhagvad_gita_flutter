@@ -117,3 +117,4 @@ assets/mobile_assets/vocab.txt
 # Local backup lists
 LOCAL_BACKUP_LIST.txt
 PROPRIETARY_BACKUP_LIST.txt
+tool/backup_proprietary.sh
