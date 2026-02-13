@@ -35,6 +35,12 @@ class CreditItem {
 // --- Static Data for the screen ---
 final List<CreditItem> creditsData = [
   const CreditItem(
+    category: 'Community Contributors',
+    source: 'Passionate Seekers & Users',
+    description:
+        'A heartfelt tribute to the many users who have continuously contributed via feedback, data corrections, and bug reports. Your dedication helps keep this wisdom accurate and accessible for everyone.',
+  ),
+  const CreditItem(
     category: 'Bhagvad gita audio recitations',
     source: 'https://archive.org/details/bhagavad-gita-1-18',
     description: 'Audio resourece as provided by Swami Brahmananda',
@@ -72,12 +78,6 @@ final List<CreditItem> creditsData = [
     description:
         'All chapter emblems, speaker icons, and app logos were created by the developer with help from AI.',
   ),
-  const CreditItem(
-    category: 'Lotus Image',
-    source: 'Internal desing',
-    description: 'Different lotus are generated using AI like copilot',
-  ),
-
   const CreditItem(
     category: 'Source Code',
     source: 'https://github.com/digish/bhagvad_gita_flutter',
