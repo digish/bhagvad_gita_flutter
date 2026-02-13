@@ -29,13 +29,19 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final subtitleColor = isDark ? Colors.white70 : Colors.grey[700];
+    final iconBgColor = isDark
+        ? Colors.white.withOpacity(0.1)
+        : Colors.grey[100];
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Only show gradient in light mode or if specific flag is set, otherwise plain background from Scaffold
-          if (Theme.of(context).brightness == Brightness.light)
-            const SimpleGradientBackground(startColor: Colors.white),
+          if (!isDark) const SimpleGradientBackground(startColor: Colors.white),
           SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -51,9 +57,11 @@ class SettingsScreen extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: CircleAvatar(
-                                backgroundColor: Colors.black.withOpacity(0.3),
+                                backgroundColor: isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.3),
                                 child: BackButton(
-                                  color: Theme.of(context).iconTheme.color,
+                                  color: theme.iconTheme.color,
                                   onPressed: () {
                                     if (context.canPop()) {
                                       context.pop();
@@ -66,8 +74,9 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           Text(
                             'Settings',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -79,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(16.0),
                             children: [
                               // --- Language Section ---
-                              _buildSectionHeader('Language'),
+                              _buildSectionHeader('Language', context),
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
@@ -91,12 +100,11 @@ class SettingsScreen extends StatelessWidget {
                                   child: Row(
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
+                                        backgroundColor: theme.primaryColor
+                                            .withOpacity(isDark ? 0.25 : 0.1),
                                         child: Icon(
                                           Icons.abc,
-                                          color: Theme.of(context).primaryColor,
+                                          color: theme.primaryColor,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -116,7 +124,7 @@ class SettingsScreen extends StatelessWidget {
                                             Text(
                                               'For Shloka & Anvay',
                                               style: TextStyle(
-                                                color: Colors.grey[700],
+                                                color: subtitleColor,
                                                 fontSize: 14,
                                               ),
                                             ),
@@ -173,12 +181,11 @@ class SettingsScreen extends StatelessWidget {
                                   child: Row(
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
+                                        backgroundColor: theme.primaryColor
+                                            .withOpacity(isDark ? 0.25 : 0.1),
                                         child: Icon(
                                           Icons.translate,
-                                          color: Theme.of(context).primaryColor,
+                                          color: theme.primaryColor,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -200,7 +207,7 @@ class SettingsScreen extends StatelessWidget {
                                                   ? 'In English'
                                                   : 'In Hindi (follows Lipi)',
                                               style: TextStyle(
-                                                color: Colors.grey[700],
+                                                color: subtitleColor,
                                                 fontSize: 14,
                                               ),
                                             ),
@@ -245,21 +252,20 @@ class SettingsScreen extends StatelessWidget {
                               const SizedBox(height: 16),
 
                               // --- Daily Journey Section ---
-                              _buildSectionHeader('Daily Journey'),
+                              _buildSectionHeader('Daily Journey', context),
                               // 1. Gita Wisdom (Daily Inspiration)
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
                                 child: Column(
                                   children: [
-                                    SwitchListTile(
+                                    SwitchListTile.adaptive(
                                       secondary: CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
+                                        backgroundColor: theme.primaryColor
+                                            .withOpacity(isDark ? 0.25 : 0.1),
                                         child: Icon(
                                           Icons.lightbulb_outline,
-                                          color: Theme.of(context).primaryColor,
+                                          color: theme.primaryColor,
                                         ),
                                       ),
                                       title: const Text(
@@ -272,7 +278,7 @@ class SettingsScreen extends StatelessWidget {
                                       subtitle: Text(
                                         'Show a random shloka on the search screen.',
                                         style: TextStyle(
-                                          color: Colors.grey[700],
+                                          color: subtitleColor,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -280,9 +286,8 @@ class SettingsScreen extends StatelessWidget {
                                       onChanged: (bool value) {
                                         settings.setShowRandomShloka(value);
                                       },
-                                      activeColor: Theme.of(
-                                        context,
-                                      ).primaryColor,
+                                      activeColor: Colors.orange,
+                                      activeTrackColor: Colors.orange,
                                     ),
                                     if (settings.showRandomShloka) ...[
                                       const Divider(height: 1, indent: 72),
@@ -316,13 +321,14 @@ class SettingsScreen extends StatelessWidget {
                                             subtitle: Text(
                                               subtitleText,
                                               style: TextStyle(
-                                                color: Colors.grey[700],
+                                                color: subtitleColor,
                                                 fontSize: 14,
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                            trailing: const Icon(
+                                            trailing: Icon(
                                               Icons.arrow_drop_down,
+                                              color: subtitleColor,
                                             ),
                                             onTap: () {
                                               _showSourceSelectionDialog(
@@ -349,13 +355,14 @@ class SettingsScreen extends StatelessWidget {
                                       subtitle: Text(
                                         'Show daily shlokas on your home screen.',
                                         style: TextStyle(
-                                          color: Colors.grey[700],
+                                          color: subtitleColor,
                                           fontSize: 14,
                                         ),
                                       ),
-                                      trailing: const Icon(
+                                      trailing: Icon(
                                         Icons.help_outline,
                                         size: 20,
+                                        color: subtitleColor,
                                       ),
                                       onTap: () {
                                         _showWidgetInstructionsDialog(context);
@@ -372,14 +379,13 @@ class SettingsScreen extends StatelessWidget {
                                 elevation: 4,
                                 child: Column(
                                   children: [
-                                    SwitchListTile(
+                                    SwitchListTile.adaptive(
                                       secondary: CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
+                                        backgroundColor: theme.primaryColor
+                                            .withOpacity(isDark ? 0.25 : 0.1),
                                         child: Icon(
                                           Icons.notifications_active_outlined,
-                                          color: Theme.of(context).primaryColor,
+                                          color: theme.primaryColor,
                                         ),
                                       ),
                                       title: const Text(
@@ -392,7 +398,7 @@ class SettingsScreen extends StatelessWidget {
                                       subtitle: Text(
                                         'Get a nudge at your preferred time.',
                                         style: TextStyle(
-                                          color: Colors.grey[700],
+                                          color: subtitleColor,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -408,9 +414,8 @@ class SettingsScreen extends StatelessWidget {
                                           }
                                         }
                                       },
-                                      activeColor: Theme.of(
-                                        context,
-                                      ).primaryColor,
+                                      activeColor: Colors.orange,
+                                      activeTrackColor: Colors.orange,
                                     ),
                                     if (settings.reminderEnabled) ...[
                                       const Divider(height: 1, indent: 72),
@@ -429,7 +434,7 @@ class SettingsScreen extends StatelessWidget {
                                         subtitle: Text(
                                           settings.reminderTime.format(context),
                                           style: TextStyle(
-                                            color: Colors.grey[700],
+                                            color: subtitleColor,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -586,18 +591,17 @@ class SettingsScreen extends StatelessWidget {
                               const SizedBox(height: 32),
 
                               // --- Content Section ---
-                              _buildSectionHeader('Content'),
+                              _buildSectionHeader('Content', context),
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
-                                child: SwitchListTile(
+                                child: SwitchListTile.adaptive(
                                   secondary: CircleAvatar(
-                                    backgroundColor: Theme.of(
-                                      context,
-                                    ).primaryColor.withOpacity(0.1),
+                                    backgroundColor: theme.primaryColor
+                                        .withOpacity(isDark ? 0.25 : 0.1),
                                     child: Icon(
                                       Icons.history_edu,
-                                      color: Theme.of(context).primaryColor,
+                                      color: theme.primaryColor,
                                     ),
                                   ),
                                   title: const Text(
@@ -610,7 +614,7 @@ class SettingsScreen extends StatelessWidget {
                                   subtitle: Text(
                                     'Show Big Three (Shankaracharya, Ramanujacharya, Madhvacharya)',
                                     style: TextStyle(
-                                      color: Colors.grey[700],
+                                      color: subtitleColor,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -620,13 +624,14 @@ class SettingsScreen extends StatelessWidget {
                                       value,
                                     );
                                   },
-                                  activeColor: Theme.of(context).primaryColor,
+                                  activeColor: Colors.orange,
+                                  activeTrackColor: Colors.orange,
                                 ),
                               ),
                               const SizedBox(height: 16),
 
                               // --- Preferences Section ---
-                              _buildSectionHeader('Preferences'),
+                              _buildSectionHeader('Preferences', context),
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
@@ -638,12 +643,11 @@ class SettingsScreen extends StatelessWidget {
                                   child: Row(
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).primaryColor.withOpacity(0.1),
+                                        backgroundColor: theme.primaryColor
+                                            .withOpacity(isDark ? 0.25 : 0.1),
                                         child: Icon(
                                           Icons.brightness_6,
-                                          color: Theme.of(context).primaryColor,
+                                          color: theme.primaryColor,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -663,7 +667,7 @@ class SettingsScreen extends StatelessWidget {
                                             Text(
                                               'Light, Dark, or System',
                                               style: TextStyle(
-                                                color: Colors.grey[700],
+                                                color: subtitleColor,
                                                 fontSize: 14,
                                               ),
                                             ),
@@ -718,7 +722,10 @@ class SettingsScreen extends StatelessWidget {
                               const SizedBox(height: 32),
 
                               // --- AI Settings Section ---
-                              _buildSectionHeader('AI credits for Ask GITA'),
+                              _buildSectionHeader(
+                                'AI credits for Ask GITA',
+                                context,
+                              ),
                               Card(
                                 color: Theme.of(context).cardTheme.color,
                                 elevation: 4,
@@ -874,7 +881,7 @@ class SettingsScreen extends StatelessWidget {
                                                   'it helps supports cloud costs for using AI',
                                                   style: TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors.grey[600],
+                                                    color: subtitleColor,
                                                     fontStyle: FontStyle.italic,
                                                   ),
                                                   textAlign: TextAlign.center,
@@ -893,12 +900,12 @@ class SettingsScreen extends StatelessWidget {
                                                 vertical: 4,
                                               ),
                                           leading: CircleAvatar(
-                                            backgroundColor: Colors.grey[100],
+                                            backgroundColor: iconBgColor,
                                             radius: 16,
                                             child: Icon(
                                               Icons.key,
                                               size: 16,
-                                              color: Colors.grey[600],
+                                              color: subtitleColor,
                                             ),
                                           ),
                                           title: const Text(
@@ -914,13 +921,13 @@ class SettingsScreen extends StatelessWidget {
                                                 : 'Use your own key',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Colors.grey[600],
+                                              color: subtitleColor,
                                             ),
                                           ),
-                                          trailing: const Icon(
+                                          trailing: Icon(
                                             Icons.chevron_right,
                                             size: 20,
-                                            color: Colors.grey,
+                                            color: subtitleColor,
                                           ),
                                           onTap: () => _showApiKeyDialog(
                                             context,
@@ -962,7 +969,7 @@ class SettingsScreen extends StatelessWidget {
                               const SizedBox(height: 32),
 
                               // --- Support Section ---
-                              _buildSectionHeader('Support'),
+                              _buildSectionHeader('Support', context),
                               _buildActionTile(
                                 context,
                                 title: 'Send Feedback',
@@ -1045,13 +1052,17 @@ class SettingsScreen extends StatelessWidget {
     required ValueChanged<bool> onChanged,
     required IconData icon,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final subtitleColor = isDark ? Colors.white70 : Colors.grey[700];
+
     return Card(
       color: Theme.of(context).cardTheme.color,
       elevation: 4,
-      child: SwitchListTile(
+      child: SwitchListTile.adaptive(
         secondary: CircleAvatar(
-          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-          child: Icon(icon, color: Theme.of(context).primaryColor),
+          backgroundColor: theme.primaryColor.withOpacity(isDark ? 0.25 : 0.1),
+          child: Icon(icon, color: theme.primaryColor),
         ),
         title: Text(
           title,
@@ -1059,11 +1070,12 @@ class SettingsScreen extends StatelessWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(color: Colors.grey[700], fontSize: 14),
+          style: TextStyle(color: subtitleColor, fontSize: 14),
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: Theme.of(context).primaryColor,
+        activeColor: Colors.orange,
+        activeTrackColor: Colors.orange,
       ),
     );
   }
@@ -1075,6 +1087,10 @@ class SettingsScreen extends StatelessWidget {
     required IconData icon,
     required void Function(BuildContext) onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final subtitleColor = isDark ? Colors.white70 : Colors.grey[700];
+
     return Card(
       color: Theme.of(context).cardTheme.color,
       elevation: 4,
@@ -1082,8 +1098,10 @@ class SettingsScreen extends StatelessWidget {
         builder: (innerContext) {
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-              child: Icon(icon, color: Theme.of(context).primaryColor),
+              backgroundColor: theme.primaryColor.withOpacity(
+                isDark ? 0.25 : 0.1,
+              ),
+              child: Icon(icon, color: theme.primaryColor),
             ),
             title: Text(
               title,
@@ -1091,13 +1109,13 @@ class SettingsScreen extends StatelessWidget {
             ),
             subtitle: Text(
               subtitle,
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              style: TextStyle(color: subtitleColor, fontSize: 14),
             ),
             onTap: () => onTap(innerContext),
-            trailing: const Icon(
+            trailing: Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: Colors.grey,
+              color: subtitleColor,
             ),
           );
         },
@@ -1105,7 +1123,10 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
       child: Column(
@@ -1113,14 +1134,14 @@ class SettingsScreen extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              // color: Colors.black87, // Removed hardcoded color
+              color: isDark ? Colors.orange : Colors.black87,
             ),
           ),
           const SizedBox(height: 4),
-          const Divider(thickness: 1),
+          Divider(thickness: 1, color: isDark ? Colors.white24 : null),
           const SizedBox(height: 8),
         ],
       ),
@@ -1137,6 +1158,12 @@ class SettingsScreen extends StatelessWidget {
             width: double.maxFinite,
             child: Consumer2<SettingsProvider, BookmarkProvider>(
               builder: (context, settings, bookmarks, child) {
+                final theme = Theme.of(context);
+                final isDark = theme.brightness == Brightness.dark;
+                final subtitleColor = isDark
+                    ? Colors.white70
+                    : Colors.grey[700];
+
                 final seenIds = <int>{};
                 final selectedSources = settings.randomShlokaSources;
 
@@ -1150,14 +1177,14 @@ class SettingsScreen extends StatelessWidget {
                       onChanged: (bool? value) {
                         settings.toggleRandomShlokaSource(-1);
                       },
-                      activeColor: Theme.of(context).primaryColor,
+                      activeColor: Colors.orange,
                     ),
                     const Divider(),
 
                     // 2. User Lists
                     if (bookmarks.lists.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
                           vertical: 8.0,
                           horizontal: 16.0,
                         ),
@@ -1165,7 +1192,7 @@ class SettingsScreen extends StatelessWidget {
                           'MY COLLECTIONS',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                            color: subtitleColor,
                             fontSize: 12,
                           ),
                         ),
@@ -1181,15 +1208,15 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: (bool? value) {
                             settings.toggleRandomShlokaSource(list.id);
                           },
-                          activeColor: Theme.of(context).primaryColor,
+                          activeColor: Colors.orange,
                         );
                       }),
                     ],
 
                     // 3. Curated Lists
                     if (bookmarks.predefinedLists.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
                           vertical: 8.0,
                           horizontal: 16.0,
                         ),
@@ -1197,7 +1224,7 @@ class SettingsScreen extends StatelessWidget {
                           'CURATED LISTS',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                            color: subtitleColor,
                             fontSize: 12,
                           ),
                         ),
@@ -1213,7 +1240,7 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: (bool? value) {
                             settings.toggleRandomShlokaSource(list.id);
                           },
-                          activeColor: Theme.of(context).primaryColor,
+                          activeColor: Colors.orange,
                         );
                       }),
                     ],

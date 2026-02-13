@@ -28,6 +28,18 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return Colors.orange;
+          return null;
+        }),
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
+            return Colors.orange.withOpacity(0.5);
+          }
+          return null;
+        }),
+      ),
     );
 
     // Apply the light AppColors extension
@@ -64,6 +76,21 @@ class AppTheme {
         elevation: 0,
       ),
       iconTheme: const IconThemeData(color: Colors.white70),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return Colors.white;
+          return Colors.grey.shade400;
+        }),
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return Colors.orange;
+          return Colors.white12;
+        }),
+        trackOutlineColor: MaterialStateProperty.resolveWith((states) {
+          return states.contains(MaterialState.selected)
+              ? Colors.transparent
+              : Colors.white24;
+        }),
+      ),
     );
 
     // Apply the dark AppColors extension
