@@ -15,9 +15,22 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
-    final String timeZoneName =
-        (await FlutterTimezone.getLocalTimezone()).identifier;
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    String timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
+
+    // Safety check for common deprecated or missing timezone identifiers
+    if (timeZoneName == 'Asia/Calcutta') {
+      timeZoneName = 'Asia/Kolkata';
+    }
+
+    try {
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      // Fallback to UTC if the identifier is still not recognized to prevent crash
+      print(
+        "[NotificationService] Warning: Could not find location $timeZoneName, falling back to UTC. error: $e",
+      );
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
