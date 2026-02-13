@@ -15,7 +15,8 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
-    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+    final String timeZoneName =
+        (await FlutterTimezone.getLocalTimezone()).identifier;
     tz.setLocalLocation(tz.getLocation(timeZoneName));
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -35,7 +36,7 @@ class NotificationService {
         );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         // Handle notification tap if needed
       },
@@ -83,11 +84,11 @@ class NotificationService {
     required String body,
   }) async {
     await _notificationsPlugin.zonedSchedule(
-      0, // ID
-      title,
-      body,
-      _nextInstanceOfTime(hour, minute),
-      const NotificationDetails(
+      id: 0, // ID
+      title: title,
+      body: body,
+      scheduledDate: _nextInstanceOfTime(hour, minute),
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
           'Daily Wisdom Reminders',
@@ -98,11 +99,10 @@ class NotificationService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+    print('🔔 Notification scheduled for $hour:$minute');
   }
 
   Future<void> cancelAll() async {
@@ -112,10 +112,10 @@ class NotificationService {
   /// Test method to show an immediate notification (for development/testing only)
   Future<void> showTestNotification() async {
     await _notificationsPlugin.show(
-      999, // Test notification ID
-      'Maintain your Spiritual Streak! 🙏',
-      DailyMessageService.getTodaysMessage(),
-      const NotificationDetails(
+      id: 999, // Test notification ID
+      title: 'Maintain your Spiritual Streak! 🙏',
+      body: DailyMessageService.getTodaysMessage(),
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
           'Daily Wisdom Reminders',
@@ -136,11 +136,11 @@ class NotificationService {
     ).add(const Duration(seconds: 5));
 
     await _notificationsPlugin.zonedSchedule(
-      997, // Test delayed notification ID
-      'Maintain your Spiritual Streak! 🙏',
-      DailyMessageService.getTodaysMessage(),
-      scheduledTime,
-      const NotificationDetails(
+      id: 997, // Test delayed notification ID
+      title: 'Maintain your Spiritual Streak! 🙏',
+      body: DailyMessageService.getTodaysMessage(),
+      scheduledDate: scheduledTime,
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
           'Daily Wisdom Reminders',
@@ -151,9 +151,7 @@ class NotificationService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
 
@@ -164,11 +162,12 @@ class NotificationService {
     ).add(const Duration(minutes: 1));
 
     await _notificationsPlugin.zonedSchedule(
-      998, // Test scheduled notification ID
-      'Maintain your Spiritual Streak! 🙏',
-      'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
-      scheduledTime,
-      const NotificationDetails(
+      id: 998, // Test scheduled notification ID
+      title: 'Maintain your Spiritual Streak! 🙏',
+      body:
+          'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
+      scheduledDate: scheduledTime,
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
           'Daily Wisdom Reminders',
@@ -179,9 +178,7 @@ class NotificationService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
 

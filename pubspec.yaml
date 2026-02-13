@@ -41,7 +41,7 @@ dependencies:
   
   # Astronomy & Math
   timezone: ^0.10.1
-  flutter_timezone: ^2.1.0
+  flutter_timezone: ^5.0.0
   
   # Utilities
   intl: ^0.20.2
@@ -62,7 +62,7 @@ dependencies:
   uuid: ^4.4.2
   
   # UI
-  flutter_local_notifications: ^18.0.1
+  flutter_local_notifications: ^20.1.0
   flutter_speed_dial: ^7.0.0 
   flutter_markdown_plus: ^1.0.7 # Successor to flutter_markdown
   scrollable_positioned_list: ^0.3.8
