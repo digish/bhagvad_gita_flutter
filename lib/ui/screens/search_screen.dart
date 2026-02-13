@@ -206,6 +206,21 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     }
   }
 
+  void _handleBackAction() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+    final provider = Provider.of<SearchProvider>(context, listen: false);
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+      provider.onSearchQueryChanged('');
+    }
+    // Ensure UI updates to reflect search mode change
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Widget _buildBackgroundOnly({
     required bool showBackground,
     required bool isKeyboardOpen,
@@ -282,368 +297,77 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    return PopScope(
+      canPop: !shouldShowResults,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (didPop) return;
+        _handleBackAction();
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-      // ✨ RESTORED: The floating action button for navigation.
-      // It's hidden when the keyboard is visible.
-      floatingActionButton: (isKeyboardOpen || width > 600)
-          ? null
-          : _buildSpeedDial(context),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        behavior: HitTestBehavior.translucent,
-        child: Consumer<SettingsProvider>(
-          builder: (context, settings, child) {
-            // Initialize local state if first run
-            if (_isBackgroundRequested == null) {
-              _isBackgroundRequested = settings.showBackground;
-            }
-
-            // Check if setting changed externally (e.g. from Navigation Rail)
-            // and we are not currently animating a change we initiated locally.
-            if (settings.showBackground != _isBackgroundRequested &&
-                !_revealController.isAnimating) {
-              final isLandscape = width > MediaQuery.of(context).size.height;
-
-              // If change came from Rail (iPad/Tablet), start animation from likely button position
-              if (isTablet) {
-                final double railWidth = isLandscape ? 220.0 : 100.0;
-                final double bottomPadding = MediaQuery.of(
-                  context,
-                ).padding.bottom;
-                // Approximate center of the button in the rail
-                final double buttonX = railWidth / 2;
-                final double buttonY =
-                    MediaQuery.of(context).size.height - bottomPadding - 40;
-
-                _revealCenter = Offset(buttonX, buttonY);
-                _isBackgroundRequested = settings.showBackground;
-                _revealController.forward(from: 0);
-              } else {
-                // Phone/Narrow layout - just sync state without animation if we can't determine source,
-                // or maybe we should just snap?
-                // Ideally this case doesn't happen often as the FAB is the only changer,
-                // but if it did, we just update local state.
+        // ✨ RESTORED: The floating action button for navigation.
+        // It's hidden when the keyboard is visible.
+        floatingActionButton: (isKeyboardOpen || width > 600)
+            ? null
+            : _buildSpeedDial(context),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: Consumer<SettingsProvider>(
+            builder: (context, settings, child) {
+              // Initialize local state if first run
+              if (_isBackgroundRequested == null) {
                 _isBackgroundRequested = settings.showBackground;
               }
-            } else if (!_revealController.isAnimating) {
-              // Ensure strict sync when idle
-              _isBackgroundRequested = settings.showBackground;
-            }
 
-            return AnimatedBuilder(
-              animation: _revealController,
-              builder: (context, _) {
-                // 🌸 Sequence Logic:
-                // On Phones (!isTablet), we run a local LiquidReveal.
-                // On Tablets (isTablet), MainScaffold already has a global LiquidReveal.
-                // In both cases, we use Intervals to time the lotus growth.
+              // Check if setting changed externally (e.g. from Navigation Rail)
+              // and we are not currently animating a change we initiated locally.
+              if (settings.showBackground != _isBackgroundRequested &&
+                  !_revealController.isAnimating) {
+                final isLandscape = width > MediaQuery.of(context).size.height;
 
-                final bool isAnimating = _revealController.isAnimating;
+                // If change came from Rail (iPad/Tablet), start animation from likely button position
+                if (isTablet) {
+                  final double railWidth = isLandscape ? 220.0 : 100.0;
+                  final double bottomPadding = MediaQuery.of(
+                    context,
+                  ).padding.bottom;
+                  // Approximate center of the button in the rail
+                  final double buttonX = railWidth / 2;
+                  final double buttonY =
+                      MediaQuery.of(context).size.height - bottomPadding - 40;
 
-                // Background Reveal Animation (0% -> 60% for tiered growth)
-                final revealProgress = isAnimating
-                    ? CurvedAnimation(
-                        parent: _revealController,
-                        curve: _isBackgroundRequested!
-                            ? const Interval(0.0, 0.6, curve: Curves.easeInOut)
-                            : const Interval(0.0, 1.0, curve: Curves.easeInOut),
-                      ).value
-                    : 1.0;
+                  _revealCenter = Offset(buttonX, buttonY);
+                  _isBackgroundRequested = settings.showBackground;
+                  _revealController.forward(from: 0);
+                } else {
+                  // Phone/Narrow layout - just sync state without animation if we can't determine source,
+                  // or maybe we should just snap?
+                  // Ideally this case doesn't happen often as the FAB is the only changer,
+                  // but if it did, we just update local state.
+                  _isBackgroundRequested = settings.showBackground;
+                }
+              } else if (!_revealController.isAnimating) {
+                // Ensure strict sync when idle
+                _isBackgroundRequested = settings.showBackground;
+              }
 
-                Widget baseBackground = _buildBackgroundOnly(
-                  showBackground: !_isBackgroundRequested!,
-                  isKeyboardOpen: isKeyboardOpen,
-                  shouldShowResults: shouldShowResults,
-                  excludeDecoration: true,
-                );
+              return AnimatedBuilder(
+                animation: _revealController,
+                builder: (context, _) {
+                  // 🌸 Sequence Logic:
+                  // On Phones (!isTablet), we run a local LiquidReveal.
+                  // On Tablets (isTablet), MainScaffold already has a global LiquidReveal.
+                  // In both cases, we use Intervals to time the lotus growth.
 
-                Widget newBackground = _buildBackgroundOnly(
-                  showBackground: _isBackgroundRequested!,
-                  isKeyboardOpen: isKeyboardOpen,
-                  shouldShowResults: shouldShowResults,
-                  excludeDecoration: true,
-                );
+                  final bool isAnimating = _revealController.isAnimating;
 
-                return Stack(
-                  children: [
-                    // ✨ FIX: Safety Layer to prevent "White Flash" during transitions
-                    // Matches the BOTTOM layer's color (the one being covered/revealed over).
-                    if (isAnimating && !isTablet)
-                      Container(
-                        color: _isBackgroundRequested!
-                            ? const Color(
-                                0xFFFCE4EC,
-                              ) // Going to Complex (Pink is bottom)
-                            : Theme.of(context).brightness == Brightness.dark
-                            ? Theme.of(context).scaffoldBackgroundColor
-                            : const Color(
-                                0xFFF48FB1,
-                              ), // ✨ Fix: Match Pink target
-                      ),
-
-                    // Base Layer: Background Color
-                    // ✨ Only show on PHONES. On Tablets, MainScaffold handles this via snapshot.
-                    if (isAnimating && !isTablet) baseBackground,
-
-                    // Top Layer: Revealing Background
-                    // ✨ FIX: Only wrap in LiquidReveal on PHONES.
-                    // On tablets, MainScaffold itself is wrapped in LiquidReveal.
-                    if (isTablet)
-                      newBackground
-                    else
-                      LiquidReveal(
-                        progress: revealProgress,
-                        center: _revealCenter,
-                        child: newBackground,
-                      ),
-
-                    // Wrap the interactive UI in a SafeArea
-                    SafeArea(
-                      child: Stack(
-                        children: [
-                          Align(
-                            alignment: Alignment.topCenter,
-                            child: Padding(
-                              // Removed hardcoded top padding, SafeArea handles it.
-                              padding: const EdgeInsets.only(
-                                top: 16.0,
-                                left: 16.0,
-                                right: 16.0,
-                              ),
-                              child: SingleChildScrollView(
-                                clipBehavior: Clip
-                                    .none, // ✨ Allow overflow during animation
-                                child: ResponsiveWrapper(
-                                  maxWidth: 600,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 400,
-                                        ),
-                                        curve: Curves.easeInOut,
-                                        height: shouldShowResults
-                                            ? 16
-                                            : (settings.showBackground
-                                                  ? 260
-                                                  : 60),
-                                      ),
-                                      _buildSearchBar(provider),
-                                      // ✨ AI Suggestions
-                                      // Only show if focused, in AI mode, AND text field is empty
-                                      if (_isSearchFocused &&
-                                          _isAiMode &&
-                                          provider.searchQuery.isEmpty)
-                                        AiSuggestionChips(
-                                          isVisible: true,
-                                          direction: Axis
-                                              .vertical, // ✨ Vertical suggestions
-                                          onSuggestionSelected: (suggestion) {
-                                            _searchController.text = suggestion;
-                                            provider.onSearchQueryChanged(
-                                              suggestion,
-                                            );
-                                            _searchFocusNode.unfocus();
-                                            context.push(
-                                              AppRoutes.askGita,
-                                              extra: suggestion,
-                                            );
-                                          },
-                                        ),
-                                      if (!settings.hasUsedAskAi &&
-                                          !shouldShowResults &&
-                                          !_isAiMode)
-                                        _OnboardingBubble(
-                                          onTap: () {
-                                            // 1. Mark as used
-                                            settings.markAskAiUsed();
-                                            // 2. Switch mode or Navigate
-                                            // Option A: Just switch to AI mode in place
-                                            setState(() {
-                                              _isAiMode = true;
-                                            });
-                                          },
-                                          onDismiss: () {
-                                            // Just hide locally for this session, or forever?
-                                            // User said "ok to not show them", implies permanent dismissal
-                                            // or until they actually use it?
-                                            // Let's mark it as used so it doesn't pester them.
-                                            settings.markAskAiUsed();
-                                          },
-                                        ),
-                                      if (settings.showRandomShloka &&
-                                          !shouldShowResults) ...[
-                                        if (settings.streakSystemEnabled)
-                                          _buildSoulStatusChip(settings),
-                                        if (!settings.reminderEnabled)
-                                          _buildReminderNudge(settings),
-                                        _buildRandomShlokaCard(),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isSearching && !_isAiMode)
-                            Padding(
-                              // Adjusted padding to position the list below the search bar area.
-                              padding: const EdgeInsets.only(top: 100.0),
-                              child: ResponsiveWrapper(
-                                maxWidth: 600,
-                                child: ListView.builder(
-                                  itemCount:
-                                      provider.searchResults.length +
-                                      1, // +1 for "See all"
-                                  itemBuilder: (context, index) {
-                                    if (index ==
-                                        provider.searchResults.length) {
-                                      return ListTile(
-                                        leading: Icon(
-                                          Icons.search,
-                                          color:
-                                              !settings.showBackground &&
-                                                  Theme.of(
-                                                        context,
-                                                      ).brightness ==
-                                                      Brightness.light
-                                              ? Colors.brown.withOpacity(0.7)
-                                              : Colors.white70,
-                                        ),
-                                        title: Text(
-                                          "See all results for '${provider.searchQuery}'",
-                                          style: TextStyle(
-                                            color:
-                                                !settings.showBackground &&
-                                                    Theme.of(
-                                                          context,
-                                                        ).brightness ==
-                                                        Brightness.light
-                                                ? Colors.brown.shade900
-                                                : Colors.white,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                        onTap: () {
-                                          context.pushNamed(
-                                            'shloka-list',
-                                            pathParameters: {
-                                              'query': provider.searchQuery,
-                                            },
-                                          );
-                                        },
-                                      );
-                                    }
-
-                                    final item = provider.searchResults[index];
-                                    if (item is HeaderItem) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 16,
-                                          right: 16,
-                                          top: 20,
-                                          bottom: 8,
-                                        ),
-                                        child: Text(
-                                          item.title,
-                                          style: TextStyle(
-                                            color:
-                                                !settings.showBackground &&
-                                                    Theme.of(
-                                                          context,
-                                                        ).brightness ==
-                                                        Brightness.light
-                                                ? Colors.pink.shade900
-                                                      .withOpacity(0.7)
-                                                : Colors.amber.withOpacity(0.8),
-                                            fontSize: 12,
-                                            letterSpacing: 1.8,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    if (item is ShlokaItem) {
-                                      return ShlokaResultCard(
-                                        shloka: item.shloka,
-                                        searchQuery: provider.searchQuery,
-                                      );
-                                    }
-                                    if (item is WordItem) {
-                                      return WordResultCard(word: item.word);
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-                              ),
-                            ),
-
-                          // Simple Theme Toggle Button (Bottom Left)
-                          // Should only be visible on phones in PORTRAIT mode.
-                          if (MediaQuery.of(context).viewInsets.bottom == 0 &&
-                              width <=
-                                  600 && // Phone check (width-based is more reliable for hidden state)
-                              !isLandscape) // Portrait check
-                            Positioned(
-                              left: 16,
-                              bottom: 16,
-                              child: FloatingActionButton(
-                                key: _themeToggleKey,
-                                heroTag: 'simple_theme_toggle',
-                                mini: true,
-                                // Use Theme Extension for colors
-                                backgroundColor:
-                                    Theme.of(context)
-                                        .extension<AppColors>()
-                                        ?.simpleThemeToggle ??
-                                    Theme.of(context).primaryColor,
-                                foregroundColor:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Theme.of(context).colorScheme.onPrimary
-                                    : Colors.white,
-                                onPressed: () {
-                                  if (_revealController.isAnimating) return;
-
-                                  HapticFeedback.lightImpact();
-                                  _captureThemeTogglePosition();
-                                  setState(() {
-                                    _isBackgroundRequested =
-                                        !settings.showBackground;
-                                  });
-                                  _revealController.forward(from: 0).then((_) {
-                                    settings.setShowBackground(
-                                      _isBackgroundRequested!,
-                                    );
-                                  });
-                                },
-                                child: Icon(
-                                  settings.showBackground
-                                      ? Icons.format_paint_outlined
-                                      : Icons.format_paint,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    // Decoration Layer (Buttons) - ON TOP of content
-                    // Base Layer Decoration
-                    // Decoration Layer (Buttons) - ON TOP of content
-                    // Base Layer Decoration
-                    // ✨ Only show on PHONES.
-                    if (_revealController.isAnimating && !isTablet)
-                      _buildDecorationOnly(
-                        showBackground: !_isBackgroundRequested!,
-                        isKeyboardOpen: isKeyboardOpen,
-                        shouldShowResults: shouldShowResults,
-                        scaleAnimation: CurvedAnimation(
-                          parent: ReverseAnimation(_revealController),
+                  // Background Reveal Animation (0% -> 60% for tiered growth)
+                  final revealProgress = isAnimating
+                      ? CurvedAnimation(
+                          parent: _revealController,
                           curve: _isBackgroundRequested!
                               ? const Interval(
                                   0.0,
@@ -655,45 +379,357 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                   1.0,
                                   curve: Curves.easeInOut,
                                 ),
+                        ).value
+                      : 1.0;
+
+                  Widget baseBackground = _buildBackgroundOnly(
+                    showBackground: !_isBackgroundRequested!,
+                    isKeyboardOpen: isKeyboardOpen,
+                    shouldShowResults: shouldShowResults,
+                    excludeDecoration: true,
+                  );
+
+                  Widget newBackground = _buildBackgroundOnly(
+                    showBackground: _isBackgroundRequested!,
+                    isKeyboardOpen: isKeyboardOpen,
+                    shouldShowResults: shouldShowResults,
+                    excludeDecoration: true,
+                  );
+
+                  return Stack(
+                    children: [
+                      // ✨ FIX: Safety Layer to prevent "White Flash" during transitions
+                      // Matches the BOTTOM layer's color (the one being covered/revealed over).
+                      if (isAnimating && !isTablet)
+                        Container(
+                          color: _isBackgroundRequested!
+                              ? const Color(
+                                  0xFFFCE4EC,
+                                ) // Going to Complex (Pink is bottom)
+                              : Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).scaffoldBackgroundColor
+                              : const Color(
+                                  0xFFF48FB1,
+                                ), // ✨ Fix: Match Pink target
+                        ),
+
+                      // Base Layer: Background Color
+                      // ✨ Only show on PHONES. On Tablets, MainScaffold handles this via snapshot.
+                      if (isAnimating && !isTablet) baseBackground,
+
+                      // Top Layer: Revealing Background
+                      // ✨ FIX: Only wrap in LiquidReveal on PHONES.
+                      // On tablets, MainScaffold itself is wrapped in LiquidReveal.
+                      if (isTablet)
+                        newBackground
+                      else
+                        LiquidReveal(
+                          progress: revealProgress,
+                          center: _revealCenter,
+                          child: newBackground,
+                        ),
+
+                      // Wrap the interactive UI in a SafeArea
+                      SafeArea(
+                        child: Stack(
+                          children: [
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: Padding(
+                                // Removed hardcoded top padding, SafeArea handles it.
+                                padding: const EdgeInsets.only(
+                                  top: 16.0,
+                                  left: 16.0,
+                                  right: 16.0,
+                                ),
+                                child: SingleChildScrollView(
+                                  clipBehavior: Clip
+                                      .none, // ✨ Allow overflow during animation
+                                  child: ResponsiveWrapper(
+                                    maxWidth: 600,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 400,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                          height: shouldShowResults
+                                              ? 16
+                                              : (settings.showBackground
+                                                    ? 260
+                                                    : 60),
+                                        ),
+                                        _buildSearchBar(provider),
+                                        // ✨ AI Suggestions
+                                        // Only show if focused, in AI mode, AND text field is empty
+                                        if (_isSearchFocused &&
+                                            _isAiMode &&
+                                            provider.searchQuery.isEmpty)
+                                          AiSuggestionChips(
+                                            isVisible: true,
+                                            direction: Axis
+                                                .vertical, // ✨ Vertical suggestions
+                                            onSuggestionSelected: (suggestion) {
+                                              _searchController.text =
+                                                  suggestion;
+                                              provider.onSearchQueryChanged(
+                                                suggestion,
+                                              );
+                                              _searchFocusNode.unfocus();
+                                              context.push(
+                                                AppRoutes.askGita,
+                                                extra: suggestion,
+                                              );
+                                            },
+                                          ),
+                                        if (!settings.hasUsedAskAi &&
+                                            !shouldShowResults &&
+                                            !_isAiMode)
+                                          _OnboardingBubble(
+                                            onTap: () {
+                                              // 1. Mark as used
+                                              settings.markAskAiUsed();
+                                              // 2. Switch mode or Navigate
+                                              // Option A: Just switch to AI mode in place
+                                              setState(() {
+                                                _isAiMode = true;
+                                              });
+                                            },
+                                            onDismiss: () {
+                                              // Just hide locally for this session, or forever?
+                                              // User said "ok to not show them", implies permanent dismissal
+                                              // or until they actually use it?
+                                              // Let's mark it as used so it doesn't pester them.
+                                              settings.markAskAiUsed();
+                                            },
+                                          ),
+                                        if (settings.showRandomShloka &&
+                                            !shouldShowResults) ...[
+                                          if (settings.streakSystemEnabled)
+                                            _buildSoulStatusChip(settings),
+                                          if (!settings.reminderEnabled)
+                                            _buildReminderNudge(settings),
+                                          _buildRandomShlokaCard(),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (isSearching && !_isAiMode)
+                              Padding(
+                                // Adjusted padding to position the list below the search bar area.
+                                padding: const EdgeInsets.only(top: 100.0),
+                                child: ResponsiveWrapper(
+                                  maxWidth: 600,
+                                  child: ListView.builder(
+                                    itemCount:
+                                        provider.searchResults.length +
+                                        1, // +1 for "See all"
+                                    itemBuilder: (context, index) {
+                                      if (index ==
+                                          provider.searchResults.length) {
+                                        return ListTile(
+                                          leading: Icon(
+                                            Icons.search,
+                                            color:
+                                                !settings.showBackground &&
+                                                    Theme.of(
+                                                          context,
+                                                        ).brightness ==
+                                                        Brightness.light
+                                                ? Colors.brown.withOpacity(0.7)
+                                                : Colors.white70,
+                                          ),
+                                          title: Text(
+                                            "See all results for '${provider.searchQuery}'",
+                                            style: TextStyle(
+                                              color:
+                                                  !settings.showBackground &&
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.light
+                                                  ? Colors.brown.shade900
+                                                  : Colors.white,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                          onTap: () {
+                                            context.pushNamed(
+                                              'shloka-list',
+                                              pathParameters: {
+                                                'query': provider.searchQuery,
+                                              },
+                                            );
+                                          },
+                                        );
+                                      }
+
+                                      final item =
+                                          provider.searchResults[index];
+                                      if (item is HeaderItem) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 16,
+                                            right: 16,
+                                            top: 20,
+                                            bottom: 8,
+                                          ),
+                                          child: Text(
+                                            item.title,
+                                            style: TextStyle(
+                                              color:
+                                                  !settings.showBackground &&
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.light
+                                                  ? Colors.pink.shade900
+                                                        .withOpacity(0.7)
+                                                  : Colors.amber.withOpacity(
+                                                      0.8,
+                                                    ),
+                                              fontSize: 12,
+                                              letterSpacing: 1.8,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      if (item is ShlokaItem) {
+                                        return ShlokaResultCard(
+                                          shloka: item.shloka,
+                                          searchQuery: provider.searchQuery,
+                                        );
+                                      }
+                                      if (item is WordItem) {
+                                        return WordResultCard(word: item.word);
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+                              ),
+
+                            // Simple Theme Toggle Button (Bottom Left)
+                            // Should only be visible on phones in PORTRAIT mode.
+                            if (MediaQuery.of(context).viewInsets.bottom == 0 &&
+                                width <=
+                                    600 && // Phone check (width-based is more reliable for hidden state)
+                                !isLandscape) // Portrait check
+                              Positioned(
+                                left: 16,
+                                bottom: 16,
+                                child: FloatingActionButton(
+                                  key: _themeToggleKey,
+                                  heroTag: 'simple_theme_toggle',
+                                  mini: true,
+                                  // Use Theme Extension for colors
+                                  backgroundColor:
+                                      Theme.of(context)
+                                          .extension<AppColors>()
+                                          ?.simpleThemeToggle ??
+                                      Theme.of(context).primaryColor,
+                                  foregroundColor:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Colors.white,
+                                  onPressed: () {
+                                    if (_revealController.isAnimating) return;
+
+                                    HapticFeedback.lightImpact();
+                                    _captureThemeTogglePosition();
+                                    setState(() {
+                                      _isBackgroundRequested =
+                                          !settings.showBackground;
+                                    });
+                                    _revealController.forward(from: 0).then((
+                                      _,
+                                    ) {
+                                      settings.setShowBackground(
+                                        _isBackgroundRequested!,
+                                      );
+                                    });
+                                  },
+                                  child: Icon(
+                                    settings.showBackground
+                                        ? Icons.format_paint_outlined
+                                        : Icons.format_paint,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
 
-                    // Top Layer Decoration - Revealing
-                    // ✨ WRAPPED IN LiquidReveal again.
-                    // This is the correct way to handle masking and prevent white flash.
-                    if (isTablet)
-                      _buildDecorationOnly(
-                        showBackground: _isBackgroundRequested!,
-                        isKeyboardOpen: isKeyboardOpen,
-                        shouldShowResults: shouldShowResults,
-                        scaleAnimation:
-                            null, // No scale on tablet (Snapshot handles it)
-                      )
-                    else
-                      LiquidReveal(
-                        progress: revealProgress,
-                        center: _revealCenter,
-                        child: _buildDecorationOnly(
+                      // Decoration Layer (Buttons) - ON TOP of content
+                      // Base Layer Decoration
+                      // Decoration Layer (Buttons) - ON TOP of content
+                      // Base Layer Decoration
+                      // ✨ Only show on PHONES.
+                      if (_revealController.isAnimating && !isTablet)
+                        _buildDecorationOnly(
+                          showBackground: !_isBackgroundRequested!,
+                          isKeyboardOpen: isKeyboardOpen,
+                          shouldShowResults: shouldShowResults,
+                          scaleAnimation: CurvedAnimation(
+                            parent: ReverseAnimation(_revealController),
+                            curve: _isBackgroundRequested!
+                                ? const Interval(
+                                    0.0,
+                                    0.6,
+                                    curve: Curves.easeInOut,
+                                  )
+                                : const Interval(
+                                    0.0,
+                                    1.0,
+                                    curve: Curves.easeInOut,
+                                  ),
+                          ),
+                        ),
+
+                      // Top Layer Decoration - Revealing
+                      // ✨ WRAPPED IN LiquidReveal again.
+                      // This is the correct way to handle masking and prevent white flash.
+                      if (isTablet)
+                        _buildDecorationOnly(
                           showBackground: _isBackgroundRequested!,
                           isKeyboardOpen: isKeyboardOpen,
                           shouldShowResults: shouldShowResults,
-                          scaleAnimation: _revealController.isAnimating
-                              ? CurvedAnimation(
-                                  parent: _revealController,
-                                  curve: const Interval(
-                                    0.6,
-                                    1.0,
-                                    curve: Curves.easeOutBack,
-                                  ),
-                                )
-                              : null, // ✨ Fix: Default to 1.0 when not animating
+                          scaleAnimation:
+                              null, // No scale on tablet (Snapshot handles it)
+                        )
+                      else
+                        LiquidReveal(
+                          progress: revealProgress,
+                          center: _revealCenter,
+                          child: _buildDecorationOnly(
+                            showBackground: _isBackgroundRequested!,
+                            isKeyboardOpen: isKeyboardOpen,
+                            shouldShowResults: shouldShowResults,
+                            scaleAnimation: _revealController.isAnimating
+                                ? CurvedAnimation(
+                                    parent: _revealController,
+                                    curve: const Interval(
+                                      0.6,
+                                      1.0,
+                                      curve: Curves.easeOutBack,
+                                    ),
+                                  )
+                                : null, // ✨ Fix: Default to 1.0 when not animating
+                          ),
                         ),
-                      ),
-                  ],
-                );
-              },
-            );
-          },
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -860,14 +896,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               prefixIcon: _isSearchFocused
                   ? IconButton(
                       icon: Icon(Icons.arrow_back, color: textColor),
-                      onPressed: () {
-                        _searchFocusNode.unfocus();
-                        // If they want to "go back to normal screen", clear text too
-                        if (_searchController.text.isNotEmpty) {
-                          _searchController.clear();
-                          provider.onSearchQueryChanged('');
-                        }
-                      },
+                      onPressed: _handleBackAction,
                     )
                   : Icon(Icons.search, color: hintColor),
               suffixIcon: Row(
