@@ -41,9 +41,10 @@ final List<CreditItem> creditsData = [
         'A heartfelt tribute to the many users who have continuously contributed via feedback, data corrections, and bug reports. Your dedication helps keep this wisdom accurate and accessible for everyone.',
   ),
   const CreditItem(
-    category: 'Bhagvad gita audio recitations',
+    category: 'Bhagvad Gita Audio Recitations',
     source: 'https://archive.org/details/bhagavad-gita-1-18',
-    description: 'Audio resourece as provided by Swami Brahmananda',
+    description:
+        'Soul-stirring recitation by Swami Brahmananda. Licensed under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).',
   ),
 
   const CreditItem(
@@ -244,7 +245,29 @@ class CreditsScreen extends StatelessWidget {
                   }, childCount: creditsData.length),
                 ),
 
-                const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      right: 48.0,
+                      left: 16.0,
+                      bottom: 40,
+                    ),
+                    child: ResponsiveWrapper(
+                      maxWidth: 450,
+                      alignment: Alignment.topRight,
+                      child: Text(
+                        'This application is built in the spirit of Seva. All third-party assets are used under their respective open-source licenses. The CC BY-SA 4.0 license requires that any derivative work (like modified audio) also be shared under the same terms.',
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.color?.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
