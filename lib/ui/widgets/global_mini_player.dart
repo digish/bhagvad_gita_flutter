@@ -26,158 +26,159 @@ class GlobalMiniPlayer extends StatelessWidget {
           child: ClipRRect(
             // Only round top corners for a "Docked" look
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                width: double.infinity,
-                // Use a decoration that extends to the bottom
-                decoration: BoxDecoration(
-                  color: (isDark ? Colors.black : Colors.white).withOpacity(
-                    0.85,
-                  ),
-                  border: Border(
-                    top: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withOpacity(
-                        0.1,
+            child: ExcludeSemantics(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  width: double.infinity,
+                  // Use a decoration that extends to the bottom
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.black : Colors.white).withOpacity(
+                      0.85,
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(0.1),
+                        width: 0.5,
                       ),
-                      width: 0.5,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      height: 6,
-                    ), // Add breathing room above seekbar
-                    // Progress Bar / Seekbar
-                    _MiniPlayerSeekbar(audioProvider: audioProvider),
-                    SafeArea(
-                      top: false,
-                      // Maintain bottom safe area padding so controls don't overlap home indicator
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        child: Row(
-                          children: [
-                            // 1. Album Art / Emblem
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer
-                                    .withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                                image: const DecorationImage(
-                                  // Placeholder or generic emblem.
-                                  // Using Gold Lotus for premium feel
-                                  image: AssetImage(
-                                    'assets/images/lotus_gold.png',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        height: 6,
+                      ), // Add breathing room above seekbar
+                      // Progress Bar / Seekbar
+                      _MiniPlayerSeekbar(audioProvider: audioProvider),
+                      SafeArea(
+                        top: false,
+                        // Maintain bottom safe area padding so controls don't overlap home indicator
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          child: Row(
+                            children: [
+                              // 1. Album Art / Emblem
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer
+                                      .withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: const DecorationImage(
+                                    // Placeholder or generic emblem.
+                                    // Using Gold Lotus for premium feel
+                                    image: AssetImage(
+                                      'assets/images/lotus_gold.png',
+                                    ),
+                                    fit: BoxFit.contain,
+                                    opacity: 0.8,
                                   ),
-                                  fit: BoxFit.contain,
-                                  opacity: 0.8,
+                                ),
+                                // Fallback if image not found/loading
+                                child: const Icon(
+                                  Icons.music_note_rounded,
+                                  size: 24,
                                 ),
                               ),
-                              // Fallback if image not found/loading
-                              child: const Icon(
-                                Icons.music_note_rounded,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
+                              const SizedBox(width: 16),
 
-                            // 2. Info (Title & Subtitle)
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _formatTitle(currentId),
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    playbackState == PlaybackState.loading
-                                        ? "Loading..."
-                                        : "Now Playing",
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6),
-                                      fontSize: 12,
+                              // 2. Info (Title & Subtitle)
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _formatTitle(currentId),
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      playbackState == PlaybackState.loading
+                                          ? "Loading..."
+                                          : "Now Playing",
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.onSurface
+                                                .withOpacity(0.6),
+                                            fontSize: 12,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
 
-                            // 3. Playback Controls
-                            // Playback Mode Toggle
-                            IconButton(
-                              onPressed: audioProvider.cyclePlaybackMode,
-                              icon: Icon(
-                                _getPlaybackModeIcon(
+                              // 3. Playback Controls
+                              // Playback Mode Toggle
+                              IconButton(
+                                onPressed: audioProvider.cyclePlaybackMode,
+                                icon: Icon(
+                                  _getPlaybackModeIcon(
+                                    audioProvider.playbackMode,
+                                  ),
+                                  size: 24,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.7),
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: _getPlaybackModeTooltip(
                                   audioProvider.playbackMode,
                                 ),
-                                size: 24,
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.7,
+                              ),
+                              const SizedBox(width: 16),
+                              IconButton(
+                                onPressed: audioProvider.togglePlayback,
+                                icon: Icon(
+                                  playbackState == PlaybackState.playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 36,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                style: IconButton.styleFrom(
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              tooltip: _getPlaybackModeTooltip(
-                                audioProvider.playbackMode,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              onPressed: audioProvider.togglePlayback,
-                              icon: Icon(
-                                playbackState == PlaybackState.playing
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                size: 36,
-                                color: theme.colorScheme.primary,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              style: IconButton.styleFrom(
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              onPressed: audioProvider.stopPlayback,
-                              icon: Icon(
-                                Icons.close_rounded,
-                                size: 24,
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.5,
+                              const SizedBox(width: 16),
+                              IconButton(
+                                onPressed: audioProvider.stopPlayback,
+                                icon: Icon(
+                                  Icons.close_rounded,
+                                  size: 24,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.5),
                                 ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
