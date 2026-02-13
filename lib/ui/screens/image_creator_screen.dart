@@ -485,11 +485,10 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                     const Spacer(),
-                    Switch(
+                    Switch.adaptive(
                       value: _showTranslation,
                       onChanged: (val) =>
                           setState(() => _showTranslation = val),
-                      activeColor: Colors.orange,
                     ),
                   ],
                 ),

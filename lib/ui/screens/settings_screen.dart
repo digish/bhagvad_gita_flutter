@@ -286,8 +286,6 @@ class SettingsScreen extends StatelessWidget {
                                       onChanged: (bool value) {
                                         settings.setShowRandomShloka(value);
                                       },
-                                      activeColor: Colors.orange,
-                                      activeTrackColor: Colors.orange,
                                     ),
                                     if (settings.showRandomShloka) ...[
                                       const Divider(height: 1, indent: 72),
@@ -414,8 +412,6 @@ class SettingsScreen extends StatelessWidget {
                                           }
                                         }
                                       },
-                                      activeColor: Colors.orange,
-                                      activeTrackColor: Colors.orange,
                                     ),
                                     if (settings.reminderEnabled) ...[
                                       const Divider(height: 1, indent: 72),
@@ -624,8 +620,6 @@ class SettingsScreen extends StatelessWidget {
                                       value,
                                     );
                                   },
-                                  activeColor: Colors.orange,
-                                  activeTrackColor: Colors.orange,
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -1074,8 +1068,6 @@ class SettingsScreen extends StatelessWidget {
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: Colors.orange,
-        activeTrackColor: Colors.orange,
       ),
     );
   }
@@ -1177,7 +1169,6 @@ class SettingsScreen extends StatelessWidget {
                       onChanged: (bool? value) {
                         settings.toggleRandomShlokaSource(-1);
                       },
-                      activeColor: Colors.orange,
                     ),
                     const Divider(),
 
@@ -1208,7 +1199,6 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: (bool? value) {
                             settings.toggleRandomShlokaSource(list.id);
                           },
-                          activeColor: Colors.orange,
                         );
                       }),
                     ],
@@ -1240,7 +1230,6 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: (bool? value) {
                             settings.toggleRandomShlokaSource(list.id);
                           },
-                          activeColor: Colors.orange,
                         );
                       }),
                     ],

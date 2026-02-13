@@ -66,8 +66,8 @@
             android:value="ca-app-pub-9968933785213782~6077457480"/>
 
         <!-- Scheduled Notifications Receivers -->
-        <receiver android:name="com.dexterous.flutter_local_notifications.ScheduledNotificationReceiver" android:exported="false" />
-        <receiver android:name="com.dexterous.flutter_local_notifications.ScheduledNotificationBootReceiver" android:exported="true">
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false" />
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
