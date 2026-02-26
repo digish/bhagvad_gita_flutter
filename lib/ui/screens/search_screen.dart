@@ -593,11 +593,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                   );
                                               if (!creditProvider.isLoading &&
                                                   creditProvider.balance <= 0) {
-                                                debugPrint(
-                                                  '🔵 [SearchScreen] Loading ad because credits are 0.',
-                                                );
-                                                AdService.instance
-                                                    .loadRewardedAd();
+                                                // Ad loading handled by CreditProvider.
                                               }
                                             },
                                             onDismiss: () {
@@ -1054,19 +1050,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           setState(() {
                             _isAiMode = !_isAiMode;
                           });
-                          if (_isAiMode) {
-                            final creditProvider = Provider.of<CreditProvider>(
-                              context,
-                              listen: false,
-                            );
-                            if (!creditProvider.isLoading &&
-                                creditProvider.balance <= 0) {
-                              debugPrint(
-                                '🔵 [SearchScreen] Toggle: Loading ad because credits are 0.',
-                              );
-                              AdService.instance.loadRewardedAd();
-                            }
-                          }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
@@ -2420,15 +2403,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           setState(() {
             _isAiMode = true;
           });
-          final creditProvider = Provider.of<CreditProvider>(
-            context,
-            listen: false,
-          );
-          if (!creditProvider.isLoading && creditProvider.balance <= 0) {
-            debugPrint('🔵 [SearchScreen] Today\'s Question: Pre-loading ad.');
-            AdService.instance.loadRewardedAd();
-          }
-
           context.push(AppRoutes.askGita, extra: _todaysQuestion);
         },
         child: Container(

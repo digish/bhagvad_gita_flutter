@@ -24,8 +24,27 @@ import '../../services/notification_service.dart';
 import '../widgets/simple_gradient_background.dart';
 import 'package:flutter/foundation.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Always preload ad in settings screen so it's ready if they want to watch for credits.
+        debugPrint(
+          '🔵 [SettingsScreen] Pre-loading ad just in case user watches it here.',
+        );
+        AdService.instance.loadRewardedAd();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

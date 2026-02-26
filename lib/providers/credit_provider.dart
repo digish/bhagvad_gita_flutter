@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/ad_service.dart';
+
 class CreditProvider extends ChangeNotifier {
   static const String _prefKeyCredits = 'divine_credits_balance';
   static const int _dailyFreeGrant = 3;
@@ -22,6 +24,11 @@ class CreditProvider extends ChangeNotifier {
         prefs.getInt(_prefKeyCredits) ??
         _dailyFreeGrant; // Start with 3 for new users
 
+    if (_balance == 0) {
+      debugPrint('🔵 [CreditProvider] Balance is 0. Pre-loading ad.');
+      AdService.instance.loadRewardedAd();
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -29,6 +36,12 @@ class CreditProvider extends ChangeNotifier {
   Future<void> consumeCredit({int cost = 1}) async {
     if (_balance >= cost) {
       _balance -= cost;
+
+      if (_balance == 0) {
+        debugPrint('🔵 [CreditProvider] Balance reached 0. Pre-loading ad.');
+        AdService.instance.loadRewardedAd();
+      }
+
       notifyListeners();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_prefKeyCredits, _balance);

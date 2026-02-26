@@ -29,7 +29,6 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   final FocusNode _inputFocusNode = FocusNode(); // ✨ Track input focus
   bool _isInputFocused = false;
   bool _hasSentInitialQuery = false;
-  bool _adLoadAttempted = false;
 
   AskGitaProvider? _provider;
 
@@ -69,31 +68,6 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
           }
         });
       }
-
-      if (!_adLoadAttempted) {
-        _adLoadAttempted = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (mounted) {
-            final creditProvider = context.read<CreditProvider>();
-
-            // If credits are still loading, wait up to 2 seconds for them
-            if (creditProvider.isLoading) {
-              int attempts = 0;
-              while (mounted && creditProvider.isLoading && attempts < 4) {
-                await Future.delayed(const Duration(milliseconds: 500));
-                attempts++;
-              }
-            }
-
-            if (mounted && creditProvider.balance <= 0) {
-              debugPrint(
-                '🔵 [AskGitaScreen] Pre-loading ad because credits are 0.',
-              );
-              AdService.instance.loadRewardedAd();
-            }
-          }
-        });
-      }
     }
   }
 
@@ -106,13 +80,6 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
       if (mounted && credits.isLoading) {
         await Future.delayed(const Duration(milliseconds: 500));
       }
-    }
-
-    if (mounted && credits.balance <= 0) {
-      debugPrint(
-        '🔵 [AskGitaScreen] Process: Loading ad because credits are 0.',
-      );
-      AdService.instance.loadRewardedAd();
     }
 
     if (mounted && widget.initialQuery != null) {
