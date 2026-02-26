@@ -138,8 +138,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _languageKey = 'language'; // 'hi' or 'en'
   static const String _scriptKey = 'script'; // 'dev', 'gu', 'te', 'ro', etc.
 
-  static const String _defaultLanguage = 'hi';
-  static const String _defaultScript = 'dev';
+  static const String _defaultLanguage = 'en';
+  static const String _defaultScript = 'en';
 
   String _language = _defaultLanguage; // Translation Language (Bhavarth)
   String get language => _language;
@@ -176,15 +176,23 @@ class SettingsProvider extends ChangeNotifier {
 
   // Helper List for Scripts with their Display Names
   static final Map<String, String> supportedScripts = {
-    'dev': 'Devanagari (देवनागरी)',
-    'en':
-        'Roman (ABCD)', // Using 'en' here to map to 'en' in shloka_scripts (Roman) and 'ro' in translations
+    'dev': 'Hindi (हिन्दी)',
+    'en': 'English',
     'gu': 'Gujarati (ગુજરાતી)',
     'te': 'Telugu (తెలుగు)',
     'kn': 'Kannada (ಕನ್ನಡ)',
     'ta': 'Tamil (தமிழ்)',
     'bn': 'Bengali (বাংলা)',
   };
+
+  Future<void> setAppLanguage(String newScript) async {
+    await setScript(newScript);
+    if (newScript == 'en') {
+      await setLanguage('en');
+    } else {
+      await setLanguage('hi');
+    }
+  }
   // Note on Roman:
   // In DB: Shloka uses 'en', Translations/Commentaries use 'ro'.
   // We will store 'en' as the script key for Roman in settings for consistency with "Roman", and map it in helper.

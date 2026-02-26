@@ -119,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
                                           backgroundColor: theme.primaryColor
                                               .withOpacity(isDark ? 0.25 : 0.1),
                                           child: Icon(
-                                            Icons.abc,
+                                            Icons.language,
                                             color: theme.primaryColor,
                                           ),
                                         ),
@@ -131,14 +131,14 @@ class SettingsScreen extends StatelessWidget {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               const Text(
-                                                'Script (Lipi)',
+                                                'App Language',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
                                                 ),
                                               ),
                                               Text(
-                                                'For Shloka & Anvay',
+                                                'For Shloka & Meaning',
                                                 style: TextStyle(
                                                   color: subtitleColor,
                                                   fontSize: 14,
@@ -156,96 +156,13 @@ class SettingsScreen extends StatelessWidget {
                                             isExpanded: true,
                                             onChanged: (String? newValue) {
                                               if (newValue != null) {
-                                                settings.setScript(newValue);
+                                                settings.setAppLanguage(
+                                                  newValue,
+                                                );
                                               }
                                             },
                                             items: SettingsProvider
                                                 .supportedScripts
-                                                .entries
-                                                .map((entry) {
-                                                  return DropdownMenuItem<
-                                                    String
-                                                  >(
-                                                    value: entry.key,
-                                                    child: Text(
-                                                      entry.value,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: Theme.of(
-                                                        context,
-                                                      ).textTheme.bodyMedium,
-                                                    ),
-                                                  );
-                                                })
-                                                .toList(),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 16,
-                                ), // Spacing between cards
-                                // --- Translation Language Card (No Header) ---
-                                Card(
-                                  color: Theme.of(context).cardTheme.color,
-                                  elevation: 4,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0,
-                                      vertical: 8.0,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: theme.primaryColor
-                                              .withOpacity(isDark ? 0.25 : 0.1),
-                                          child: Icon(
-                                            Icons.translate,
-                                            color: theme.primaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                'Meaning (Bhavarth)',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              Text(
-                                                settings.language == 'en'
-                                                    ? 'In English'
-                                                    : 'In Hindi (follows Lipi)',
-                                                style: TextStyle(
-                                                  color: subtitleColor,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          flex: 2,
-                                          child: DropdownButton<String>(
-                                            value: settings.language,
-                                            underline: const SizedBox(),
-                                            isExpanded: true,
-                                            onChanged: (String? newValue) {
-                                              if (newValue != null) {
-                                                settings.setLanguage(newValue);
-                                              }
-                                            },
-                                            items: SettingsProvider
-                                                .supportedLanguages
                                                 .entries
                                                 .map((entry) {
                                                   return DropdownMenuItem<
