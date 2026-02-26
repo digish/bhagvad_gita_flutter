@@ -36,384 +36,328 @@ class SettingsScreen extends StatelessWidget {
         ? Colors.white.withOpacity(0.1)
         : Colors.grey[100];
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Only show gradient in light mode or if specific flag is set, otherwise plain background from Scaffold
-          if (!isDark) const SimpleGradientBackground(startColor: Colors.white),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Column(
-                  children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          if (MediaQuery.of(context).size.width <= 600)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: CircleAvatar(
-                                backgroundColor: isDark
-                                    ? Colors.white.withOpacity(0.1)
-                                    : Colors.black.withOpacity(0.3),
-                                child: BackButton(
-                                  color: theme.iconTheme.color,
-                                  onPressed: () {
-                                    if (context.canPop()) {
-                                      context.pop();
-                                    } else {
-                                      context.go('/');
-                                    }
-                                  },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Stack(
+          children: [
+            // Only show gradient in light mode or if specific flag is set, otherwise plain background from Scaffold
+            if (!isDark)
+              const SimpleGradientBackground(startColor: Colors.white),
+            SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            if (MediaQuery.of(context).size.width <= 600)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: CircleAvatar(
+                                  backgroundColor: isDark
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.black.withOpacity(0.3),
+                                  child: BackButton(
+                                    color: theme.iconTheme.color,
+                                    onPressed: () {
+                                      if (context.canPop()) {
+                                        context.pop();
+                                      } else {
+                                        context.go('/');
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
+                            Text(
+                              'Settings',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          Text(
-                            'Settings',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: Consumer<SettingsProvider>(
-                        builder: (context, settings, child) {
-                          return ListView(
-                            padding: const EdgeInsets.all(16.0),
-                            children: [
-                              // --- Language Section ---
-                              _buildSectionHeader('Language', context),
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                    vertical: 8.0,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: theme.primaryColor
-                                            .withOpacity(isDark ? 0.25 : 0.1),
-                                        child: Icon(
-                                          Icons.abc,
-                                          color: theme.primaryColor,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Script (Lipi)',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            Text(
-                                              'For Shloka & Anvay',
-                                              style: TextStyle(
-                                                color: subtitleColor,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        flex: 2,
-                                        child: DropdownButton<String>(
-                                          value: settings.script,
-                                          underline: const SizedBox(),
-                                          isExpanded: true,
-                                          onChanged: (String? newValue) {
-                                            if (newValue != null) {
-                                              settings.setScript(newValue);
-                                            }
-                                          },
-                                          items: SettingsProvider
-                                              .supportedScripts
-                                              .entries
-                                              .map((entry) {
-                                                return DropdownMenuItem<String>(
-                                                  value: entry.key,
-                                                  child: Text(
-                                                    entry.value,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.bodyMedium,
-                                                  ),
-                                                );
-                                              })
-                                              .toList(),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(
-                                height: 16,
-                              ), // Spacing between cards
-                              // --- Translation Language Card (No Header) ---
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                    vertical: 8.0,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: theme.primaryColor
-                                            .withOpacity(isDark ? 0.25 : 0.1),
-                                        child: Icon(
-                                          Icons.translate,
-                                          color: theme.primaryColor,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Meaning (Bhavarth)',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            Text(
-                                              settings.language == 'en'
-                                                  ? 'In English'
-                                                  : 'In Hindi (follows Lipi)',
-                                              style: TextStyle(
-                                                color: subtitleColor,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        flex: 2,
-                                        child: DropdownButton<String>(
-                                          value: settings.language,
-                                          underline: const SizedBox(),
-                                          isExpanded: true,
-                                          onChanged: (String? newValue) {
-                                            if (newValue != null) {
-                                              settings.setLanguage(newValue);
-                                            }
-                                          },
-                                          items: SettingsProvider
-                                              .supportedLanguages
-                                              .entries
-                                              .map((entry) {
-                                                return DropdownMenuItem<String>(
-                                                  value: entry.key,
-                                                  child: Text(
-                                                    entry.value,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.bodyMedium,
-                                                  ),
-                                                );
-                                              })
-                                              .toList(),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // --- Daily Journey Section ---
-                              _buildSectionHeader('Daily Journey', context),
-                              // 1. Gita Wisdom (Daily Inspiration)
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Column(
-                                  children: [
-                                    SwitchListTile.adaptive(
-                                      secondary: CircleAvatar(
-                                        backgroundColor: theme.primaryColor
-                                            .withOpacity(isDark ? 0.25 : 0.1),
-                                        child: Icon(
-                                          Icons.lightbulb_outline,
-                                          color: theme.primaryColor,
-                                        ),
-                                      ),
-                                      title: const Text(
-                                        'Daily Gita Wisdom',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        'Show a random shloka on the search screen.',
-                                        style: TextStyle(
-                                          color: subtitleColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      value: settings.showRandomShloka,
-                                      onChanged: (bool value) {
-                                        settings.setShowRandomShloka(value);
-                                      },
+                      Expanded(
+                        child: Consumer<SettingsProvider>(
+                          builder: (context, settings, child) {
+                            return ListView(
+                              padding: const EdgeInsets.all(16.0),
+                              children: [
+                                // --- Language Section ---
+                                _buildSectionHeader('Language', context),
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
+                                      vertical: 8.0,
                                     ),
-                                    if (settings.showRandomShloka) ...[
-                                      const Divider(height: 1, indent: 72),
-                                      Consumer<SettingsProvider>(
-                                        builder: (context, settings, _) {
-                                          final selectedSources =
-                                              settings.randomShlokaSources;
-                                          String subtitleText;
-                                          if (selectedSources.contains(-1)) {
-                                            subtitleText = 'Entire Gita';
-                                          } else if (selectedSources.isEmpty) {
-                                            subtitleText =
-                                                'No sources selected';
-                                          } else {
-                                            subtitleText =
-                                                '${selectedSources.length} source(s) selected';
-                                          }
-
-                                          return ListTile(
-                                            leading: const SizedBox(
-                                              width: 40,
-                                              height: 40,
-                                            ),
-                                            title: const Text(
-                                              'Source for Inspiration',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.abc,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Script (Lipi)',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
-                                            ),
-                                            subtitle: Text(
-                                              subtitleText,
-                                              style: TextStyle(
-                                                color: subtitleColor,
-                                                fontSize: 14,
+                                              Text(
+                                                'For Shloka & Anvay',
+                                                style: TextStyle(
+                                                  color: subtitleColor,
+                                                  fontSize: 14,
+                                                ),
                                               ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            trailing: Icon(
-                                              Icons.arrow_drop_down,
-                                              color: subtitleColor,
-                                            ),
-                                            onTap: () {
-                                              _showSourceSelectionDialog(
-                                                context,
-                                              );
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          flex: 2,
+                                          child: DropdownButton<String>(
+                                            value: settings.script,
+                                            underline: const SizedBox(),
+                                            isExpanded: true,
+                                            onChanged: (String? newValue) {
+                                              if (newValue != null) {
+                                                settings.setScript(newValue);
+                                              }
                                             },
-                                          );
+                                            items: SettingsProvider
+                                                .supportedScripts
+                                                .entries
+                                                .map((entry) {
+                                                  return DropdownMenuItem<
+                                                    String
+                                                  >(
+                                                    value: entry.key,
+                                                    child: Text(
+                                                      entry.value,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.bodyMedium,
+                                                    ),
+                                                  );
+                                                })
+                                                .toList(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 16,
+                                ), // Spacing between cards
+                                // --- Translation Language Card (No Header) ---
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
+                                      vertical: 8.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.translate,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Meaning (Bhavarth)',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                settings.language == 'en'
+                                                    ? 'In English'
+                                                    : 'In Hindi (follows Lipi)',
+                                                style: TextStyle(
+                                                  color: subtitleColor,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          flex: 2,
+                                          child: DropdownButton<String>(
+                                            value: settings.language,
+                                            underline: const SizedBox(),
+                                            isExpanded: true,
+                                            onChanged: (String? newValue) {
+                                              if (newValue != null) {
+                                                settings.setLanguage(newValue);
+                                              }
+                                            },
+                                            items: SettingsProvider
+                                                .supportedLanguages
+                                                .entries
+                                                .map((entry) {
+                                                  return DropdownMenuItem<
+                                                    String
+                                                  >(
+                                                    value: entry.key,
+                                                    child: Text(
+                                                      entry.value,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.bodyMedium,
+                                                    ),
+                                                  );
+                                                })
+                                                .toList(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // --- Daily Journey Section ---
+                                _buildSectionHeader('Daily Journey', context),
+                                // 1. Gita Wisdom (Daily Inspiration)
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Column(
+                                    children: [
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.lightbulb_outline,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          'Daily Gita Wisdom',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          'Show a random shloka on the search screen.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.showRandomShloka,
+                                        onChanged: (bool value) {
+                                          settings.setShowRandomShloka(value);
                                         },
                                       ),
-                                    ],
-                                    const Divider(height: 1, indent: 72),
-                                    ListTile(
-                                      leading: const SizedBox(
-                                        width: 40,
-                                        height: 40,
-                                      ),
-                                      title: const Text(
-                                        'Home Screen Widget',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        'Show daily shlokas on your home screen.',
-                                        style: TextStyle(
-                                          color: subtitleColor,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      trailing: Icon(
-                                        Icons.help_outline,
-                                        size: 20,
-                                        color: subtitleColor,
-                                      ),
-                                      onTap: () {
-                                        _showWidgetInstructionsDialog(context);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
+                                      if (settings.showRandomShloka) ...[
+                                        const Divider(height: 1, indent: 72),
+                                        Consumer<SettingsProvider>(
+                                          builder: (context, settings, _) {
+                                            final selectedSources =
+                                                settings.randomShlokaSources;
+                                            String subtitleText;
+                                            if (selectedSources.contains(-1)) {
+                                              subtitleText = 'Entire Gita';
+                                            } else if (selectedSources
+                                                .isEmpty) {
+                                              subtitleText =
+                                                  'No sources selected';
+                                            } else {
+                                              subtitleText =
+                                                  '${selectedSources.length} source(s) selected';
+                                            }
 
-                              // 2. Daily Wisdom Reminder
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Column(
-                                  children: [
-                                    SwitchListTile.adaptive(
-                                      secondary: CircleAvatar(
-                                        backgroundColor: theme.primaryColor
-                                            .withOpacity(isDark ? 0.25 : 0.1),
-                                        child: Icon(
-                                          Icons.notifications_active_outlined,
-                                          color: theme.primaryColor,
-                                        ),
-                                      ),
-                                      title: const Text(
-                                        'Daily Wisdom Reminder',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        'Get a nudge at your preferred time.',
-                                        style: TextStyle(
-                                          color: subtitleColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      value: settings.reminderEnabled,
-                                      onChanged: (bool value) async {
-                                        final success = await settings
-                                            .setReminderEnabled(value);
-                                        if (!success && value) {
-                                          if (context.mounted) {
-                                            _showNotificationPermissionDialog(
-                                              context,
+                                            return ListTile(
+                                              leading: const SizedBox(
+                                                width: 40,
+                                                height: 40,
+                                              ),
+                                              title: const Text(
+                                                'Source for Inspiration',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                subtitleText,
+                                                style: TextStyle(
+                                                  color: subtitleColor,
+                                                  fontSize: 14,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              trailing: Icon(
+                                                Icons.arrow_drop_down,
+                                                color: subtitleColor,
+                                              ),
+                                              onTap: () {
+                                                _showSourceSelectionDialog(
+                                                  context,
+                                                );
+                                              },
                                             );
-                                          }
-                                        }
-                                      },
-                                    ),
-                                    if (settings.reminderEnabled) ...[
+                                          },
+                                        ),
+                                      ],
                                       const Divider(height: 1, indent: 72),
                                       ListTile(
                                         leading: const SizedBox(
@@ -421,619 +365,710 @@ class SettingsScreen extends StatelessWidget {
                                           height: 40,
                                         ),
                                         title: const Text(
-                                          'Reminder Time',
+                                          'Home Screen Widget',
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                         subtitle: Text(
-                                          settings.reminderTime.format(context),
+                                          'Show daily shlokas on your home screen.',
                                           style: TextStyle(
                                             color: subtitleColor,
                                             fontSize: 14,
                                           ),
                                         ),
-                                        trailing: const Icon(Icons.access_time),
-                                        onTap: () async {
-                                          final TimeOfDay? picked =
-                                              await showTimePicker(
-                                                context: context,
-                                                initialTime:
-                                                    settings.reminderTime,
-                                              );
-                                          if (picked != null) {
-                                            settings.setReminderTime(picked);
-                                          }
+                                        trailing: Icon(
+                                          Icons.help_outline,
+                                          size: 20,
+                                          color: subtitleColor,
+                                        ),
+                                        onTap: () {
+                                          _showWidgetInstructionsDialog(
+                                            context,
+                                          );
                                         },
                                       ),
                                     ],
-                                    // 🧪 DEBUG: Test notification buttons
-                                    if (kDebugMode &&
-                                        settings.reminderEnabled) ...[
-                                      const Divider(height: 1, indent: 72),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 72,
-                                          right: 16,
-                                          top: 12,
-                                          bottom: 12,
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Test Notifications (Debug)',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.orange,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () async {
-                                                      await NotificationService
-                                                          .instance
-                                                          .showTestNotificationAfterDelay();
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(
-                                                          context,
-                                                        ).showSnackBar(
-                                                          const SnackBar(
-                                                            content: Text(
-                                                              'Notification in 5 sec! Background the app now! 🔔',
-                                                            ),
-                                                            duration: Duration(
-                                                              seconds: 4,
-                                                            ),
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
-                                                    icon: const Icon(
-                                                      Icons.timer,
-                                                      size: 16,
-                                                    ),
-                                                    label: const Text(
-                                                      'In 5 Sec',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor:
-                                                          Colors.orange,
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-                                                    onPressed: () async {
-                                                      await NotificationService
-                                                          .instance
-                                                          .scheduleTestNotificationInOneMinute();
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(
-                                                          context,
-                                                        ).showSnackBar(
-                                                          const SnackBar(
-                                                            content: Text(
-                                                              'Notification scheduled for 1 min! ⏰',
-                                                            ),
-                                                            duration: Duration(
-                                                              seconds: 2,
-                                                            ),
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
-                                                    icon: const Icon(
-                                                      Icons.schedule,
-                                                      size: 16,
-                                                    ),
-                                                    label: const Text(
-                                                      'In 1 Min',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor:
-                                                          Colors.deepOrange,
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
+                                const SizedBox(height: 16),
 
-                              // 3. Consistency Roadmap
-                              _buildSettingCard(
-                                context,
-                                title: 'Consistency Roadmap',
-                                subtitle:
-                                    'Visualize your daily progress, earn milestones, and use lifelines to maintain consistency.',
-                                value: settings.streakSystemEnabled,
-                                onChanged: (value) {
-                                  settings.setStreakSystemEnabled(value);
-                                },
-                                icon: Icons.auto_awesome_rounded,
-                              ),
-                              const SizedBox(height: 32),
-
-                              // --- Content Section ---
-                              _buildSectionHeader('Content', context),
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: SwitchListTile.adaptive(
-                                  secondary: CircleAvatar(
-                                    backgroundColor: theme.primaryColor
-                                        .withOpacity(isDark ? 0.25 : 0.1),
-                                    child: Icon(
-                                      Icons.history_edu,
-                                      color: theme.primaryColor,
-                                    ),
-                                  ),
-                                  title: const Text(
-                                    'Classical Commentaries',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    'Show Big Three (Shankaracharya, Ramanujacharya, Madhvacharya)',
-                                    style: TextStyle(
-                                      color: subtitleColor,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  value: settings.showClassicalCommentaries,
-                                  onChanged: (bool value) {
-                                    settings.setShowClassicalCommentaries(
-                                      value,
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // --- Preferences Section ---
-                              _buildSectionHeader('Preferences', context),
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                    vertical: 8.0,
-                                  ),
-                                  child: Row(
+                                // 2. Daily Wisdom Reminder
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Column(
                                     children: [
-                                      CircleAvatar(
-                                        backgroundColor: theme.primaryColor
-                                            .withOpacity(isDark ? 0.25 : 0.1),
-                                        child: Icon(
-                                          Icons.brightness_6,
-                                          color: theme.primaryColor,
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.notifications_active_outlined,
+                                            color: theme.primaryColor,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'App Theme',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            Text(
-                                              'Light, Dark, or System',
-                                              style: TextStyle(
-                                                color: subtitleColor,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
+                                        title: const Text(
+                                          'Daily Wisdom Reminder',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        flex: 2,
-                                        child: DropdownButton<ThemeMode>(
-                                          value: settings.themeMode,
-                                          underline: const SizedBox(),
-                                          isExpanded: true,
-                                          onChanged: (ThemeMode? newValue) {
-                                            if (newValue != null) {
-                                              settings.setThemeMode(newValue);
+                                        subtitle: Text(
+                                          'Get a nudge at your preferred time.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.reminderEnabled,
+                                        onChanged: (bool value) async {
+                                          final success = await settings
+                                              .setReminderEnabled(value);
+                                          if (!success && value) {
+                                            if (context.mounted) {
+                                              _showNotificationPermissionDialog(
+                                                context,
+                                              );
                                             }
-                                          },
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: ThemeMode.system,
-                                              child: Text('System'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: ThemeMode.light,
-                                              child: Text('Light'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: ThemeMode.dark,
-                                              child: Text('Dark'),
-                                            ),
-                                          ],
-                                        ),
+                                          }
+                                        },
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildSettingCard(
-                                context,
-                                title: 'Simple Theme',
-                                subtitle:
-                                    'Enable a cleaner look by removing background illustrations.',
-                                value: !settings.showBackground,
-                                onChanged: (value) {
-                                  settings.setShowBackground(!value);
-                                },
-                                icon: Icons.format_paint_outlined,
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // --- AI Settings Section ---
-                              _buildSectionHeader(
-                                'AI credits for Ask GITA',
-                                context,
-                              ),
-                              Card(
-                                color: Theme.of(context).cardTheme.color,
-                                elevation: 4,
-                                clipBehavior: Clip.antiAlias,
-                                child: Consumer<CreditProvider>(
-                                  builder: (context, credits, _) {
-                                    final hasCustomKey =
-                                        settings.customAiApiKey != null;
-
-                                    return Column(
-                                      children: [
-                                        // 1. Credit Balance / Status Card
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: hasCustomKey
-                                                  ? [
-                                                      Colors.purple.shade700,
-                                                      Colors
-                                                          .deepPurple
-                                                          .shade900,
-                                                    ]
-                                                  : [
-                                                      const Color(0xFFFFB75E),
-                                                      const Color(0xFFED8F03),
-                                                    ], // Gold gradient
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
+                                      if (settings.reminderEnabled) ...[
+                                        const Divider(height: 1, indent: 72),
+                                        ListTile(
+                                          leading: const SizedBox(
+                                            width: 40,
+                                            height: 40,
+                                          ),
+                                          title: const Text(
+                                            'Reminder Time',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                          subtitle: Text(
+                                            settings.reminderTime.format(
+                                              context,
+                                            ),
+                                            style: TextStyle(
+                                              color: subtitleColor,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          trailing: const Icon(
+                                            Icons.access_time,
+                                          ),
+                                          onTap: () async {
+                                            final TimeOfDay? picked =
+                                                await showTimePicker(
+                                                  context: context,
+                                                  initialTime:
+                                                      settings.reminderTime,
+                                                );
+                                            if (picked != null) {
+                                              settings.setReminderTime(picked);
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                      // 🧪 DEBUG: Test notification buttons
+                                      if (kDebugMode &&
+                                          settings.reminderEnabled) ...[
+                                        const Divider(height: 1, indent: 72),
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 72,
+                                            right: 16,
+                                            top: 12,
+                                            bottom: 12,
+                                          ),
                                           child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Icon(
-                                                hasCustomKey
-                                                    ? Icons.all_inclusive
-                                                    : Icons.auto_awesome,
-                                                size: 48,
-                                                color: Colors.white,
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                hasCustomKey
-                                                    ? 'Unlimited Access'
-                                                    : '${credits.balance}',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 36,
+                                              const Text(
+                                                'Test Notifications (Debug)',
+                                                style: TextStyle(
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.bold,
+                                                  color: Colors.orange,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                hasCustomKey
-                                                    ? 'Using Personal Key'
-                                                    : 'Divine Credits Available',
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () async {
+                                                        await NotificationService
+                                                            .instance
+                                                            .showTestNotificationAfterDelay();
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Notification in 5 sec! Background the app now! 🔔',
+                                                              ),
+                                                              duration:
+                                                                  Duration(
+                                                                    seconds: 4,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      icon: const Icon(
+                                                        Icons.timer,
+                                                        size: 16,
+                                                      ),
+                                                      label: const Text(
+                                                        'In 5 Sec',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.orange,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () async {
+                                                        await NotificationService
+                                                            .instance
+                                                            .scheduleTestNotificationInOneMinute();
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Notification scheduled for 1 min! ⏰',
+                                                              ),
+                                                              duration:
+                                                                  Duration(
+                                                                    seconds: 2,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      icon: const Icon(
+                                                        Icons.schedule,
+                                                        size: 16,
+                                                      ),
+                                                      label: const Text(
+                                                        'In 1 Min',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.deepOrange,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // 3. Consistency Roadmap
+                                _buildSettingCard(
+                                  context,
+                                  title: 'Consistency Roadmap',
+                                  subtitle:
+                                      'Visualize your daily progress, earn milestones, and use lifelines to maintain consistency.',
+                                  value: settings.streakSystemEnabled,
+                                  onChanged: (value) {
+                                    settings.setStreakSystemEnabled(value);
+                                  },
+                                  icon: Icons.auto_awesome_rounded,
+                                ),
+                                const SizedBox(height: 32),
+
+                                // --- Content Section ---
+                                _buildSectionHeader('Content', context),
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: SwitchListTile.adaptive(
+                                    secondary: CircleAvatar(
+                                      backgroundColor: theme.primaryColor
+                                          .withOpacity(isDark ? 0.25 : 0.1),
+                                      child: Icon(
+                                        Icons.history_edu,
+                                        color: theme.primaryColor,
+                                      ),
+                                    ),
+                                    title: const Text(
+                                      'Classical Commentaries',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      'Show Big Three (Shankaracharya, Ramanujacharya, Madhvacharya)',
+                                      style: TextStyle(
+                                        color: subtitleColor,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    value: settings.showClassicalCommentaries,
+                                    onChanged: (bool value) {
+                                      settings.setShowClassicalCommentaries(
+                                        value,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // --- Preferences Section ---
+                                _buildSectionHeader('Preferences', context),
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
+                                      vertical: 8.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.brightness_6,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'App Theme',
                                                 style: TextStyle(
-                                                  color: Colors.white
-                                                      .withOpacity(0.9),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Light, Dark, or System',
+                                                style: TextStyle(
+                                                  color: subtitleColor,
                                                   fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                  letterSpacing: 0.5,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          flex: 2,
+                                          child: DropdownButton<ThemeMode>(
+                                            value: settings.themeMode,
+                                            underline: const SizedBox(),
+                                            isExpanded: true,
+                                            onChanged: (ThemeMode? newValue) {
+                                              if (newValue != null) {
+                                                settings.setThemeMode(newValue);
+                                              }
+                                            },
+                                            items: const [
+                                              DropdownMenuItem(
+                                                value: ThemeMode.system,
+                                                child: Text('System'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: ThemeMode.light,
+                                                child: Text('Light'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: ThemeMode.dark,
+                                                child: Text('Dark'),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildSettingCard(
+                                  context,
+                                  title: 'Simple Theme',
+                                  subtitle:
+                                      'Enable a cleaner look by removing background illustrations.',
+                                  value: !settings.showBackground,
+                                  onChanged: (value) {
+                                    settings.setShowBackground(!value);
+                                  },
+                                  icon: Icons.format_paint_outlined,
+                                ),
 
-                                        // 2. Actions (If no custom key)
-                                        if (!hasCustomKey) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              16,
-                                              24,
-                                              16,
-                                              16,
+                                const SizedBox(height: 32),
+
+                                // --- AI Settings Section ---
+                                _buildSectionHeader(
+                                  'AI credits for Ask GITA',
+                                  context,
+                                ),
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Consumer<CreditProvider>(
+                                    builder: (context, credits, _) {
+                                      final hasCustomKey =
+                                          settings.customAiApiKey != null;
+
+                                      return Column(
+                                        children: [
+                                          // 1. Credit Balance / Status Card
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(24),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: hasCustomKey
+                                                    ? [
+                                                        Colors.purple.shade700,
+                                                        Colors
+                                                            .deepPurple
+                                                            .shade900,
+                                                      ]
+                                                    : [
+                                                        const Color(0xFFFFB75E),
+                                                        const Color(0xFFED8F03),
+                                                      ], // Gold gradient
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
                                             ),
                                             child: Column(
                                               children: [
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  height: 54,
-                                                  child: FilledButton.icon(
-                                                    onPressed: () {
-                                                      AdService.instance.showRewardedAd(
-                                                        onRewardEarned: (reward) {
-                                                          context
-                                                              .read<
-                                                                CreditProvider
-                                                              >()
-                                                              .addCredits(3);
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text(
-                                                                'Karma earned! +3 Credits added. 🙏',
-                                                              ),
-                                                              behavior:
-                                                                  SnackBarBehavior
-                                                                      .floating,
-                                                            ),
-                                                          );
-                                                        },
-                                                        onAdFailedToShow: () {
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text(
-                                                                'The rewards system is under development and will be enabled soon. Please try again later.',
-                                                              ),
-                                                              backgroundColor:
-                                                                  Colors.orange,
-                                                              behavior:
-                                                                  SnackBarBehavior
-                                                                      .floating,
-                                                            ),
-                                                          );
-                                                        },
-                                                      );
-                                                    },
-                                                    style: FilledButton.styleFrom(
-                                                      backgroundColor:
-                                                          Colors.amber[800],
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      elevation: 2,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    icon: const Icon(
-                                                      Icons
-                                                          .play_circle_filled_rounded,
-                                                    ),
-                                                    label: Text(
-                                                      'Watch Ad to add ${CreditProvider.adRewardAmount} Credits',
-                                                      style: const TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
+                                                Icon(
+                                                  hasCustomKey
+                                                      ? Icons.all_inclusive
+                                                      : Icons.auto_awesome,
+                                                  size: 48,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  hasCustomKey
+                                                      ? 'Unlimited Access'
+                                                      : '${credits.balance}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 36,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 8),
+                                                const SizedBox(height: 4),
                                                 Text(
-                                                  'it helps supports cloud costs for using AI',
+                                                  hasCustomKey
+                                                      ? 'Using Personal Key'
+                                                      : 'Divine Credits Available',
                                                   style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: subtitleColor,
-                                                    fontStyle: FontStyle.italic,
+                                                    color: Colors.white
+                                                        .withOpacity(0.9),
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                    letterSpacing: 0.5,
                                                   ),
-                                                  textAlign: TextAlign.center,
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
 
-                                        // 3. Custom Key Option (Always visible but subtle)
-                                        const Divider(height: 1),
-                                        ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 4,
+                                          // 2. Actions (If no custom key)
+                                          if (!hasCustomKey) ...[
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    16,
+                                                    24,
+                                                    16,
+                                                    16,
+                                                  ),
+                                              child: Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    height: 54,
+                                                    child: FilledButton.icon(
+                                                      onPressed: () {
+                                                        AdService.instance.showRewardedAd(
+                                                          onRewardEarned: (reward) {
+                                                            context
+                                                                .read<
+                                                                  CreditProvider
+                                                                >()
+                                                                .addCredits(3);
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                  'Karma earned! +3 Credits added. 🙏',
+                                                                ),
+                                                                behavior:
+                                                                    SnackBarBehavior
+                                                                        .floating,
+                                                              ),
+                                                            );
+                                                          },
+                                                          onAdFailedToShow: () {
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                  'The rewards system is under development and will be enabled soon. Please try again later.',
+                                                                ),
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .orange,
+                                                                behavior:
+                                                                    SnackBarBehavior
+                                                                        .floating,
+                                                              ),
+                                                            );
+                                                          },
+                                                        );
+                                                      },
+                                                      style: FilledButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.amber[800],
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        elevation: 2,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .play_circle_filled_rounded,
+                                                      ),
+                                                      label: Text(
+                                                        'Watch Ad to add ${CreditProvider.adRewardAmount} Credits',
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'it helps supports cloud costs for using AI',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: subtitleColor,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ],
                                               ),
-                                          leading: CircleAvatar(
-                                            backgroundColor: iconBgColor,
-                                            radius: 16,
-                                            child: Icon(
-                                              Icons.key,
-                                              size: 16,
+                                            ),
+                                          ],
+
+                                          // 3. Custom Key Option (Always visible but subtle)
+                                          const Divider(height: 1),
+                                          ListTile(
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 4,
+                                                ),
+                                            leading: CircleAvatar(
+                                              backgroundColor: iconBgColor,
+                                              radius: 16,
+                                              child: Icon(
+                                                Icons.key,
+                                                size: 16,
+                                                color: subtitleColor,
+                                              ),
+                                            ),
+                                            title: const Text(
+                                              'Custom Gemini Key',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              hasCustomKey
+                                                  ? 'Tap to edit or remove'
+                                                  : 'Use your own key',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: subtitleColor,
+                                              ),
+                                            ),
+                                            trailing: Icon(
+                                              Icons.chevron_right,
+                                              size: 20,
                                               color: subtitleColor,
                                             ),
-                                          ),
-                                          title: const Text(
-                                            'Custom Gemini Key',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
+                                            onTap: () => _showApiKeyDialog(
+                                              context,
+                                              settings,
                                             ),
                                           ),
-                                          subtitle: Text(
-                                            hasCustomKey
-                                                ? 'Tap to edit or remove'
-                                                : 'Use your own key',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: subtitleColor,
-                                            ),
-                                          ),
-                                          trailing: Icon(
-                                            Icons.chevron_right,
-                                            size: 20,
-                                            color: subtitleColor,
-                                          ),
-                                          onTap: () => _showApiKeyDialog(
-                                            context,
-                                            settings,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 8.0,
-                                  left: 4.0,
-                                ),
-                                child: InkWell(
-                                  onTap: () async {
-                                    final url = Uri.parse(
-                                      'https://aistudio.google.com/app/apikey',
-                                    );
-                                    if (!await launchUrl(
-                                      url,
-                                      mode: LaunchMode.externalApplication,
-                                    )) {
-                                      debugPrint('Could not launch AI Studio');
-                                    }
-                                  },
-                                  child: const Text(
-                                    'Get your own free key from Google AI Studio',
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      fontSize: 12,
-                                      decoration: TextDecoration.underline,
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 8.0,
+                                    left: 4.0,
+                                  ),
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                        'https://aistudio.google.com/app/apikey',
+                                      );
+                                      if (!await launchUrl(
+                                        url,
+                                        mode: LaunchMode.externalApplication,
+                                      )) {
+                                        debugPrint(
+                                          'Could not launch AI Studio',
+                                        );
+                                      }
+                                    },
+                                    child: const Text(
+                                      'Get your own free key from Google AI Studio',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 12,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 32),
+                                const SizedBox(height: 32),
 
-                              // --- Support Section ---
-                              _buildSectionHeader('Support', context),
-                              _buildActionTile(
-                                context,
-                                title: 'Send Feedback',
-                                subtitle:
-                                    'Have a suggestion or found a bug? Let us know!',
-                                icon: Icons.mail_outline,
-                                onTap: (innerContext) async {
-                                  final Uri emailLaunchUri = Uri(
-                                    scheme: 'mailto',
-                                    path: 'digish.pandya@gmail.com',
-                                    query:
-                                        'subject=Feedback for Bhagavad Gita App',
-                                  );
-                                  if (!await launchUrl(emailLaunchUri)) {
-                                    debugPrint('Could not launch email');
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              _buildActionTile(
-                                context,
-                                title: 'Share App',
-                                subtitle:
-                                    'Share the wisdom with your friends and family.',
-                                icon: Icons.share_outlined,
-                                onTap: (innerContext) {
-                                  final box =
-                                      innerContext.findRenderObject()
-                                          as RenderBox?;
-                                  Share.share(
-                                    'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita',
-                                    sharePositionOrigin: box != null
-                                        ? box.localToGlobal(Offset.zero) &
-                                              box.size
-                                        : null,
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              _buildActionTile(
-                                context,
-                                title: 'More Apps',
-                                subtitle:
-                                    'Explore other apps by the developer.',
-                                icon: Icons.apps,
-                                onTap: (innerContext) async {
-                                  final Uri developerPageUri = Uri.parse(
-                                    'https://digish.github.io/project/',
-                                  );
-                                  if (!await launchUrl(
-                                    developerPageUri,
-                                    mode: LaunchMode.externalApplication,
-                                  )) {
-                                    debugPrint(
-                                      'Could not launch developer page',
+                                // --- Support Section ---
+                                _buildSectionHeader('Support', context),
+                                _buildActionTile(
+                                  context,
+                                  title: 'Send Feedback',
+                                  subtitle:
+                                      'Have a suggestion or found a bug? Let us know!',
+                                  icon: Icons.mail_outline,
+                                  onTap: (innerContext) async {
+                                    final Uri emailLaunchUri = Uri(
+                                      scheme: 'mailto',
+                                      path: 'digish.pandya@gmail.com',
+                                      query:
+                                          'subject=Feedback for Bhagavad Gita App',
                                     );
-                                  }
-                                },
-                              ),
-                            ],
-                          );
-                        },
+                                    if (!await launchUrl(emailLaunchUri)) {
+                                      debugPrint('Could not launch email');
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionTile(
+                                  context,
+                                  title: 'Share App',
+                                  subtitle:
+                                      'Share the wisdom with your friends and family.',
+                                  icon: Icons.share_outlined,
+                                  onTap: (innerContext) {
+                                    final box =
+                                        innerContext.findRenderObject()
+                                            as RenderBox?;
+                                    Share.share(
+                                      'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita',
+                                      sharePositionOrigin: box != null
+                                          ? box.localToGlobal(Offset.zero) &
+                                                box.size
+                                          : null,
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionTile(
+                                  context,
+                                  title: 'More Apps',
+                                  subtitle:
+                                      'Explore other apps by the developer.',
+                                  icon: Icons.apps,
+                                  onTap: (innerContext) async {
+                                    final Uri developerPageUri = Uri.parse(
+                                      'https://digish.github.io/project/',
+                                    );
+                                    if (!await launchUrl(
+                                      developerPageUri,
+                                      mode: LaunchMode.externalApplication,
+                                    )) {
+                                      debugPrint(
+                                        'Could not launch developer page',
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

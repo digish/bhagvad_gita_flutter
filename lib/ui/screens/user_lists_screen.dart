@@ -5,6 +5,7 @@ import '../../providers/bookmark_provider.dart';
 import '../../models/shloka_list.dart';
 import 'list_detail_screen.dart';
 import '../widgets/simple_gradient_background.dart';
+import 'package:go_router/go_router.dart';
 
 class UserListsScreen extends StatefulWidget {
   const UserListsScreen({super.key});
@@ -21,15 +22,32 @@ class _UserListsScreenState extends State<UserListsScreen> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isWideScreen = width > 700;
-    final railPadding = MediaQuery.of(context).padding.left; // ✨ Get rail width
+    final railPadding = MediaQuery.of(context).padding.left;
 
-    // ✨ On wide screens, if no list is selected, select the first one automatically
-    // This is done in a post-frame callback to avoid build-phase setState errors if needed,
-    // but doing it lazily in the builder is safer or just letting it be null (showing placeholder).
-    // For better UX, let's try to select the first user list or curated list if available.
-    // However, doing this inside build can be tricky with providers.
-    // Let's keep it simple: if null, show placeholder. Users can tap.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        }
+      },
+      child: _buildScaffold(context, isWideScreen, railPadding),
+    );
+  }
 
+  Widget _buildScaffold(
+    BuildContext context,
+    bool isWideScreen,
+    double railPadding,
+  ) {
     if (isWideScreen) {
       return Scaffold(
         body: Stack(

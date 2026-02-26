@@ -301,222 +301,250 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
         ? leftPadding
         : (showRail ? railWidth : 0.0);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Ask Gita AI'),
-        centerTitle: true,
-        backgroundColor:
-            theme.appBarTheme.backgroundColor?.withOpacity(0.9) ??
-            theme.colorScheme.surface.withOpacity(0.9),
-        elevation: 0,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7), // Glassy App Bar
-            child: Container(color: Colors.transparent),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        }
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: const Text('Ask Gita AI'),
+          centerTitle: true,
+          backgroundColor:
+              theme.appBarTheme.backgroundColor?.withOpacity(0.9) ??
+              theme.colorScheme.surface.withOpacity(0.9),
+          elevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(
+                sigmaX: 7,
+                sigmaY: 7,
+              ), // Glassy App Bar
+              child: Container(color: Colors.transparent),
+            ),
           ),
-        ),
-        actions: [
-          // Credit Balance Indicator
-          Consumer<CreditProvider>(
-            builder: (context, credits, _) {
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
+          actions: [
+            // Credit Balance Indicator
+            Consumer<CreditProvider>(
+              builder: (context, credits, _) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.primary.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.auto_awesome,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.primary,
+                    ).colorScheme.primaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.3),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${credits.balance}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        size: 14,
                         color: Theme.of(context).colorScheme.primary,
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          FontSizeControl(
-            currentSize: context.watch<SettingsProvider>().fontSize,
-            onSizeChanged: (newSize) =>
-                context.read<SettingsProvider>().setFontSize(newSize),
-            color: theme.appBarTheme.iconTheme?.color,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => provider.clearChat(),
-            tooltip: 'Clear Chat',
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          // Left Gutter for Rail (if landscape or wide enough)
-          if (effectiveLeftPadding > 0) SizedBox(width: effectiveLeftPadding),
-
-          // Main Content Area
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: Column(
-                  children: [
-                    // Chat List
-                    Expanded(
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          kToolbarHeight +
-                              MediaQuery.of(context).padding.top +
-                              16,
-                          16,
-                          16,
+                      const SizedBox(width: 4),
+                      Text(
+                        '${credits.balance}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        itemCount: provider.messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = provider.messages[index];
-                          // Find the question for this AI response (usually at index-1)
-                          String? question;
-                          if (msg.sender == MessageSender.ai && index > 0) {
-                            final prev = provider.messages[index - 1];
-                            if (prev.sender == MessageSender.user) {
-                              question = prev.text;
-                            }
-                          }
-                          return _ChatBubble(message: msg, question: question);
-                        },
                       ),
-                    ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            FontSizeControl(
+              currentSize: context.watch<SettingsProvider>().fontSize,
+              onSizeChanged: (newSize) =>
+                  context.read<SettingsProvider>().setFontSize(newSize),
+              color: theme.appBarTheme.iconTheme?.color,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => provider.clearChat(),
+              tooltip: 'Clear Chat',
+            ),
+          ],
+        ),
+        body: Row(
+          children: [
+            // Left Gutter for Rail (if landscape or wide enough)
+            if (effectiveLeftPadding > 0) SizedBox(width: effectiveLeftPadding),
 
-                    // ✨ AI Suggestions above Input Area
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 300),
-                      child: AiSuggestionChips(
-                        isVisible:
-                            _isInputFocused && _textController.text.isEmpty,
-                        onSuggestionSelected: (question) {
-                          _textController.text = question;
-                          _sendMessage(question);
-                          _inputFocusNode.unfocus();
-                        },
-                      ),
-                    ),
-
-                    // Input Area
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -5),
+            // Main Content Area
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    children: [
+                      // Chat List
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            kToolbarHeight +
+                                MediaQuery.of(context).padding.top +
+                                16,
+                            16,
+                            16,
                           ),
-                        ],
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(24),
+                          itemCount: provider.messages.length,
+                          itemBuilder: (context, index) {
+                            final msg = provider.messages[index];
+                            // Find the question for this AI response (usually at index-1)
+                            String? question;
+                            if (msg.sender == MessageSender.ai && index > 0) {
+                              final prev = provider.messages[index - 1];
+                              if (prev.sender == MessageSender.user) {
+                                question = prev.text;
+                              }
+                            }
+                            return _ChatBubble(
+                              message: msg,
+                              question: question,
+                            );
+                          },
                         ),
                       ),
-                      child: SafeArea(
-                        top: false,
-                        left: false,
-                        right: false,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _textController,
-                                    focusNode:
-                                        _inputFocusNode, // ✨ Attach focus node
-                                    decoration: InputDecoration(
-                                      hintText: 'Ask Gita anything ...',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      filled: true,
-                                      fillColor: theme.scaffoldBackgroundColor,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 20,
-                                            vertical: 12,
-                                          ),
-                                    ),
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    onSubmitted: (_) => _handleSend(),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                FloatingActionButton(
-                                  onPressed: provider.isLoading
-                                      ? null
-                                      : _handleSend,
-                                  mini: true,
-                                  elevation: 0,
-                                  child: provider.isLoading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.send),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'AI-generated response. May contain errors.',
-                              style: TextStyle(
-                                fontStyle: FontStyle.italic,
-                                fontSize: 10,
-                                color: theme.textTheme.bodySmall?.color
-                                    ?.withOpacity(0.6),
-                              ),
+
+                      // ✨ AI Suggestions above Input Area
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        child: AiSuggestionChips(
+                          isVisible:
+                              _isInputFocused && _textController.text.isEmpty,
+                          onSuggestionSelected: (question) {
+                            _textController.text = question;
+                            _sendMessage(question);
+                            _inputFocusNode.unfocus();
+                          },
+                        ),
+                      ),
+
+                      // Input Area
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, -5),
                             ),
                           ],
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          left: false,
+                          right: false,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _textController,
+                                      focusNode:
+                                          _inputFocusNode, // ✨ Attach focus node
+                                      decoration: InputDecoration(
+                                        hintText: 'Ask Gita anything ...',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor:
+                                            theme.scaffoldBackgroundColor,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
+                                      ),
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      onSubmitted: (_) => _handleSend(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  FloatingActionButton(
+                                    onPressed: provider.isLoading
+                                        ? null
+                                        : _handleSend,
+                                    mini: true,
+                                    elevation: 0,
+                                    child: provider.isLoading
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.send),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'AI-generated response. May contain errors.',
+                                style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 10,
+                                  color: theme.textTheme.bodySmall?.color
+                                      ?.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

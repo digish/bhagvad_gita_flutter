@@ -312,10 +312,22 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return PopScope(
-      canPop: !shouldShowResults,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-        _handleBackAction();
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else if (shouldShowResults) {
+          _handleBackAction();
+        } else {
+          // Fallback
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        }
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
