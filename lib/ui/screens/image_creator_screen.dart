@@ -8,6 +8,7 @@ import '../../models/soul_status.dart';
 
 class ImageCreatorScreen extends StatefulWidget {
   final String? text; // Make optional for achievements
+  final String? question;
   final String? translation;
   final String? source;
   final int? streak;
@@ -16,6 +17,7 @@ class ImageCreatorScreen extends StatefulWidget {
   const ImageCreatorScreen({
     super.key,
     this.text,
+    this.question,
     this.translation,
     this.source,
     this.streak,
@@ -30,6 +32,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
   // State for controls
   double _fontSize = 24.0;
   bool _showTranslation = true;
+  bool _showQuestion = true;
   bool _showGlass = true;
   bool _showPatterns = true;
   bool _isSerif = true;
@@ -493,6 +496,28 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                   ],
                 ),
               ],
+              if (widget.question != null && widget.question!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.question_answer_outlined,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Show Question',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const Spacer(),
+                    Switch.adaptive(
+                      value: _showQuestion,
+                      onChanged: (val) => setState(() => _showQuestion = val),
+                    ),
+                  ],
+                ),
+              ],
             ]),
 
           // 2. Theme & Effects Group
@@ -698,6 +723,26 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (_showQuestion && widget.question != null) ...[
+          Text(
+            widget.question!,
+            textAlign: TextAlign.center,
+            style: _isSerif
+                ? GoogleFonts.notoSerif(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                    fontStyle: FontStyle.italic,
+                  )
+                : GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                    fontStyle: FontStyle.italic,
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Container(width: 40, height: 1, color: Colors.white24),
+          const SizedBox(height: 12),
+        ],
         Text(
           (widget.text ?? '')
               .replaceAll(RegExp(r'<c>', caseSensitive: false), '\n')

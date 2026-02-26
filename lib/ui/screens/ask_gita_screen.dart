@@ -630,6 +630,7 @@ class _ChatBubble extends StatelessWidget {
                               extra: {
                                 'text': shareableQuote,
                                 'source': 'Ask Gita AI',
+                                'question': question,
                               },
                             );
                           },

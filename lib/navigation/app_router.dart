@@ -204,6 +204,7 @@ final GoRouter router = GoRouter(
           key: state.pageKey,
           child: ImageCreatorScreen(
             text: args['text'] ?? '',
+            question: args['question'],
             translation: args['translation'],
             source: args['source'],
           ),
