@@ -468,14 +468,22 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              commentary.content,
-                              style: GoogleFonts.notoSerif(
-                                fontSize: 17,
-                                height: 1.7,
-                                color: textColor.withOpacity(0.85),
+                            if (commentary.isAI && commentary.modern != null)
+                              _buildModernCommentary(
+                                context,
+                                commentary.modern!,
+                                textColor,
+                                accentColor,
+                              )
+                            else
+                              Text(
+                                commentary.content,
+                                style: GoogleFonts.notoSerif(
+                                  fontSize: 17,
+                                  height: 1.7,
+                                  color: textColor.withOpacity(0.85),
+                                ),
                               ),
-                            ),
                           ],
                         ],
                       ),
@@ -483,6 +491,133 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                   },
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildModernCommentary(
+    BuildContext context,
+    ModernCommentary data,
+    Color textColor,
+    Color accentColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          data.headline,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.cinzel(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: accentColor,
+          ),
+        ),
+        if (data.context != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            data.context!,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSerif(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: textColor.withOpacity(0.6),
+            ),
+          ),
+        ],
+        const SizedBox(height: 32),
+        _buildSection(
+          "Core Concept",
+          data.coreConcept,
+          Icons.psychology_outlined,
+          textColor,
+          accentColor,
+        ),
+        _buildSection(
+          "Modern Relevance",
+          data.modernRelevance,
+          Icons.update_outlined,
+          textColor,
+          accentColor,
+        ),
+        _buildSection(
+          "Actionable Takeaway",
+          data.actionableTakeaway,
+          Icons.directions_run_outlined,
+          textColor,
+          accentColor,
+        ),
+        if (data.keywords.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: data.keywords
+                .map(
+                  (kw) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: accentColor.withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      kw,
+                      style: GoogleFonts.notoSerif(
+                        fontSize: 11,
+                        color: accentColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSection(
+    String title,
+    String content,
+    IconData icon,
+    Color textColor,
+    Color accentColor,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: accentColor),
+              const SizedBox(width: 10),
+              Text(
+                title.toUpperCase(),
+                style: GoogleFonts.cinzel(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: accentColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            content,
+            style: GoogleFonts.notoSerif(
+              fontSize: 16,
+              height: 1.6,
+              color: textColor.withOpacity(0.85),
+            ),
+          ),
+        ],
       ),
     );
   }

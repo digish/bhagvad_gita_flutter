@@ -388,25 +388,31 @@ class _CommentarySheetState extends State<CommentarySheet> {
                                       ),
                                     ],
                                   ),
-                                  // Separator or just spacing? Using spacing from Wrap.
-                                  // We can group the second item too.
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        Icons.timeline, // Or category icon
+                                        selectedCommentary.isAI
+                                            ? Icons.auto_awesome
+                                            : Icons.timeline,
                                         size: 16,
-                                        color: theme.textTheme.bodySmall?.color,
+                                        color: selectedCommentary.isAI
+                                            ? Colors.purple
+                                            : theme.textTheme.bodySmall?.color,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        _getCommentaryType(
-                                          selectedCommentary.authorName,
-                                        ),
+                                        selectedCommentary.isAI
+                                            ? 'Modern Synthesis'
+                                            : _getCommentaryType(
+                                                selectedCommentary.authorName,
+                                              ),
                                         style: theme.textTheme.labelMedium
                                             ?.copyWith(
                                               fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.primary,
+                                              color: selectedCommentary.isAI
+                                                  ? Colors.purple
+                                                  : theme.colorScheme.primary,
                                             ),
                                       ),
                                     ],
@@ -415,16 +421,24 @@ class _CommentarySheetState extends State<CommentarySheet> {
                               ),
                             ),
 
-                            Text(
-                              selectedCommentary.content,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontSize: 18,
-                                height: 1.8,
-                                fontFamily: 'NotoSerif',
-                                color: theme.textTheme.bodyLarge?.color
-                                    ?.withOpacity(0.9),
+                            // --- NEW: Rich Rendering for AI Commentary ---
+                            if (selectedCommentary.isAI &&
+                                selectedCommentary.modern != null)
+                              _buildModernCommentary(
+                                context,
+                                selectedCommentary.modern!,
+                              )
+                            else
+                              Text(
+                                selectedCommentary.content,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontSize: 18,
+                                  height: 1.8,
+                                  fontFamily: 'NotoSerif',
+                                  color: theme.textTheme.bodyLarge?.color
+                                      ?.withOpacity(0.9),
+                                ),
                               ),
-                            ),
                             const SizedBox(height: 48), // Bottom padding
                           ],
                         ),
@@ -436,6 +450,109 @@ class _CommentarySheetState extends State<CommentarySheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildModernCommentary(BuildContext context, ModernCommentary data) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Headline
+        Text(
+          data.headline,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+            fontFamily: 'NotoSerif',
+          ),
+        ),
+        if (data.context != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            data.context!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.textTheme.bodySmall?.color,
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+
+        _buildSection(
+          context,
+          "Core Concept",
+          data.coreConcept,
+          Icons.psychology_outlined,
+        ),
+        _buildSection(
+          context,
+          "Modern Relevance",
+          data.modernRelevance,
+          Icons.update_outlined,
+        ),
+        _buildSection(
+          context,
+          "Actionable Takeaway",
+          data.actionableTakeaway,
+          Icons.directions_run_outlined,
+        ),
+
+        if (data.keywords.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: data.keywords
+                .map(
+                  (kw) => Chip(
+                    label: Text(kw, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: theme.colorScheme.surfaceVariant,
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    String title,
+    String content,
+    IconData icon,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: theme.colorScheme.secondary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            content,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontSize: 17,
+              height: 1.6,
+              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.85),
+            ),
+          ),
+        ],
       ),
     );
   }

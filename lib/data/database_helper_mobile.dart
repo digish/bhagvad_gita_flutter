@@ -18,14 +18,14 @@ Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
 }
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 4; // Increment this to force DB update
+  static const int DB_VERSION = 5; // Increment this to force DB update
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
 
   static Future<DatabaseHelperImpl> create() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, "geeta_v4.db");
+    final path = join(documentsDirectory.path, "geeta_v5.db");
 
     // Check version
     final prefs = await SharedPreferences.getInstance();
@@ -40,9 +40,12 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       );
 
       try {
-        // Close existing DB connections if any? (Not easily possible statically, rely on restart)
-
         // 1. Clean up OLD databases to save space
+        final oldDbV4 = File(join(documentsDirectory.path, "geeta_v4.db"));
+        if (await oldDbV4.exists()) {
+          print("[DB_MOBILE] Deleting old DB: geeta_v4.db");
+          await oldDbV4.delete();
+        }
         final oldDbV2 = File(join(documentsDirectory.path, "geeta_v2.db"));
         if (await oldDbV2.exists()) {
           print("[DB_MOBILE] Deleting old DB: geeta_v2.db");
@@ -52,11 +55,6 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         if (await oldDbV1.exists()) {
           print("[DB_MOBILE] Deleting old DB: geeta_v1.db");
           await oldDbV1.delete();
-        }
-        final oldDbLegacy = File(join(documentsDirectory.path, "geeta.db"));
-        if (await oldDbLegacy.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta.db");
-          await oldDbLegacy.delete();
         }
 
         // 2. Delete current file if it exists (to overwrite)
@@ -69,7 +67,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         print("[DB_MOBILE] Copying new database from assets...");
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load(
-          join("assets", "database", "geeta_v4.db"),
+          join("assets", "database", "geeta_v5.db"),
         );
         List<int> bytes = data.buffer.asUint8List(
           data.offsetInBytes,
@@ -82,8 +80,6 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         print("[DB_MOBILE] Database updated to version $DB_VERSION.");
       } catch (e) {
         print("Error copying database: $e");
-        // If copy fails, we might still try to open what's there if it exists?
-        // Or rethrow to show error. Rethrow is safer.
         rethrow;
       }
     } else {
@@ -143,7 +139,14 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         t.bhavarth$extraColumns
       FROM master_shlokas m
       JOIN shloka_scripts s ON m.id = s.shloka_id AND s.script_code = '$scriptCode'
-      LEFT JOIN translations t ON m.id = t.shloka_id AND t.language_code = '$transCode'
+      LEFT JOIN translations t ON m.id = t.shloka_id 
+           AND t.language_code = '$transCode'
+           AND t.author = (
+              SELECT author FROM translations 
+              WHERE shloka_id = m.id AND language_code = '$transCode'
+              ORDER BY (CASE WHEN author = 'AI Generated' THEN 0 ELSE 1 END)
+              LIMIT 1
+           )
       $extraJoin
       ${whereClause != null ? 'WHERE $whereClause' : ''}
     ''';

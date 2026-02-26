@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class ShlokaResult {
   final String id; // Changed from int to String (e.g., "1.1")
   final String chapterNo;
@@ -101,11 +103,56 @@ class Commentary {
     required this.content,
   });
 
+  bool get isAI => authorName == 'AI Generated';
+
+  ModernCommentary? get modern {
+    if (!isAI) return null;
+    try {
+      final Map<String, dynamic> data = jsonDecode(content);
+      return ModernCommentary.fromMap(data);
+    } catch (e) {
+      return null;
+    }
+  }
+
   factory Commentary.fromMap(Map<String, dynamic> map) {
     return Commentary(
       authorName: map['author_name']?.toString() ?? 'Unknown',
       languageCode: map['language_code']?.toString() ?? '',
       content: map['content']?.toString() ?? '',
+    );
+  }
+}
+
+class ModernCommentary {
+  final String headline;
+  final String? context;
+  final String coreConcept;
+  final String modernRelevance;
+  final String actionableTakeaway;
+  final List<String> keywords;
+
+  ModernCommentary({
+    required this.headline,
+    this.context,
+    required this.coreConcept,
+    required this.modernRelevance,
+    required this.actionableTakeaway,
+    required this.keywords,
+  });
+
+  factory ModernCommentary.fromMap(Map<String, dynamic> map) {
+    return ModernCommentary(
+      headline: map['headline']?.toString() ?? '',
+      context: map['context']?.toString(),
+      coreConcept: map['core_concept']?.toString() ?? '',
+      modernRelevance: map['modern_relevance']?.toString() ?? '',
+      actionableTakeaway: map['actionable_takeaway']?.toString() ?? '',
+      keywords:
+          (map['keywords'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 }
