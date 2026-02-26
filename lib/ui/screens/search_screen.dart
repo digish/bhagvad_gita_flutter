@@ -2185,20 +2185,43 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     if (_loadingAction || _todaysActionShloka == null)
       return const SizedBox.shrink();
 
-    // Look for AI commentary
-    final aiCommentary = _todaysActionShloka!.commentaries?.firstWhere(
-      (c) => c.isAI,
-      orElse: () => Commentary(authorName: '', languageCode: '', content: ''),
+    final settings = Provider.of<SettingsProvider>(context);
+
+    // Look for AI commentary matching user language/script
+    final aiCommentaries =
+        _todaysActionShloka!.commentaries?.where((c) => c.isAI).toList() ?? [];
+
+    Commentary? aiCommentary;
+
+    // 1. Try script-specific (e.g. 'gu')
+    try {
+      aiCommentary = aiCommentaries.firstWhere(
+        (c) => c.languageCode == settings.script,
+      );
+    } catch (_) {}
+
+    // 2. Try language-specific (e.g. 'hi')
+    if (aiCommentary == null && settings.language != 'sa') {
+      try {
+        aiCommentary = aiCommentaries.firstWhere(
+          (c) => c.languageCode == settings.language,
+        );
+      } catch (_) {}
+    }
+
+    // 3. Fallback to 'en' or first available
+    aiCommentary ??= aiCommentaries.firstWhere(
+      (c) => c.languageCode == 'en',
+      orElse: () => aiCommentaries.isNotEmpty
+          ? aiCommentaries.first
+          : Commentary(authorName: '', languageCode: '', content: ''),
     );
 
-    if (aiCommentary == null || aiCommentary.authorName.isEmpty)
-      return const SizedBox.shrink();
+    if (aiCommentary.authorName.isEmpty) return const SizedBox.shrink();
 
     final modernCommentary = aiCommentary.modern;
     if (modernCommentary == null || modernCommentary.actionableTakeaway.isEmpty)
       return const SizedBox.shrink();
-
-    final settings = Provider.of<SettingsProvider>(context);
     final isSimpleLight =
         !settings.showBackground &&
         Theme.of(context).brightness == Brightness.light;
