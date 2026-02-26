@@ -113,6 +113,9 @@ class ShlokaListProvider extends ChangeNotifier {
     }
     // Case #1: Query is a single number (chapter search).
     else if (int.tryParse(_searchQuery) != null) {
+      debugPrint(
+        'ShlokaListProvider: chapter search exact match for $_searchQuery',
+      );
       final chapter = int.parse(_searchQuery);
       _shlokas = await _dbHelper.getShlokasByChapter(
         chapter,
@@ -170,6 +173,10 @@ class ShlokaListProvider extends ChangeNotifier {
         );
       }
     }
+
+    // ✨ Deduplicate before completing list
+    final seenIds = <String>{};
+    _shlokas = _shlokas.where((shloka) => seenIds.add(shloka.id)).toList();
 
     _isLoading = false;
     notifyListeners();

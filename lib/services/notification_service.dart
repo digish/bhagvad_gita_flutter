@@ -90,32 +90,62 @@ class NotificationService {
     await openAppSettings(); // This is the top-level function from permission_handler
   }
 
+  // Pre-schedules reminders for the next 30 days to ensure a unique message each day.
   Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
-    required String title,
-    required String body,
   }) async {
-    await _notificationsPlugin.zonedSchedule(
-      id: 0, // ID
-      title: title,
-      body: body,
-      scheduledDate: _nextInstanceOfTime(hour, minute),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_wisdom_channel',
-          'Daily Wisdom Reminders',
-          channelDescription:
-              'Witty reminders to read the Gita and maintain your streak.',
-          importance: Importance.max,
-          priority: Priority.high,
+    // First, cancel previously scheduled daily reminders to avoid duplicates.
+    // Assuming IDs 1-30 are used for daily reminders.
+    for (int i = 1; i <= 30; i++) {
+      await _notificationsPlugin.cancel(id: i);
+    }
+
+    final now = DateTime.now();
+    for (int i = 0; i < 30; i++) {
+      final targetDate = now.add(Duration(days: i));
+      final dayOfYear =
+          targetDate.difference(DateTime(targetDate.year, 1, 1)).inDays + 1;
+
+      final title = 'Maintain your Spiritual Streak! 🙏';
+      final body = DailyMessageService.getMessageForDay(dayOfYear);
+
+      var scheduledTime = tz.TZDateTime(
+        tz.local,
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+        hour,
+        minute,
+      );
+
+      // If scheduled time in the past for today, skip it
+      if (scheduledTime.isBefore(tz.TZDateTime.now(tz.local))) {
+        if (i == 0) continue;
+      }
+
+      await _notificationsPlugin.zonedSchedule(
+        id: i + 1, // IDs 1 to 30
+        title: title,
+        body: body,
+        scheduledDate: scheduledTime,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_wisdom_channel',
+            'Daily Wisdom Reminders',
+            channelDescription:
+                'Witty reminders to read the Gita and maintain your streak.',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+    print(
+      '🔔 30 diverse daily notifications scheduled starting around $hour:$minute',
     );
-    print('🔔 Notification scheduled for $hour:$minute');
   }
 
   Future<void> cancelAll() async {
@@ -193,21 +223,5 @@ class NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
-  }
-
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
-    );
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    return scheduledDate;
   }
 }

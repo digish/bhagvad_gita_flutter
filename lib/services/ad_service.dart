@@ -9,6 +9,9 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
 
+  // ✨ Added: Track ad status for UI verification
+  final ValueNotifier<String> adStatus = ValueNotifier<String>('idle');
+
   // AdMob IDs
   String get rewardedAdUnitId {
     // 1. Use Test IDs in Debug Mode
@@ -34,19 +37,24 @@ class AdService {
     if (_isAdLoading || _rewardedAd != null) return;
 
     _isAdLoading = true;
+    adStatus.value = 'downloading';
+    debugPrint('🔵 AdService: Requesting Reward Ad download...');
+
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
-          debugPrint('RewardedAd loaded.');
+          debugPrint('🟢 AdService: Reward Ad downloaded & ready.');
           _rewardedAd = ad;
           _isAdLoading = false;
+          adStatus.value = 'ready';
         },
         onAdFailedToLoad: (LoadAdError error) {
-          debugPrint('RewardedAd failed to load: $error');
+          debugPrint('🔴 AdService: Reward Ad download failed: $error');
           _rewardedAd = null;
           _isAdLoading = false;
+          adStatus.value = 'failed';
         },
       ),
     );

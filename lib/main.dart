@@ -26,7 +26,7 @@ import 'providers/credit_provider.dart';
 import 'data/database_helper_interface.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'services/ad_service.dart';
+
 import 'providers/ask_gita_provider.dart';
 
 import 'services/remote_config_service.dart';
@@ -47,7 +47,6 @@ Future<void> main() async {
 
   // Initialize Mobile Ads
   await MobileAds.instance.initialize();
-  AdService.instance.loadRewardedAd();
 
   // Initialize Remote Config for AI Models
   await RemoteConfigService.fetchConfig();

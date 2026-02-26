@@ -29,6 +29,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   final FocusNode _inputFocusNode = FocusNode(); // ✨ Track input focus
   bool _isInputFocused = false;
   bool _hasSentInitialQuery = false;
+  bool _adLoadAttempted = false;
 
   AskGitaProvider? _provider;
 
@@ -65,6 +66,18 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _processInitialQuery();
+          }
+        });
+      }
+
+      if (!_adLoadAttempted) {
+        _adLoadAttempted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final credits = context.read<CreditProvider>().balance;
+            if (credits <= 0) {
+              AdService.instance.loadRewardedAd();
+            }
           }
         });
       }
@@ -397,7 +410,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
                                     focusNode:
                                         _inputFocusNode, // ✨ Attach focus node
                                     decoration: InputDecoration(
-                                      hintText: 'Ask Krishna...',
+                                      hintText: 'Ask Gita anything ...',
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(24),
                                         borderSide: BorderSide.none,

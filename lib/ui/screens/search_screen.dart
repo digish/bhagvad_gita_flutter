@@ -27,8 +27,11 @@ import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
 import '../../services/home_widget_service.dart';
 import '../../models/soul_status.dart';
+import '../../providers/credit_provider.dart';
+import '../../services/ad_service.dart';
 import 'image_creator_screen.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import '../../data/ai_questions.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -78,6 +81,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   bool _isAiMode = false;
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
   String? _lastProcessedMayaMessage; // 🛡️ Prevent duplicate dialogs
+  String? _todaysQuestion;
+
+  void _loadTodaysQuestion() {
+    if (mounted) {
+      setState(() {
+        _todaysQuestion = AiQuestionBank.getRandomSuggestions(count: 1).first;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -121,6 +133,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         // Sync Onboarding Bubble Support
         if (mounted) {
           _loadRandomShloka();
+          _loadTodaysActionShloka();
+          _loadTodaysQuestion();
         }
       });
     }
@@ -429,6 +443,67 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           child: newBackground,
                         ),
 
+                      // ✨ NEW: Ad Download Verification Overlay
+                      // This helps the user verify when an ad is downloading as requested in todo.txt
+                      ValueListenableBuilder<String>(
+                        valueListenable: AdService.instance.adStatus,
+                        builder: (context, status, child) {
+                          if (status == 'downloading') {
+                            return Positioned(
+                              top: MediaQuery.of(context).padding.top + 20,
+                              right: 20,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueAccent.withOpacity(0.95),
+                                    borderRadius: BorderRadius.circular(30),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Text(
+                                        'Ad Downloading...',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          } else if (status == 'ready') {
+                            // Briefly show "Ready" or just vanish.
+                            // Let's vanish to kept it clean, but the logs will show it.
+                            return const SizedBox.shrink();
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+
                       // Wrap the interactive UI in a SafeArea
                       SafeArea(
                         child: Stack(
@@ -496,6 +571,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               setState(() {
                                                 _isAiMode = true;
                                               });
+                                              final credits =
+                                                  Provider.of<CreditProvider>(
+                                                    context,
+                                                    listen: false,
+                                                  ).balance;
+                                              if (credits <= 0) {
+                                                AdService.instance
+                                                    .loadRewardedAd();
+                                              }
                                             },
                                             onDismiss: () {
                                               // Just hide locally for this session, or forever?
@@ -512,6 +596,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           if (!settings.reminderEnabled)
                                             _buildReminderNudge(settings),
                                           _buildRandomShlokaCard(),
+                                          _buildTodaysActionCard(), // ✨ NEW: Today's Action Card
+                                          _buildTodaysQuestionCard(
+                                            settings,
+                                          ), // ✨ NEW: Today's Question Card
                                         ],
                                       ],
                                     ),
@@ -890,7 +978,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             },
             decoration: InputDecoration(
               hintText: _isAiMode
-                  ? 'Ask Krishna anything...'
+                  ? 'Ask Gita anything...'
                   : 'Search the Gita...',
               hintStyle: TextStyle(color: hintColor),
               prefixIcon: _isSearchFocused
@@ -941,12 +1029,21 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                     child: Tooltip(
                       message: _isAiMode
                           ? 'Switch to Normal Search'
-                          : 'Switch to AI Mode (Ask Krishna)',
+                          : 'Switch to AI Mode (Ask Gita)',
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
                             _isAiMode = !_isAiMode;
                           });
+                          if (_isAiMode) {
+                            final credits = Provider.of<CreditProvider>(
+                              context,
+                              listen: false,
+                            ).balance;
+                            if (credits <= 0) {
+                              AdService.instance.loadRewardedAd();
+                            }
+                          }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
@@ -1757,6 +1854,34 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           final selection = allShlokasWithSource.first;
 
           result = selection.value;
+
+          // ✨ NEW: Because getShlokasForList optimizes memeory by not fetching commentaries,
+          // we must explicitly fetch them for the single chosen random shloka.
+          if (result.commentaries == null || result.commentaries!.isEmpty) {
+            final commentaries = await db.getCommentariesForShloka(
+              result.chapterNo,
+              result.shlokNo,
+            );
+            // Create a new ShlokaResult instance with the fetched commentaries
+            result = ShlokaResult.fromMap(
+              {
+                'id': result.id,
+                'chapter_no': result.chapterNo,
+                'shloka_no': result.shlokNo,
+                'shloka_text': result.shlok,
+                'anvay_text': result.anvay,
+                'bhavarth': result.bhavarth,
+                'speaker': result.speaker,
+                'sanskrit_romanized': result.sanskritRomanized,
+                'audio_path': result.audioPath,
+                'matched_category': result.matchedCategory,
+                'match_snippet': result.matchSnippet,
+              },
+              commentaries: commentaries,
+              categorySnippets: result.categorySnippets,
+            );
+          }
+
           if (mounted) {
             setState(() {
               _randomShlokaListName = selection.key;
@@ -1782,6 +1907,70 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     } catch (e) {
       debugPrint('SearchScreen: Error loading random shloka: $e');
       if (mounted) setState(() => _loadingRandom = false);
+    }
+  }
+
+  // Today's Action Logic
+  ShlokaResult? _todaysActionShloka;
+  bool _loadingAction = false;
+  bool _isActionExpanded = false;
+
+  Future<void> _loadTodaysActionShloka() async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    if (mounted) {
+      setState(() {
+        _loadingAction = true;
+        _isActionExpanded = false; // Reset expansion state on refresh
+      });
+    }
+
+    try {
+      final db = Provider.of<DatabaseHelperInterface>(context, listen: false);
+
+      // Select any random from entire Gita
+      var result = await db.getRandomShloka(
+        language: settings.language,
+        script: settings.script,
+      );
+
+      if (result != null) {
+        // We ALWAYS need commentaries for Today's Action card since it relies on AI Insights
+        final commentaries = await db.getCommentariesForShloka(
+          result.chapterNo,
+          result.shlokNo,
+        );
+        result = ShlokaResult.fromMap(
+          {
+            'id': result.id,
+            'chapter_no': result.chapterNo,
+            'shloka_no': result.shlokNo,
+            'shloka_text': result.shlok,
+            'anvay_text': result.anvay,
+            'bhavarth': result.bhavarth,
+            'speaker': result.speaker,
+            'sanskrit_romanized': result.sanskritRomanized,
+            'audio_path': result.audioPath,
+            'matched_category': result.matchedCategory,
+            'match_snippet': result.matchSnippet,
+          },
+          commentaries: commentaries,
+          categorySnippets: result.categorySnippets,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _todaysActionShloka = result;
+          _loadingAction = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('SearchScreen: Error loading todays action: $e');
+      if (mounted) {
+        setState(() {
+          _loadingAction = false;
+        });
+      }
     }
   }
 
@@ -1968,6 +2157,295 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       ),
     );
   }
+
+  Widget _buildTodaysActionCard() {
+    if (_loadingAction || _todaysActionShloka == null)
+      return const SizedBox.shrink();
+
+    // Look for AI commentary
+    final aiCommentary = _todaysActionShloka!.commentaries?.firstWhere(
+      (c) => c.authorName == 'AI Generated' || c.authorName == 'AI Insights',
+      orElse: () => Commentary(authorName: '', languageCode: '', content: ''),
+    );
+
+    if (aiCommentary == null || aiCommentary.authorName.isEmpty)
+      return const SizedBox.shrink();
+
+    final modernCommentary = aiCommentary.modern;
+    if (modernCommentary == null || modernCommentary.actionableTakeaway.isEmpty)
+      return const SizedBox.shrink();
+
+    final settings = Provider.of<SettingsProvider>(context);
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+
+    final cardColor = isSimpleLight
+        ? Colors.white.withOpacity(0.9)
+        : Colors.amber.shade900.withOpacity(0.3);
+
+    final borderColor = isSimpleLight
+        ? Colors.pink.withOpacity(0.3)
+        : Colors.amberAccent.withOpacity(0.3);
+
+    final titleColor = isSimpleLight
+        ? Colors.pink.shade900
+        : Colors.amberAccent;
+
+    final textColor = isSimpleLight ? Colors.brown.shade900 : Colors.white;
+
+    final iconColor = isSimpleLight ? Colors.pink.shade700 : Colors.amberAccent;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16.0),
+        onTap: () {
+          // Toggle expansion
+          setState(() {
+            _isActionExpanded = !_isActionExpanded;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: borderColor, width: 1.5),
+            boxShadow: isSimpleLight
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.directions_walk_rounded,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "TODAY's ACTION",
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.refresh, size: 18, color: iconColor),
+                      onPressed: _loadTodaysActionShloka,
+                      tooltip: 'Refresh Action',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              AnimatedCrossFade(
+                crossFadeState: _isActionExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 300),
+                firstChild: Text(
+                  modernCommentary.actionableTakeaway,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 15,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                secondChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      modernCommentary.actionableTakeaway,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 15,
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Divider(color: borderColor),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: iconColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () {
+                          // Navigate to the book reading mode and scroll to the specific shloka
+                          context.push(
+                            AppRoutes.bookReading.replaceFirst(
+                              ':chapter',
+                              _todaysActionShloka!.chapterNo,
+                            ),
+                            extra: int.tryParse(_todaysActionShloka!.shlokNo),
+                          );
+                        },
+                        icon: const Icon(Icons.menu_book, size: 16),
+                        label: Text(
+                          'Chapter ${_todaysActionShloka!.chapterNo}, Shloka ${_todaysActionShloka!.shlokNo} \u2192',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodaysQuestionCard(SettingsProvider settings) {
+    if (_todaysQuestion == null || _todaysQuestion!.isEmpty)
+      return const SizedBox.shrink();
+
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+
+    final cardColor = isSimpleLight
+        ? Colors.white.withOpacity(0.9)
+        : Colors.indigo.shade900.withOpacity(0.3);
+
+    final borderColor = isSimpleLight
+        ? Colors.blue.withOpacity(0.3)
+        : Colors.blueAccent.withOpacity(0.3);
+
+    final textColor = isSimpleLight ? Colors.indigo.shade900 : Colors.white;
+
+    final iconColor = isSimpleLight
+        ? Colors.blue.shade700
+        : Colors.lightBlueAccent;
+
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: 16.0,
+        left: 16.0,
+        right: 16.0,
+        bottom: 16.0,
+      ), // Extra bottom padding for the final card
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16.0),
+        onTap: () {
+          // Trigger searching this question via AI
+          _searchController.text = _todaysQuestion!;
+          Provider.of<SearchProvider>(
+            context,
+            listen: false,
+          ).onSearchQueryChanged(_todaysQuestion!);
+          _searchFocusNode.unfocus();
+          setState(() {
+            _isAiMode = true; // explicitly enter AI mode
+          });
+          context.push(AppRoutes.askGita, extra: _todaysQuestion);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: borderColor, width: 1.5),
+            boxShadow: isSimpleLight
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(Icons.psychology_alt, color: iconColor, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: _todaysQuestion!,
+                            style: TextStyle(
+                              color: textColor.withOpacity(0.9),
+                              fontSize: 14,
+                              height: 1.4,
+                              fontWeight: FontWeight.w500,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' Ask GITA \u2192',
+                            style: TextStyle(
+                              color: iconColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 32,
+                    width: 32,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.refresh, size: 18, color: iconColor),
+                      onPressed: _loadTodaysQuestion,
+                      tooltip: 'Next Question',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _OnboardingBubble extends StatefulWidget {
@@ -2080,7 +2558,7 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                "Try Ask Krishna",
+                                "Try Ask Gita",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : Colors.black87,

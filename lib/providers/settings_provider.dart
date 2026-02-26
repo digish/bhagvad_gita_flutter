@@ -16,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/predefined_lists_data.dart';
 import '../models/soul_status.dart';
 import '../services/notification_service.dart';
-import '../services/daily_message_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -148,7 +147,7 @@ class SettingsProvider extends ChangeNotifier {
   String _script = _defaultScript; // Display Script (Lipi)
   String get script => _script;
 
-  bool _showClassicalCommentaries = true;
+  bool _showClassicalCommentaries = false;
   bool get showClassicalCommentaries => _showClassicalCommentaries;
 
   Future<void> setLanguage(String newLanguage) async {
@@ -216,7 +215,7 @@ class SettingsProvider extends ChangeNotifier {
     _showBackground =
         prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
     _showClassicalCommentaries =
-        prefs.getBool('show_classical_commentaries') ?? true;
+        prefs.getBool('show_classical_commentaries') ?? false;
 
     // Validate Language
     String loadedLanguage = prefs.getString(_languageKey) ?? _defaultLanguage;
@@ -607,14 +606,9 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> _scheduleReminder() async {
-    // Get today's unique motivational message
-    final message = DailyMessageService.getTodaysMessage();
-
     await NotificationService.instance.scheduleDailyReminder(
       hour: _reminderTime.hour,
       minute: _reminderTime.minute,
-      title: 'Maintain your Spiritual Streak! 🙏',
-      body: message,
     );
   }
 

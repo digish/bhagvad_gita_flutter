@@ -144,7 +144,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
            AND t.author = (
               SELECT author FROM translations 
               WHERE shloka_id = m.id AND language_code = '$transCode'
-              ORDER BY (CASE WHEN author = 'AI Generated' THEN 0 ELSE 1 END)
+              ORDER BY (CASE WHEN author IN ('AI Generated', 'AI Insights') THEN 0 ELSE 1 END)
               LIMIT 1
            )
       $extraJoin

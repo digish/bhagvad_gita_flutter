@@ -115,9 +115,16 @@ final GoRouter router = GoRouter(
           name: 'shloka-list',
           pageBuilder: (context, state) {
             final query = state.pathParameters['query']!;
+            final initialShloka = state.extra as int?; // Cast the extra to int
+            debugPrint(
+              'AppRouter shlokaList: query=$query, initialShloka=$initialShloka',
+            );
             return CustomTransitionPage(
               key: state.pageKey,
-              child: ShlokaListScreen(searchQuery: query),
+              child: ShlokaListScreen(
+                searchQuery: query,
+                initialShlokaNo: initialShloka, // Pass it down
+              ),
               transitionDuration: const Duration(milliseconds: 700),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
@@ -164,9 +171,13 @@ final GoRouter router = GoRouter(
           path: AppRoutes.bookReading,
           pageBuilder: (context, state) {
             final chapter = int.parse(state.pathParameters['chapter']!);
+            final initialShloka = state.extra as int?;
             return CustomTransitionPage(
               key: state.pageKey,
-              child: BookReadingScreen(chapterNumber: chapter),
+              child: BookReadingScreen(
+                chapterNumber: chapter,
+                initialShlokaNo: initialShloka,
+              ),
               transitionDuration: const Duration(milliseconds: 500),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {

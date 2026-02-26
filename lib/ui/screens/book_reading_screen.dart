@@ -15,8 +15,13 @@ import '../../data/static_data.dart';
 
 class BookReadingScreen extends StatefulWidget {
   final int chapterNumber;
+  final int? initialShlokaNo;
 
-  const BookReadingScreen({super.key, required this.chapterNumber});
+  const BookReadingScreen({
+    super.key,
+    required this.chapterNumber,
+    this.initialShlokaNo,
+  });
 
   @override
   State<BookReadingScreen> createState() => _BookReadingScreenState();
@@ -78,6 +83,18 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           _selectedAuthor = _availableAuthors.first;
         }
         _isLoading = false;
+
+        // Handle initial scroll
+        if (widget.initialShlokaNo != null) {
+          final targetIndex = _shlokas.indexWhere(
+            (s) => int.tryParse(s.shlokNo) == widget.initialShlokaNo,
+          );
+          if (targetIndex != -1) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToShloka(targetIndex);
+            });
+          }
+        }
       });
     } catch (e) {
       debugPrint("Error loading book data: $e");

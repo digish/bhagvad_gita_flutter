@@ -103,7 +103,7 @@ class Commentary {
     required this.content,
   });
 
-  bool get isAI => authorName == 'AI Generated';
+  bool get isAI => authorName == 'AI Generated' || authorName == 'AI Insights';
 
   ModernCommentary? get modern {
     if (!isAI) return null;

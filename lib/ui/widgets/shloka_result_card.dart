@@ -202,12 +202,29 @@ class ShlokaResultCard extends StatelessWidget {
               ),
               child: InkWell(
                 onTap: () {
-                  context.push(
-                    AppRoutes.shlokaDetail.replaceFirst(
-                      ':id',
-                      shloka.id.toString(),
-                    ),
-                  );
+                  if (shloka.matchedCategory == 'navigation') {
+                    debugPrint(
+                      'Navigating to chapter: ${shloka.chapterNo} for shloka: ${shloka.shlokNo}',
+                    );
+                    // Navigate to the list view and scroll to the specific shloka
+                    context.push(
+                      AppRoutes.shlokaList.replaceFirst(
+                        ':query',
+                        shloka.chapterNo.toString(),
+                      ),
+                      extra: int.tryParse(
+                        shloka.shlokNo,
+                      ), // Pass the parsed shlokNo to scroll to
+                    );
+                  } else {
+                    // Navigate to the book reading view
+                    context.push(
+                      AppRoutes.shlokaDetail.replaceFirst(
+                        ':id',
+                        shloka.id.toString(),
+                      ),
+                    );
+                  }
                 },
                 child: Padding(
                   padding: EdgeInsets.symmetric(

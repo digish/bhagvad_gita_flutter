@@ -34,6 +34,7 @@ class ShlokaListScreen extends StatefulWidget {
   final bool showBackButton; // ✨ NEW parameter
   final bool delayEmblem; // ✨ NEW parameter for animation
   final bool isEmbedded; // ✨ NEW parameter for unified background
+  final int? initialShlokaNo; // ✨ NEW parameter for scrolling
 
   const ShlokaListScreen({
     super.key,
@@ -41,6 +42,7 @@ class ShlokaListScreen extends StatefulWidget {
     this.showBackButton = true, // Default to true
     this.delayEmblem = false,
     this.isEmbedded = false,
+    this.initialShlokaNo,
   });
 
   @override
@@ -54,6 +56,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
   String? _currentShlokId;
+  bool _hasInitialScrolled = false; // Flag to prevent multiple scrolls
 
   // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
@@ -122,13 +125,47 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   }
 
   // A more robust scrolling method.
-  void _scrollToIndex(int index) {
+  Future<void> _scrollToIndex(int index) async {
     if (index < 0 || index >= _itemKeys.length) return;
 
+    // Small delay to allow initial list render
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted || !_scrollController.hasClients) return;
+
+    final key = _itemKeys[index];
+
+    // If the Context is null, the item is not yet rendered by the SliverList.
+    // Iteratively jump down the list to force it to render.
+    if (key.currentContext == null) {
+      double targetOffset = (index * 400.0).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(targetOffset);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      int maxAttempts = 20;
+      int attempt = 0;
+      while (key.currentContext == null &&
+          attempt < maxAttempts &&
+          mounted &&
+          _scrollController.hasClients) {
+        _scrollController.jumpTo(
+          (_scrollController.offset + 800).clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 50));
+        attempt++;
+      }
+    }
+
+    if (!mounted) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final key = _itemKeys[index];
       if (key.currentContext == null) {
-        debugPrint("Cannot scroll to index $index: context is null.");
+        debugPrint("Cannot scroll to index $index: context is still null.");
         return;
       }
 
@@ -353,7 +390,21 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                       // We still read from the provider here for UI updates, but our state machine is independent.
                       // We use a post-frame callback to ensure the widget tree is built before scrolling.
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        // The scroll should be based on our reliable local state, not the provider's.
+                        // 1. Handle Navigation Scroll on First Load
+                        if (widget.initialShlokaNo != null &&
+                            !_hasInitialScrolled &&
+                            shlokas.isNotEmpty) {
+                          final targetIndex = shlokas.indexWhere(
+                            (s) =>
+                                s.shlokNo == widget.initialShlokaNo.toString(),
+                          );
+                          if (targetIndex != -1) {
+                            _scrollToIndex(targetIndex);
+                            _hasInitialScrolled = true;
+                          }
+                        }
+
+                        // 2. Handle Audio Playback Scroll
                         if (_currentShlokId != null &&
                             _currentShlokId != provider.lastScrolledId) {
                           final playingIndex = shlokas.indexWhere(
