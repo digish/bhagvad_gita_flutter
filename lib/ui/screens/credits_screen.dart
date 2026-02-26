@@ -13,9 +13,7 @@
 
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
-import '../widgets/responsive_wrapper.dart';
 import 'dart:ui';
-import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -32,58 +30,30 @@ class CreditItem {
   });
 }
 
-// --- Static Data for the screen ---
-final List<CreditItem> creditsData = [
+final List<CreditItem> acknowledgmentsData = [
   const CreditItem(
-    category: 'Community Contributors',
-    source: 'Passionate Seekers & Users',
+    category: 'Divine Community 🤝',
+    source: 'Seekers & Users',
     description:
-        'A heartfelt tribute to the many users who have continuously contributed via feedback, data corrections, and bug reports. Your dedication helps keep this wisdom accurate and accessible for everyone.',
+        'A heartfelt thanks to our users who actively contribute via feedback, bug reports, and feature suggestions. Your dedication helps maintain the integrity of this spiritual tool.',
   ),
   const CreditItem(
-    category: 'Bhagvad Gita Audio Recitations',
-    source: 'https://archive.org/details/bhagavad-gita-1-18',
+    category: 'Sacred Sanskrit Text 📖',
+    source: 'Public Domain',
     description:
-        'Soul-stirring recitation by Swami Brahmananda. Licensed under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).',
+        'The original Sanskrit verses of the Shrimad Bhagavad Gita are in the public domain. This app serves as a medium to bring this timeless wisdom to the digital age.',
   ),
-
   const CreditItem(
-    category: 'Geeta Text',
-    source:
-        'https://sanskritdocuments.org/doc_giitaa/gitAanvayasandhivigraha.html?lang=sa',
+    category: 'Divine Sound 🎵',
+    source: 'Public Digital Archives',
     description:
-        'shloka-anvay and sandhi-vigrah is a derived work from this work done by Sunder Hattangadi',
+        'The soul-stirring recitations by Swami Brahmananda are shared here in a spirit of Seva. These are sourced from open archives (archive.org) and have been locally synchronized with the text to create a seamless learning experience.',
   ),
-
   const CreditItem(
-    category: 'Commentary & Translations',
-    source: 'https://www.gitasupersite.iitk.ac.in/srimad',
+    category: 'Open Source Spirit 🛠️',
+    source: 'MIT License (GitHub)',
     description:
-        'Comprehensive commentary and multiple translations sourced from Gita Supersite (IIT Kanpur).',
-  ),
-
-  const CreditItem(
-    category: 'Transliteration Tool',
-    source: 'http://www.learnsanskrit.org/tools/sanscript',
-    description: 'Transliteration tool used.',
-  ),
-
-  const CreditItem(
-    category: 'Lotus mandala Image',
-    source: 'www.freepik.com',
-    description: 'Lotus mandala image from artist on Freepik.com',
-  ),
-  const CreditItem(
-    category: 'Emblems',
-    source: 'Internal Design',
-    description:
-        'All chapter emblems, speaker icons, and app logos were created by the developer with help from AI.',
-  ),
-  const CreditItem(
-    category: 'Source Code',
-    source: 'https://github.com/digish/bhagvad_gita_flutter',
-    description:
-        'Source code is open source and available on GitHub under the MIT License.',
+        'The codebase, custom chakra emblems, and UI designs are open-source. This ensures the app remains a transparent and community-driven resource.',
   ),
 ];
 
@@ -124,82 +94,55 @@ class CreditsScreen extends StatelessWidget {
                 : const Color.fromARGB(255, 240, 255, 126),
           ), // Golden-brown for credits
           SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 32.0),
-                    child: ResponsiveWrapper(
-                      maxWidth:
-                          450, // ✨ Tighter constraint for clear sidebar look
-                      alignment: Alignment.topRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment
-                            .end, // ✨ Align text/children to right
-                        children: [
-                          const SizedBox(
-                            height: 24,
-                          ), // Adjusted padding after SafeArea
-                          Stack(
-                            alignment:
-                                Alignment.centerRight, // ✨ Align Lotus to right
-                            children: [
-                              // ✨ FIX: Uniform Back Button Logic (iOS + Narrow only)
-                              if (Theme.of(context).platform ==
-                                      TargetPlatform.iOS &&
-                                  MediaQuery.of(context).size.width <= 600)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 16.0),
-                                    child: BackButton(
-                                      color: Theme.of(context).iconTheme.color,
-                                    ),
-                                  ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                BackButton(
+                                  color: Theme.of(context).iconTheme.color,
                                 ),
-                              GestureDetector(
-                                onTap: MediaQuery.of(context).size.width > 600
-                                    ? null
-                                    : () {
-                                        if (context.canPop()) {
-                                          context.pop();
-                                        } else {
-                                          context.go('/');
-                                        }
-                                      },
-                                child: Hero(
-                                  tag: 'creditsLotusHero', // A new unique tag
+                                Hero(
+                                  tag: 'creditsLotusHero',
                                   child: Image.asset(
-                                    'assets/images/lotus_gold.png', // A new golden lotus asset
-                                    height: 120,
+                                    'assets/images/lotus_gold.png',
+                                    height: 80,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Credits & Acknowledgements',
-                            textAlign: TextAlign.right, // ✨ Right align text
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall?.color,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 24),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 0.0,
-                            ), // Remove horiz padding to align with edge
-                            child: Wrap(
+                                const SizedBox(
+                                  width: 48,
+                                ), // Balance for back button
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Divine Acknowledgements',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'In the spirit of Seva and Karma Yoga',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.brown.shade400),
+                            ),
+                            const SizedBox(height: 32),
+                            Wrap(
                               spacing: 16,
                               runSpacing: 12,
-                              alignment:
-                                  WrapAlignment.end, // ✨ Align buttons to right
+                              alignment: WrapAlignment.center,
                               children: [
                                 ElevatedButton.icon(
                                   onPressed: () {
@@ -207,8 +150,8 @@ class CreditsScreen extends StatelessWidget {
                                       'https://digish.github.io/project/',
                                     );
                                   },
-                                  icon: const Icon(Icons.shop_2_outlined),
-                                  label: const Text('More Apps'),
+                                  icon: const Icon(Icons.public),
+                                  label: const Text('Developer Portfolio'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.brown.shade700,
                                     foregroundColor: Colors.white,
@@ -217,7 +160,7 @@ class CreditsScreen extends StatelessWidget {
                                 ElevatedButton.icon(
                                   onPressed: () => _shareApp(context),
                                   icon: const Icon(Icons.share_outlined),
-                                  label: const Text('Share App'),
+                                  label: const Text('Share the Wisdom'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.brown.shade700,
                                     foregroundColor: Colors.white,
@@ -225,50 +168,48 @@ class CreditsScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 32.0),
-                      child: ResponsiveWrapper(
-                        maxWidth: 450, // ✨ Match tighter width
-                        alignment: Alignment.topRight,
-                        child: _CreditCard(item: creditsData[index]),
-                      ),
-                    );
-                  }, childCount: creditsData.length),
-                ),
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      right: 48.0,
-                      left: 16.0,
-                      bottom: 40,
-                    ),
-                    child: ResponsiveWrapper(
-                      maxWidth: 450,
-                      alignment: Alignment.topRight,
-                      child: Text(
-                        'This application is built in the spirit of Seva. All third-party assets are used under their respective open-source licenses. The CC BY-SA 4.0 license requires that any derivative work (like modified audio) also be shared under the same terms.',
-                        textAlign: TextAlign.right,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.color?.withOpacity(0.5),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
                     ),
-                  ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount:
+                              MediaQuery.of(context).size.width > 700 ? 2 : 1,
+                          mainAxisExtent: 160,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          return _AcknowledgmentCard(
+                            item: acknowledgmentsData[index],
+                          );
+                        }, childCount: acknowledgmentsData.length),
+                      ),
+                    ),
+
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Text(
+                          'This application is a humble offering built in the spirit of Seva. All third-party assets are used with respect for their creators and respective open-source guidelines.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontStyle: FontStyle.italic,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.color?.withOpacity(0.5),
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -278,84 +219,60 @@ class CreditsScreen extends StatelessWidget {
 }
 
 // A card for displaying credit information
-class _CreditCard extends StatelessWidget {
+class _AcknowledgmentCard extends StatelessWidget {
   final CreditItem item;
-  const _CreditCard({required this.item});
+  const _AcknowledgmentCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12.0),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark
-                  ? Colors.grey.shade900.withOpacity(0.6)
-                  : Colors.white.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(
-                color: theme.dividerColor.withOpacity(0.1),
-                width: 1,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16.0),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.white.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(
+              color: theme.dividerColor.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.category,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.category,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.textTheme.titleMedium?.color,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                item.source,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.orange.shade300
+                      : Colors.brown.shade700,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 4),
-                item.source.startsWith('http') || item.source.startsWith('www')
-                    ? InkWell(
-                        onTap: () async {
-                          String url = item.source;
-                          if (url.startsWith('www')) {
-                            url = 'https://$url';
-                          }
-                          final Uri uri = Uri.parse(url);
-                          if (!await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
-                          )) {
-                            debugPrint('Could not launch $url');
-                          }
-                        },
-                        child: Text(
-                          'Source: ${item.source}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.blue.shade700,
-                            fontStyle: FontStyle.italic,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      )
-                    : Text(
-                        'Source: ${item.source}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                            0.7,
-                          ),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                const SizedBox(height: 8),
-                Text(
-                  item.description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
-                  ),
+              ),
+              const Spacer(),
+              Text(
+                item.description,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  height: 1.4,
+                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
