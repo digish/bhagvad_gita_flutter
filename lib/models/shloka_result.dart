@@ -103,7 +103,15 @@ class Commentary {
     required this.content,
   });
 
-  bool get isAI => authorName == 'AI Generated' || authorName == 'AI Insights';
+  bool get isAI =>
+      authorName == 'AI Generated' ||
+      authorName == 'AI Insights' ||
+      authorName == 'Gita AI Wisdom';
+
+  String get displayAuthorName {
+    if (isAI) return 'Gita AI Wisdom';
+    return authorName;
+  }
 
   ModernCommentary? get modern {
     if (!isAI) return null;

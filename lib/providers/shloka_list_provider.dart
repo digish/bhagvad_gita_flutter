@@ -101,13 +101,18 @@ class ShlokaListProvider extends ChangeNotifier {
         _shlokas = await _dbHelper.getShlokasByChapter(
           chapter,
           language: _language,
-          script: _script, // Pass script
+          script: _script,
         );
         if (shlokNum != null) {
-          _shlokas = _shlokas
-              .where((s) => int.tryParse(s.shlokNo) == shlokNum)
-              .toList();
-          _initialScrollIndex = null; // No scrolling needed for a single item.
+          final index = _shlokas.indexWhere(
+            (s) => int.tryParse(s.shlokNo) == shlokNum,
+          );
+          if (index != -1) {
+            _initialScrollIndex = index;
+            debugPrint(
+              'ShlokaListProvider: setting initialScrollIndex to $index for $chapter.$shlokNum',
+            );
+          }
         }
       }
     }
@@ -120,32 +125,34 @@ class ShlokaListProvider extends ChangeNotifier {
       _shlokas = await _dbHelper.getShlokasByChapter(
         chapter,
         language: _language,
-        script: _script, // Pass script
+        script: _script,
       );
     }
     // Case #2 & #3: It's a text query.
     else {
-      // Stage 1: Perform a one-way lookup using the interface method.
       final wordDefinition = await _dbHelper.getWordDefinition(_searchQuery);
       final stage1Result = wordDefinition?['suggest_text_2'] as String?;
 
-      // Stage 2: Check if the result is a special chapter/shloka reference.
       if (stage1Result != null) {
         final parsedData = _parseSpecialFormat(stage1Result);
         if (parsedData != null) {
-          // Case #3: Special format found. Fetch the chapter and set the scroll index.
           final chapter = parsedData['chapter']!;
           final shlokNum = parsedData['shlok'];
           _shlokas = await _dbHelper.getShlokasByChapter(
             chapter,
             language: _language,
-            script: _script, // Pass script
+            script: _script,
           );
           if (shlokNum != null) {
-            _shlokas = _shlokas
-                .where((s) => int.tryParse(s.shlokNo) == shlokNum)
-                .toList();
-            _initialScrollIndex = null;
+            final index = _shlokas.indexWhere(
+              (s) => int.tryParse(s.shlokNo) == shlokNum,
+            );
+            if (index != -1) {
+              _initialScrollIndex = index;
+              debugPrint(
+                'ShlokaListProvider: setting initialScrollIndex to $index for $chapter.$shlokNum (special)',
+              );
+            }
           }
         } else {
           // Case #2 (continued): No special format, search for both terms.

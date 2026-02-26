@@ -104,11 +104,20 @@ class NotificationService {
     final now = DateTime.now();
     for (int i = 0; i < 30; i++) {
       final targetDate = now.add(Duration(days: i));
-      final dayOfYear =
-          targetDate.difference(DateTime(targetDate.year, 1, 1)).inDays + 1;
+      final dayIndex = targetDate.difference(DateTime(2025, 1, 1)).inDays;
 
-      final title = 'Maintain your Spiritual Streak! 🙏';
-      final body = DailyMessageService.getMessageForDay(dayOfYear);
+      final titles = [
+        'Divine Wisdom for Today 🙏',
+        'Spirituality Awaits... 📿',
+        'A Message from Krishna ✨',
+        'Maintain your Spiritual Streak! 🌟',
+        'Daily Gita Insight 📖',
+        'Wisdom of the Gita 🕉️',
+        'Krishna\'s Guidance Today 🌈',
+        'Spiritual Growth Awaits 🧘',
+      ];
+      final title = titles[dayIndex % titles.length];
+      final body = DailyMessageService.getMessageForDay(dayIndex % 365 + 1);
 
       var scheduledTime = tz.TZDateTime(
         tz.local,

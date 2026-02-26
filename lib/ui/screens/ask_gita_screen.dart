@@ -72,10 +72,23 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
 
       if (!_adLoadAttempted) {
         _adLoadAttempted = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (mounted) {
-            final credits = context.read<CreditProvider>().balance;
-            if (credits <= 0) {
+            final creditProvider = context.read<CreditProvider>();
+
+            // If credits are still loading, wait up to 2 seconds for them
+            if (creditProvider.isLoading) {
+              int attempts = 0;
+              while (mounted && creditProvider.isLoading && attempts < 4) {
+                await Future.delayed(const Duration(milliseconds: 500));
+                attempts++;
+              }
+            }
+
+            if (mounted && creditProvider.balance <= 0) {
+              debugPrint(
+                '🔵 [AskGitaScreen] Pre-loading ad because credits are 0.',
+              );
               AdService.instance.loadRewardedAd();
             }
           }
@@ -91,9 +104,15 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     if (credits.isLoading) {
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted && credits.isLoading) {
-        // Still loading? Wait again. Simple polling for now as it's quick.
         await Future.delayed(const Duration(milliseconds: 500));
       }
+    }
+
+    if (mounted && credits.balance <= 0) {
+      debugPrint(
+        '🔵 [AskGitaScreen] Process: Loading ad because credits are 0.',
+      );
+      AdService.instance.loadRewardedAd();
     }
 
     if (mounted && widget.initialQuery != null) {
@@ -191,12 +210,33 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Maybe Later'),
           ),
-          FilledButton.icon(
-            icon: const Icon(Icons.play_circle_filled),
-            label: Text('Watch Ad (+${CreditProvider.adRewardAmount} Credits)'),
-            onPressed: () {
-              Navigator.pop(context);
-              _showAd();
+          ValueListenableBuilder<String>(
+            valueListenable: AdService.instance.adStatus,
+            builder: (context, status, child) {
+              final isLoading = status == 'downloading';
+              return FilledButton.icon(
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.play_circle_filled),
+                label: Text(
+                  isLoading
+                      ? 'Ad Loading...'
+                      : 'Watch Ad (+${CreditProvider.adRewardAmount} Credits)',
+                ),
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        _showAd();
+                      },
+              );
             },
           ),
         ],
@@ -224,11 +264,20 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
       },
       onAdFailedToShow: () {
         if (mounted) {
+          final status = AdService.instance.adStatus.value;
+          String message =
+              'The rewards system is currently unavailable. Please try again later.';
+          if (status == 'downloading') {
+            message =
+                'The ad is still loading. Please wait a few seconds and try again.';
+          } else {
+            // If it failed or is idle, try loading it again
+            AdService.instance.loadRewardedAd();
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'The rewards system is under development and will be enabled soon. Please try again later.',
-              ),
+            SnackBar(
+              content: Text(message),
               backgroundColor: Colors.orange,
               behavior: SnackBarBehavior.floating,
             ),

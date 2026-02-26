@@ -445,64 +445,67 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
                       // ✨ NEW: Ad Download Verification Overlay
                       // This helps the user verify when an ad is downloading as requested in todo.txt
-                      ValueListenableBuilder<String>(
-                        valueListenable: AdService.instance.adStatus,
-                        builder: (context, status, child) {
-                          if (status == 'downloading') {
-                            return Positioned(
-                              top: MediaQuery.of(context).padding.top + 20,
-                              right: 20,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueAccent.withOpacity(0.95),
-                                    borderRadius: BorderRadius.circular(30),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                      if (kDebugMode)
+                        ValueListenableBuilder<String>(
+                          valueListenable: AdService.instance.adStatus,
+                          builder: (context, status, child) {
+                            if (status == 'downloading') {
+                              return Positioned(
+                                top: MediaQuery.of(context).padding.top + 20,
+                                right: 20,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent.withOpacity(
+                                        0.95,
                                       ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                                      borderRadius: BorderRadius.circular(30),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Text(
-                                        'Ad Downloading...',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 10),
+                                        const Text(
+                                          'Ad Downloading...',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          } else if (status == 'ready') {
-                            // Briefly show "Ready" or just vanish.
-                            // Let's vanish to kept it clean, but the logs will show it.
+                              );
+                            } else if (status == 'ready') {
+                              // Briefly show "Ready" or just vanish.
+                              // Let's vanish to kept it clean, but the logs will show it.
+                              return const SizedBox.shrink();
+                            }
                             return const SizedBox.shrink();
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
+                          },
+                        ),
 
                       // Wrap the interactive UI in a SafeArea
                       SafeArea(
@@ -571,12 +574,16 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               setState(() {
                                                 _isAiMode = true;
                                               });
-                                              final credits =
+                                              final creditProvider =
                                                   Provider.of<CreditProvider>(
                                                     context,
                                                     listen: false,
-                                                  ).balance;
-                                              if (credits <= 0) {
+                                                  );
+                                              if (!creditProvider.isLoading &&
+                                                  creditProvider.balance <= 0) {
+                                                debugPrint(
+                                                  '🔵 [SearchScreen] Loading ad because credits are 0.',
+                                                );
                                                 AdService.instance
                                                     .loadRewardedAd();
                                               }
@@ -1036,11 +1043,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             _isAiMode = !_isAiMode;
                           });
                           if (_isAiMode) {
-                            final credits = Provider.of<CreditProvider>(
+                            final creditProvider = Provider.of<CreditProvider>(
                               context,
                               listen: false,
-                            ).balance;
-                            if (credits <= 0) {
+                            );
+                            if (!creditProvider.isLoading &&
+                                creditProvider.balance <= 0) {
+                              debugPrint(
+                                '🔵 [SearchScreen] Toggle: Loading ad because credits are 0.',
+                              );
                               AdService.instance.loadRewardedAd();
                             }
                           }
@@ -2164,7 +2175,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
     // Look for AI commentary
     final aiCommentary = _todaysActionShloka!.commentaries?.firstWhere(
-      (c) => c.authorName == 'AI Generated' || c.authorName == 'AI Insights',
+      (c) => c.isAI,
       orElse: () => Commentary(authorName: '', languageCode: '', content: ''),
     );
 
@@ -2372,8 +2383,17 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           ).onSearchQueryChanged(_todaysQuestion!);
           _searchFocusNode.unfocus();
           setState(() {
-            _isAiMode = true; // explicitly enter AI mode
+            _isAiMode = true;
           });
+          final creditProvider = Provider.of<CreditProvider>(
+            context,
+            listen: false,
+          );
+          if (!creditProvider.isLoading && creditProvider.balance <= 0) {
+            debugPrint('🔵 [SearchScreen] Today\'s Question: Pre-loading ad.');
+            AdService.instance.loadRewardedAd();
+          }
+
           context.push(AppRoutes.askGita, extra: _todaysQuestion);
         },
         child: Container(

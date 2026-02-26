@@ -299,7 +299,7 @@ class _CommentarySheetState extends State<CommentarySheet> {
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
                               label: Text(
-                                "${comm.authorName} (${comm.languageCode.toUpperCase()})",
+                                "${comm.displayAuthorName} (${comm.languageCode.toUpperCase()})",
                                 style: TextStyle(
                                   fontWeight: isSelected
                                       ? FontWeight.w600
