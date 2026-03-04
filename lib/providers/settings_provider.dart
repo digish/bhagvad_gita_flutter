@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/predefined_lists_data.dart';
 import '../models/soul_status.dart';
 import '../services/notification_service.dart';
+import '../services/daily_message_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -302,6 +303,12 @@ class SettingsProvider extends ChangeNotifier {
     // --- Update Daily Streak ---
     await _updateStreak(prefs);
 
+    // --- Top-up Notification Schedule ---
+    if (_reminderEnabled) {
+      // Re-calculate the next 30 days starting from the current progressed message index
+      await _scheduleReminder();
+    }
+
     notifyListeners();
   }
 
@@ -330,12 +337,14 @@ class SettingsProvider extends ChangeNotifier {
     if (difference == 1) {
       // Consecutive day!
       _dailyStreak = currentStreak + 1;
+      await DailyMessageService.advanceDay(); // Progress message
     } else {
       // Missed day(s)!
       if (_availableLifelines > 0) {
         // Use a lifeline - preserve streak
         _availableLifelines--;
         _dailyStreak = currentStreak; // Keep current streak
+        await DailyMessageService.advanceDay(); // User returned, progress message
 
         await prefs.setInt('available_lifelines', _availableLifelines);
 
@@ -357,6 +366,7 @@ class SettingsProvider extends ChangeNotifier {
         _dailyStreak = 1;
         _lastMilestoneThreshold = 0;
         await prefs.setInt('last_milestone_threshold', 0);
+        await DailyMessageService.advanceDay(); // Progress message on restart
       }
     }
 

@@ -101,10 +101,13 @@ class NotificationService {
       await _notificationsPlugin.cancel(id: i);
     }
 
+    // Get the next 30 sequential messages
+    final upcomingMessages =
+        await DailyMessageService.getNextSequentialMessages(30);
     final now = DateTime.now();
+
     for (int i = 0; i < 30; i++) {
       final targetDate = now.add(Duration(days: i));
-      final dayIndex = targetDate.difference(DateTime(2025, 1, 1)).inDays;
 
       final titles = [
         'Divine Wisdom for Today 🙏',
@@ -116,8 +119,8 @@ class NotificationService {
         'Krishna\'s Guidance Today 🌈',
         'Spiritual Growth Awaits 🧘',
       ];
-      final title = titles[dayIndex % titles.length];
-      final body = DailyMessageService.getMessageForDay(dayIndex % 365 + 1);
+      final title = titles[i % titles.length];
+      final body = upcomingMessages[i];
 
       var scheduledTime = tz.TZDateTime(
         tz.local,
@@ -150,6 +153,7 @@ class NotificationService {
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        // Since we are scheduling up to 30 absolute dates, we don't want them repeatedly firing.
       );
     }
     print(
@@ -163,10 +167,11 @@ class NotificationService {
 
   /// Test method to show an immediate notification (for development/testing only)
   Future<void> showTestNotification() async {
+    final msg = await DailyMessageService.getTodaysMessage();
     await _notificationsPlugin.show(
       id: 999, // Test notification ID
       title: 'Maintain your Spiritual Streak! 🙏',
-      body: DailyMessageService.getTodaysMessage(),
+      body: msg,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
@@ -187,10 +192,12 @@ class NotificationService {
       tz.local,
     ).add(const Duration(seconds: 5));
 
+    final msg = await DailyMessageService.getTodaysMessage();
+
     await _notificationsPlugin.zonedSchedule(
       id: 997, // Test delayed notification ID
       title: 'Maintain your Spiritual Streak! 🙏',
-      body: DailyMessageService.getTodaysMessage(),
+      body: msg,
       scheduledDate: scheduledTime,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
