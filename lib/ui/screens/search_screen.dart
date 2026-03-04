@@ -83,10 +83,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   String? _lastProcessedMayaMessage; // 🛡️ Prevent duplicate dialogs
   String? _todaysQuestion;
 
-  void _loadTodaysQuestion() {
-    if (mounted) {
+  Future<void> _loadTodaysQuestion() async {
+    final suggestions = await AiQuestionBank.getNonRepeatingRandomSuggestions(
+      count: 1,
+    );
+    if (mounted && suggestions.isNotEmpty) {
       setState(() {
-        _todaysQuestion = AiQuestionBank.getRandomSuggestions(count: 1).first;
+        _todaysQuestion = suggestions.first;
       });
     }
   }

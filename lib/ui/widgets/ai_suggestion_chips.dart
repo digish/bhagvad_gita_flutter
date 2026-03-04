@@ -31,7 +31,7 @@ class AiSuggestionChips extends StatefulWidget {
 }
 
 class _AiSuggestionChipsState extends State<AiSuggestionChips> {
-  late List<String> _suggestions;
+  late List<String> _suggestions = [];
 
   @override
   void initState() {
@@ -39,10 +39,15 @@ class _AiSuggestionChipsState extends State<AiSuggestionChips> {
     _refreshSuggestions();
   }
 
-  void _refreshSuggestions() {
-    setState(() {
-      _suggestions = AiQuestionBank.getRandomSuggestions(count: 4);
-    });
+  Future<void> _refreshSuggestions() async {
+    final suggestions = await AiQuestionBank.getNonRepeatingRandomSuggestions(
+      count: 4,
+    );
+    if (mounted) {
+      setState(() {
+        _suggestions = suggestions;
+      });
+    }
   }
 
   // Refresh when becoming visible
