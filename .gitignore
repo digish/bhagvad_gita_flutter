@@ -76,6 +76,7 @@ lib/generated_plugin_registrant.dart
 # Local configuration files
 lib/secrets.dart
 lib/core/secrets_config.dart
+scripts/scramble_api_key.dart
 
 # Audio and large assets (Optional, but recommended if they are very large)
 # assets/audio/

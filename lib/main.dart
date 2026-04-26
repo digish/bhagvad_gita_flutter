@@ -32,6 +32,7 @@ import 'providers/ask_gita_provider.dart';
 import 'services/remote_config_service.dart';
 import 'services/timing_service.dart';
 import 'services/notification_service.dart';
+import 'core/secrets_config.dart';
 
 Future<void> main() async {
   // <-- Make main async
@@ -73,12 +74,12 @@ class AppInitializer extends StatelessWidget {
           final dbHelper = snapshot.data as DatabaseHelperInterface;
 
           // SECURE API KEY ACCESS
-          // Run with: flutter run --dart-define=GEMINI_API_KEY=AIzaSy...
-          const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+          // Run with: flutter run --dart-define=CORE_UI_BUILD_TOKEN=scrambled_value...
+          final apiKey = SecretsConfig.getAppConfigToken();
 
           if (apiKey.isEmpty) {
             debugPrint(
-              'WARNING: GEMINI_API_KEY not found in environment variables.',
+              'WARNING: CORE_UI_BUILD_TOKEN not found in environment variables.',
             );
           }
 
