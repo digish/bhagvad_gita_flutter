@@ -619,6 +619,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                             settings,
                                           ), // ✨ NEW: Today's Question Card
                                         ],
+                                        const SizedBox(height: 100), // Dummy space to clear floating buttons
                                       ],
                                     ),
                                   ),
