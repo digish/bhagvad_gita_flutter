@@ -266,7 +266,7 @@ class UserDatabaseHelper {
       'list_items',
       where: 'list_id = ?',
       whereArgs: [listId],
-      orderBy: 'created_at DESC', // Newest first
+      orderBy: 'CAST(chapter_no AS INTEGER) ASC, CAST(shlok_no AS INTEGER) ASC', // Sort by chapter and shloka number
     );
   }
 

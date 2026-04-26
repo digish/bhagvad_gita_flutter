@@ -68,7 +68,26 @@ class PredefinedListsData {
   static List<String> getShlokasForList(int id) {
     final list = _data.firstWhere((d) => d['id'] == id, orElse: () => {});
     if (list.isNotEmpty) {
-      return (list['shlokas'] as List<dynamic>).cast<String>();
+      final shlokas = List<String>.from((list['shlokas'] as List<dynamic>).cast<String>());
+      
+      shlokas.sort((a, b) {
+        final aParts = a.split('.');
+        final bParts = b.split('.');
+        if (aParts.length != 2 || bParts.length != 2) return 0;
+        
+        final chapterA = int.tryParse(aParts[0]) ?? 0;
+        final chapterB = int.tryParse(bParts[0]) ?? 0;
+        
+        if (chapterA != chapterB) {
+          return chapterA.compareTo(chapterB);
+        }
+        
+        final shlokaA = int.tryParse(aParts[1]) ?? 0;
+        final shlokaB = int.tryParse(bParts[1]) ?? 0;
+        return shlokaA.compareTo(shlokaB);
+      });
+      
+      return shlokas;
     }
     return [];
   }
