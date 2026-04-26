@@ -8,5 +8,5 @@ class ShareHelper {
   }
 
   static const String appLink =
-      'https://digish.github.io/project/index.html#bhagvadgita';
+      'https://digish.github.io/project/gita.html';
 }

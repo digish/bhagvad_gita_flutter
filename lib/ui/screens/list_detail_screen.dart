@@ -74,7 +74,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       buffer.writeln('${widget.list.name}\n');
 
       const String appLink =
-          'https://digish.github.io/project/index.html#bhagvadgita';
+          'https://digish.github.io/project/gita.html';
 
       // Helper to format text
       String formatText(String text) {

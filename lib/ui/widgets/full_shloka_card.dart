@@ -218,7 +218,7 @@ class FullShlokaCard extends StatelessWidget {
 
     // Footer
     const String appLink =
-        'https://digish.github.io/project/index.html#bhagvadgita';
+        'https://digish.github.io/project/gita.html';
     buffer.writeln(
       '\n\n---\nShared from the Shrimad Bhagavad Gita app:\n$appLink',
     );

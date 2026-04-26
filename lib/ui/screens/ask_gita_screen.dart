@@ -659,7 +659,7 @@ class _ChatBubble extends StatelessWidget {
                             tooltip: 'Share',
                             onPressed: () {
                               final footer =
-                                  '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita';
+                                  '\n\n---\nShared from Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/gita.html';
                               final box =
                                   iconContext.findRenderObject() as RenderBox?;
                               final sharePositionOrigin = box != null

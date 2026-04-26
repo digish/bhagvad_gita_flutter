@@ -72,7 +72,7 @@ class CreditsScreen extends StatelessWidget {
     // You can customize the share text and link
     final box = context.findRenderObject() as RenderBox?;
     const String appLink =
-        'https://digish.github.io/project/index.html#bhagvadgita';
+        'https://digish.github.io/project/gita.html';
     Share.share(
       'Check out this beautiful Bhagavad Gita app!\n\n$appLink',
       subject: 'Bhagavad Gita App',

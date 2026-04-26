@@ -964,7 +964,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         innerContext.findRenderObject()
                                             as RenderBox?;
                                     Share.share(
-                                      'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/index.html#bhagvadgita',
+                                      'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/gita.html',
                                       sharePositionOrigin: box != null
                                           ? box.localToGlobal(Offset.zero) &
                                                 box.size

@@ -371,7 +371,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                       height: 56,
                       child: PrettyQrView.data(
                         data:
-                            'https://digish.github.io/project/index.html#bhagvadgita',
+                            'https://digish.github.io/project/gita.html',
                         decoration: const PrettyQrDecoration(
                           image: PrettyQrDecorationImage(
                             image: AssetImage('assets/icon/icon_square.png'),
@@ -620,7 +620,7 @@ class _ImageCreatorScreenState extends State<ImageCreatorScreen> {
                 await ImageGeneratorService.shareImage(
                   bytes: bytes,
                   text:
-                      'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/index.html#bhagvadgita',
+                      'Found this wisdom on Shrimad Bhagavad Gita AI app! 🕉️\n\nDownload here: https://digish.github.io/project/gita.html',
                   sharePositionOrigin: sharePositionOrigin,
                 );
               }
