@@ -82,6 +82,9 @@ class SettingsProvider extends ChangeNotifier {
   bool _reminderNudgeDismissed = false;
   bool get reminderNudgeDismissed => _reminderNudgeDismissed;
 
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
   SettingsProvider() {
     _loadSettings();
   }
@@ -134,6 +137,17 @@ class SettingsProvider extends ChangeNotifier {
 
   /* DEPRECATED: Replaced by CreditProvider.addCredits() */
   // Future<void> grantAdReward() async {}
+
+  bool _hasSeenLanguagePrompt = false;
+  bool get hasSeenLanguagePrompt => _hasSeenLanguagePrompt;
+
+  Future<void> markLanguagePromptSeen() async {
+    if (_hasSeenLanguagePrompt) return;
+    _hasSeenLanguagePrompt = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_language_prompt', true);
+  }
 
   // --- Language & Script Support ---
   static const String _languageKey = 'language'; // 'hi' or 'en'
@@ -240,6 +254,13 @@ class SettingsProvider extends ChangeNotifier {
     }
     _script = loadedScript;
 
+    _hasSeenLanguagePrompt = prefs.getBool('has_seen_language_prompt') ?? false;
+    // Auto-mark as seen if they have already changed the language from default
+    if (!_hasSeenLanguagePrompt && (_language != _defaultLanguage || _script != _defaultScript)) {
+      _hasSeenLanguagePrompt = true;
+      prefs.setBool('has_seen_language_prompt', true);
+    }
+
     _showRandomShloka = prefs.getBool('show_random_shloka') ?? true;
 
     // Load multiple sources
@@ -309,6 +330,7 @@ class SettingsProvider extends ChangeNotifier {
       await _scheduleReminder();
     }
 
+    _isInitialized = true;
     notifyListeners();
   }
 

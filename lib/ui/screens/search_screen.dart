@@ -69,6 +69,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     with RouteAware, TickerProviderStateMixin {
   late final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode(); // ✨ Track focus
+  bool _isAiMode = false; // ✨ Toggle for AI Mode
+  static bool _hasCheckedLanguagePrompt = false; // Flag to prevent multiple dialogs
   bool _isSearchFocused = false;
   late AnimationController _revealController;
   late AnimationController _pulseController;
@@ -78,7 +80,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   final GlobalKey _themeToggleKey = GlobalKey();
   bool? _isBackgroundRequested;
   Set<int>? _lastKnownSources; // Cache for change detection
-  bool _isAiMode = false;
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
   String? _lastProcessedMayaMessage; // 🛡️ Prevent duplicate dialogs
   String? _todaysQuestion;
@@ -126,6 +127,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     super.didChangeDependencies();
     final settings = Provider.of<SettingsProvider>(context);
     final newSources = settings.randomShlokaSources;
+
+    if (settings.isInitialized && !_hasCheckedLanguagePrompt && !settings.hasSeenLanguagePrompt) {
+      _hasCheckedLanguagePrompt = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showLanguagePromptDialog(context, settings);
+        }
+      });
+    }
 
     // Trigger load if sources change (or first run)
     if (_lastKnownSources == null ||
@@ -831,6 +841,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                 : null, // ✨ Fix: Default to 1.0 when not animating
                           ),
                         ),
+                        
+                      // ✨ Explore More Bubble
+                      if (!settings.hasSeenLanguagePrompt && !isKeyboardOpen && width <= 600)
+                         Positioned(
+                           bottom: 90,
+                           right: 24,
+                           child: _buildExploreMoreBubble(),
+                         ),
                     ],
                   );
                 },
@@ -2164,6 +2182,159 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             ),
           ),
         ),
+      ),
+    );
+  }
+  void _showLanguagePromptDialog(BuildContext context, SettingsProvider settings) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Force them to choose
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: Theme.of(dialogContext).brightness == Brightness.light
+              ? Colors.white
+              : Colors.grey[900],
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.language,
+                      color: Theme.of(dialogContext).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Choose Your Language',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(dialogContext).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(dialogContext).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(dialogContext).colorScheme.primary.withOpacity(0.3),
+                    )
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, color: Theme.of(dialogContext).colorScheme.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You can always change this later in Settings.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(dialogContext).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Consumer<SettingsProvider>(
+                  builder: (consumerContext, currentSettings, child) {
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: SettingsProvider.supportedScripts.entries.map((entry) {
+                        final isSelected = currentSettings.script == entry.key;
+                        return ChoiceChip(
+                          label: Text(entry.value),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              currentSettings.setAppLanguage(entry.key);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    );
+                  }
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(dialogContext).colorScheme.primary,
+                      foregroundColor: Theme.of(dialogContext).colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      settings.markLanguagePromptSeen();
+                      Navigator.of(dialogContext, rootNavigator: true).pop();
+                    },
+                    child: const Text(
+                      'Confirm & Continue',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  Widget _buildExploreMoreBubble() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "Explore More",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.arrow_downward,
+            color: Colors.white,
+            size: 16,
+          ),
+        ],
       ),
     );
   }
