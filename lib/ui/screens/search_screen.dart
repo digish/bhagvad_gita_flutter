@@ -316,6 +316,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SearchProvider>(context);
+    final settings = Provider.of<SettingsProvider>(context);
     final isSearching = provider.searchQuery.isNotEmpty;
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final shouldShowResults = isSearching || isKeyboardOpen || _isSearchFocused;
@@ -349,7 +350,22 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         // It's hidden when the keyboard is visible.
         floatingActionButton: (isKeyboardOpen || width > 600)
             ? null
-            : _buildSpeedDial(context),
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (!settings.hasUsedExploreMore && !shouldShowResults)
+                    _OnboardingBubble(
+                      text: "Explore more",
+                      icon: Icons.explore_outlined,
+                      pointingDown: true,
+                      onTap: () => settings.markExploreMoreUsed(),
+                      onDismiss: () => settings.markExploreMoreUsed(),
+                    ),
+                  const SizedBox(height: 12),
+                  _buildSpeedDial(context),
+                ],
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
@@ -590,32 +606,38 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                         if (!settings.hasUsedAskAi &&
                                             !shouldShowResults &&
                                             !_isAiMode)
-                                          _OnboardingBubble(
-                                            onTap: () {
-                                              // 1. Mark as used
-                                              settings.markAskAiUsed();
-                                              // 2. Switch mode or Navigate
-                                              // Option A: Just switch to AI mode in place
-                                              setState(() {
-                                                _isAiMode = true;
-                                              });
-                                              final creditProvider =
-                                                  Provider.of<CreditProvider>(
-                                                    context,
-                                                    listen: false,
-                                                  );
-                                              if (!creditProvider.isLoading &&
-                                                  creditProvider.balance <= 0) {
-                                                // Ad loading handled by CreditProvider.
-                                              }
-                                            },
-                                            onDismiss: () {
-                                              // Just hide locally for this session, or forever?
-                                              // User said "ok to not show them", implies permanent dismissal
-                                              // or until they actually use it?
-                                              // Let's mark it as used so it doesn't pester them.
-                                              settings.markAskAiUsed();
-                                            },
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(right: 32.0),
+                                              child: _OnboardingBubble(
+                                                onTap: () {
+                                                  // 1. Mark as used
+                                                  settings.markAskAiUsed();
+                                                  // 2. Switch mode or Navigate
+                                                  // Option A: Just switch to AI mode in place
+                                                  setState(() {
+                                                    _isAiMode = true;
+                                                  });
+                                                  final creditProvider =
+                                                      Provider.of<CreditProvider>(
+                                                        context,
+                                                        listen: false,
+                                                      );
+                                                  if (!creditProvider.isLoading &&
+                                                      creditProvider.balance <= 0) {
+                                                    // Ad loading handled by CreditProvider.
+                                                  }
+                                                },
+                                                onDismiss: () {
+                                                  // Just hide locally for this session, or forever?
+                                                  // User said "ok to not show them", implies permanent dismissal
+                                                  // or until they actually use it?
+                                                  // Let's mark it as used so it doesn't pester them.
+                                                  settings.markAskAiUsed();
+                                                },
+                                              ),
+                                            ),
                                           ),
                                         if (settings.showRandomShloka &&
                                             !shouldShowResults) ...[
@@ -841,14 +863,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                 : null, // ✨ Fix: Default to 1.0 when not animating
                           ),
                         ),
-                        
-                      // ✨ Explore More Bubble
-                      if (!settings.hasSeenLanguagePrompt && !isKeyboardOpen && width <= 600)
-                         Positioned(
-                           bottom: 90,
-                           right: 24,
-                           child: _buildExploreMoreBubble(),
-                         ),
                     ],
                   );
                 },
@@ -2302,42 +2316,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   }
 
 
-  Widget _buildExploreMoreBubble() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            "Explore More",
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.arrow_downward,
-            color: Colors.white,
-            size: 16,
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildTodaysActionCard() {
     if (_loadingAction || _todaysActionShloka == null)
@@ -2655,8 +2634,17 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 class _OnboardingBubble extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onDismiss;
+  final String text;
+  final IconData icon;
+  final bool pointingDown;
 
-  const _OnboardingBubble({required this.onTap, required this.onDismiss});
+  const _OnboardingBubble({
+    required this.onTap,
+    required this.onDismiss,
+    this.text = "Try Ask Gita",
+    this.icon = Icons.auto_awesome,
+    this.pointingDown = false,
+  });
 
   @override
   State<_OnboardingBubble> createState() => _OnboardingBubbleState();
@@ -2707,91 +2695,100 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
             child: Transform.scale(scale: _scaleAnimation.value, child: child),
           );
         },
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 32.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // The Tail pointing up to the toggle
-                Padding(
-                  padding: const EdgeInsets.only(right: 20.0),
-                  child: CustomPaint(
-                    size: const Size(20, 10),
-                    painter: _BubbleTailPainter(
-                      color: bubbleColor,
-                      borderColor: borderColor,
-                    ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!widget.pointingDown)
+              // The Tail pointing up
+              Padding(
+                padding: const EdgeInsets.only(right: 20.0),
+                child: CustomPaint(
+                  size: const Size(20, 10),
+                  painter: _BubbleTailPainter(
+                    color: bubbleColor,
+                    borderColor: borderColor,
+                    pointingDown: false,
                   ),
                 ),
-                // The Bubble Body
-                GestureDetector(
-                  onTap: widget.onTap,
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 240),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+              ),
+            // The Bubble Body
+            GestureDetector(
+              onTap: widget.onTap,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 240),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: bubbleColor,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    decoration: BoxDecoration(
-                      color: bubbleColor,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(color: borderColor, width: 1.5),
+                  ],
+                  border: Border.all(color: borderColor, width: 1.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.icon,
+                      color: Colors.amber,
+                      size: 20,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.auto_awesome,
-                          color: Colors.amber,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Try Ask Gita",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: widget.onDismiss,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(
-                              Icons.close,
-                              size: 16,
-                              color: isDark ? Colors.white38 : Colors.black38,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.text,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontSize: 14,
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: widget.onDismiss,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: isDark ? Colors.white38 : Colors.black38,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (widget.pointingDown)
+              // The Tail pointing down
+              Padding(
+                padding: const EdgeInsets.only(right: 18.0), // Better center over FAB
+                child: CustomPaint(
+                  size: const Size(20, 10),
+                  painter: _BubbleTailPainter(
+                    color: bubbleColor,
+                    borderColor: borderColor,
+                    pointingDown: true,
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -2801,8 +2798,13 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
 class _BubbleTailPainter extends CustomPainter {
   final Color color;
   final Color borderColor;
+  final bool pointingDown;
 
-  _BubbleTailPainter({required this.color, required this.borderColor});
+  _BubbleTailPainter({
+    required this.color,
+    required this.borderColor,
+    this.pointingDown = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2816,18 +2818,30 @@ class _BubbleTailPainter extends CustomPainter {
       ..strokeWidth = 1.5;
 
     final path = Path();
-    path.moveTo(size.width / 2, 0); // Tip pointing up
-    path.lineTo(0, size.height);
-    path.lineTo(size.width, size.height);
+    if (pointingDown) {
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width / 2, size.height);
+    } else {
+      path.moveTo(size.width / 2, 0); // Tip pointing up
+      path.lineTo(0, size.height);
+      path.lineTo(size.width, size.height);
+    }
     path.close();
 
     canvas.drawPath(path, paint);
 
-    // Draw only the two slanted sides for the border to merge with bubble
+    // Draw only the slanted sides for the border to merge with bubble
     final borderPath = Path();
-    borderPath.moveTo(0, size.height);
-    borderPath.lineTo(size.width / 2, 0);
-    borderPath.lineTo(size.width, size.height);
+    if (pointingDown) {
+      borderPath.moveTo(0, 0);
+      borderPath.lineTo(size.width / 2, size.height);
+      borderPath.lineTo(size.width, 0);
+    } else {
+      borderPath.moveTo(0, size.height);
+      borderPath.lineTo(size.width / 2, 0);
+      borderPath.lineTo(size.width, size.height);
+    }
     canvas.drawPath(borderPath, borderPaint);
   }
 

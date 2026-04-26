@@ -36,6 +36,9 @@ class SettingsProvider extends ChangeNotifier {
   bool _hasUsedAskAi = false;
   bool get hasUsedAskAi => _hasUsedAskAi;
 
+  bool _hasUsedExploreMore = false;
+  bool get hasUsedExploreMore => _hasUsedExploreMore;
+
   int _dailyStreak = 0;
   int get dailyStreak => _dailyStreak;
 
@@ -130,6 +133,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_used_ask_ai', true);
+  }
+
+  Future<void> markExploreMoreUsed() async {
+    if (_hasUsedExploreMore) return;
+    _hasUsedExploreMore = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_explore_more', true);
   }
 
   /* DEPRECATED: Replaced by CreditProvider */
@@ -301,6 +312,7 @@ class SettingsProvider extends ChangeNotifier {
 
     _customAiApiKey = prefs.getString('custom_ai_api_key');
     _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
+    _hasUsedExploreMore = prefs.getBool('has_used_explore_more') ?? false;
     _lastSoulStatusMessage = prefs.getString('last_soul_status_message');
     _streakSystemEnabled = prefs.getBool('streak_system_enabled') ?? true;
 
