@@ -85,6 +85,19 @@ class SettingsProvider extends ChangeNotifier {
   bool _reminderNudgeDismissed = false;
   bool get reminderNudgeDismissed => _reminderNudgeDismissed;
 
+  // Legacy flag — migrated into showSacredSutraQuote on load.
+  bool _sacredSutraPromoDismissed = false;
+
+  // --- Daily Journey home cards ---
+  bool _showSacredSutraQuote = true;
+  bool get showSacredSutraQuote => _showSacredSutraQuote;
+
+  bool _showTodaysAction = true;
+  bool get showTodaysAction => _showTodaysAction;
+
+  bool _showTodaysAiQuestion = true;
+  bool get showTodaysAiQuestion => _showTodaysAiQuestion;
+
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
@@ -343,6 +356,16 @@ class SettingsProvider extends ChangeNotifier {
     _reminderNudgeDismissed =
         prefs.getBool('reminder_nudge_dismissed') ?? false;
 
+    _sacredSutraPromoDismissed =
+        prefs.getBool('sacred_sutra_promo_dismissed') ?? false;
+
+    // Prefer explicit toggle; migrate old permanent-dismiss into off state.
+    _showSacredSutraQuote =
+        prefs.getBool('show_sacred_sutra_quote') ??
+        !(_sacredSutraPromoDismissed);
+    _showTodaysAction = prefs.getBool('show_todays_action') ?? true;
+    _showTodaysAiQuestion = prefs.getBool('show_todays_ai_question') ?? true;
+
     // Load Peak Achievement Data
     _peakStreakCount = prefs.getInt('peak_streak_count') ?? 0;
     _peakAchievementCount = prefs.getInt('peak_achievement_count') ?? 0;
@@ -545,6 +568,30 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_random_shloka', value);
+  }
+
+  Future<void> setShowSacredSutraQuote(bool value) async {
+    if (_showSacredSutraQuote == value) return;
+    _showSacredSutraQuote = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('show_sacred_sutra_quote', value);
+  }
+
+  Future<void> setShowTodaysAction(bool value) async {
+    if (_showTodaysAction == value) return;
+    _showTodaysAction = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('show_todays_action', value);
+  }
+
+  Future<void> setShowTodaysAiQuestion(bool value) async {
+    if (_showTodaysAiQuestion == value) return;
+    _showTodaysAiQuestion = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('show_todays_ai_question', value);
   }
 
   // --- Multi-select Logic ---

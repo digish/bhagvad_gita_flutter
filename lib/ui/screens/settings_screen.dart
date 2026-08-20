@@ -22,6 +22,7 @@ import '../../providers/bookmark_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/notification_service.dart';
 import '../widgets/simple_gradient_background.dart';
+import '../widgets/sacred_sutra_promo_card.dart';
 import 'package:flutter/foundation.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -244,12 +245,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                                 // --- Daily Journey Section ---
                                 _buildSectionHeader('Daily Journey', context),
-                                // 1. Gita Wisdom (Daily Inspiration)
+                                // Home-screen cards (same order as below search)
                                 Card(
                                   color: Theme.of(context).cardTheme.color,
                                   elevation: 4,
                                   child: Column(
                                     children: [
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.auto_awesome_rounded,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          'Consistency Roadmap',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          'Visualize your daily progress, earn milestones, and use lifelines to maintain consistency.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.streakSystemEnabled,
+                                        onChanged: (bool value) {
+                                          settings.setStreakSystemEnabled(value);
+                                        },
+                                      ),
+                                      const Divider(height: 1, indent: 72),
                                       SwitchListTile.adaptive(
                                         secondary: CircleAvatar(
                                           backgroundColor: theme.primaryColor
@@ -360,12 +390,256 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           );
                                         },
                                       ),
+                                      const Divider(height: 1, indent: 72),
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.auto_stories_rounded,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          'Mahabharata / Ramayana',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          'Show a daily wisdom quote from these scriptures on home.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.showSacredSutraQuote,
+                                        onChanged: (bool value) {
+                                          settings.setShowSacredSutraQuote(value);
+                                        },
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          12,
+                                          8,
+                                          12,
+                                          12,
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            onTap: () =>
+                                                SacredSutraPromoCard.openStore(),
+                                            child: Ink(
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: isDark
+                                                      ? const [
+                                                          Color(0xFF5C3D12),
+                                                          Color(0xFFB8862D),
+                                                          Color(0xFFE8C56A),
+                                                        ]
+                                                      : const [
+                                                          Color(0xFFFFF1D0),
+                                                          Color(0xFFE8B86D),
+                                                          Color(0xFFC47A3A),
+                                                        ],
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(
+                                                      0xFFC47A3A,
+                                                    ).withOpacity(
+                                                      isDark ? 0.35 : 0.28,
+                                                    ),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 14,
+                                                    ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black
+                                                                .withOpacity(
+                                                                  0.2,
+                                                                ),
+                                                            blurRadius: 8,
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  2,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                        child: Image.asset(
+                                                          SacredSutraPromoCard
+                                                              .iconAsset,
+                                                          width: 48,
+                                                          height: 48,
+                                                          fit: BoxFit.cover,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 14),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            'Open Sacred Sutra',
+                                                            style: TextStyle(
+                                                              fontSize: 16,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                              color: isDark
+                                                                  ? const Color(
+                                                                      0xFF1A1208,
+                                                                    )
+                                                                  : const Color(
+                                                                      0xFF2C1810,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 3,
+                                                          ),
+                                                          Text(
+                                                            'Mahabharata & Ramayana — read along with many advanced exploration tools',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              height: 1.3,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: isDark
+                                                                  ? const Color(
+                                                                      0xFF2A1A0C,
+                                                                    ).withOpacity(
+                                                                      0.85,
+                                                                    )
+                                                                  : const Color(
+                                                                      0xFF5C4030,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Icon(
+                                                      Icons
+                                                          .arrow_forward_rounded,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF1A1208,
+                                                            )
+                                                          : const Color(
+                                                              0xFF3D2412,
+                                                            ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const Divider(height: 1, indent: 72),
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.directions_walk_rounded,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          "Today's Action",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          'Show a practical takeaway from today’s shloka.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.showTodaysAction,
+                                        onChanged: (bool value) {
+                                          settings.setShowTodaysAction(value);
+                                        },
+                                      ),
+                                      const Divider(height: 1, indent: 72),
+                                      SwitchListTile.adaptive(
+                                        secondary: CircleAvatar(
+                                          backgroundColor: theme.primaryColor
+                                              .withOpacity(isDark ? 0.25 : 0.1),
+                                          child: Icon(
+                                            Icons.psychology_alt,
+                                            color: theme.primaryColor,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          "Today's AI Question",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          'Show a suggested question to Ask Gita.',
+                                          style: TextStyle(
+                                            color: subtitleColor,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        value: settings.showTodaysAiQuestion,
+                                        onChanged: (bool value) {
+                                          settings.setShowTodaysAiQuestion(value);
+                                        },
+                                      ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(height: 16),
 
-                                // 2. Daily Wisdom Reminder
+                                const SizedBox(height: 16),
+
+                                // Daily Wisdom Reminder
                                 Card(
                                   color: Theme.of(context).cardTheme.color,
                                   elevation: 4,
@@ -569,20 +843,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ],
                                     ],
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // 3. Consistency Roadmap
-                                _buildSettingCard(
-                                  context,
-                                  title: 'Consistency Roadmap',
-                                  subtitle:
-                                      'Visualize your daily progress, earn milestones, and use lifelines to maintain consistency.',
-                                  value: settings.streakSystemEnabled,
-                                  onChanged: (value) {
-                                    settings.setStreakSystemEnabled(value);
-                                  },
-                                  icon: Icons.auto_awesome_rounded,
                                 ),
                                 const SizedBox(height: 32),
 
@@ -1087,6 +1347,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String subtitle,
     required IconData icon,
     required void Function(BuildContext) onTap,
+    Widget? leading,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -1098,12 +1359,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Builder(
         builder: (innerContext) {
           return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: theme.primaryColor.withOpacity(
-                isDark ? 0.25 : 0.1,
-              ),
-              child: Icon(icon, color: theme.primaryColor),
-            ),
+            leading: leading ??
+                CircleAvatar(
+                  backgroundColor: theme.primaryColor.withOpacity(
+                    isDark ? 0.25 : 0.1,
+                  ),
+                  child: Icon(icon, color: theme.primaryColor),
+                ),
             title: Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

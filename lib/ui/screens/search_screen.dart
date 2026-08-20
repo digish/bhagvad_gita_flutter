@@ -15,6 +15,7 @@ import '../widgets/word_result_card.dart';
 import '../widgets/decorative_foreground.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
+import '../widgets/sacred_sutra_promo_card.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -651,10 +652,20 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           if (!settings.reminderEnabled)
                                             _buildReminderNudge(settings),
                                           _buildRandomShlokaCard(),
-                                          _buildTodaysActionCard(), // ✨ NEW: Today's Action Card
-                                          _buildTodaysQuestionCard(
-                                            settings,
-                                          ), // ✨ NEW: Today's Question Card
+                                          if (settings.showSacredSutraQuote)
+                                            SacredSutraPromoCard(
+                                              isSimpleLight:
+                                                  !settings.showBackground &&
+                                                  Theme.of(context).brightness ==
+                                                      Brightness.light,
+                                              languageCode: settings.language,
+                                            ),
+                                          if (settings.showTodaysAction)
+                                            _buildTodaysActionCard(),
+                                          if (settings.showTodaysAiQuestion)
+                                            _buildTodaysQuestionCard(
+                                              settings,
+                                            ),
                                         ],
                                         const SizedBox(height: 100), // Dummy space to clear floating buttons
                                       ],
