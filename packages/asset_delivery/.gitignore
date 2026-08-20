@@ -1,0 +1,7 @@
+# Ignore build artifacts inside this local plugin package.
+.dart_tool/
+**/build/
+**/.gradle/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies

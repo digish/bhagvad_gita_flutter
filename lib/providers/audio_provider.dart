@@ -468,7 +468,7 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _updateStatusFromMap(Map<dynamic, dynamic> statusMap) {
+  void _updateStatusFromMap(Map<String, dynamic> statusMap) {
     final packName = statusMap['assetPackName'] as String?;
     final statusString = statusMap['status'] as String?;
     final progress = statusMap['downloadProgress'] as double?;

@@ -666,9 +666,11 @@ class _ChatBubble extends StatelessWidget {
                                   ? box.localToGlobal(Offset.zero) & box.size
                                   : null;
 
-                              Share.share(
-                                message.text + footer,
-                                sharePositionOrigin: sharePositionOrigin,
+                              SharePlus.instance.share(
+                                ShareParams(
+                                  text: message.text + footer,
+                                  sharePositionOrigin: sharePositionOrigin,
+                                ),
                               );
                             },
                             style: IconButton.styleFrom(

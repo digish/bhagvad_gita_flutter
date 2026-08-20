@@ -38,10 +38,12 @@ class ImageGeneratorService {
       );
       await file.writeAsBytes(bytes);
 
-      final result = await Share.shareXFiles(
-        [XFile(file.path)],
-        text: text,
-        sharePositionOrigin: sharePositionOrigin,
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: text,
+          sharePositionOrigin: sharePositionOrigin,
+        ),
       );
 
       return result.status == ShareResultStatus.success;

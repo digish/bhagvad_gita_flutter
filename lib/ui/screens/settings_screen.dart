@@ -963,12 +963,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     final box =
                                         innerContext.findRenderObject()
                                             as RenderBox?;
-                                    Share.share(
-                                      'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/gita.html',
-                                      sharePositionOrigin: box != null
-                                          ? box.localToGlobal(Offset.zero) &
-                                                box.size
-                                          : null,
+                                    SharePlus.instance.share(
+                                      ShareParams(
+                                        text:
+                                            'Check out this Shrimad Bhagavad Gita app:\nhttps://digish.github.io/project/gita.html',
+                                        sharePositionOrigin: box != null
+                                            ? box.localToGlobal(Offset.zero) &
+                                                  box.size
+                                            : null,
+                                      ),
                                     );
                                   },
                                 ),

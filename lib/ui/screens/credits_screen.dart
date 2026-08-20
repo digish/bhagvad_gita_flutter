@@ -73,12 +73,14 @@ class CreditsScreen extends StatelessWidget {
     final box = context.findRenderObject() as RenderBox?;
     const String appLink =
         'https://digish.github.io/project/gita.html';
-    Share.share(
-      'Check out this beautiful Bhagavad Gita app!\n\n$appLink',
-      subject: 'Bhagavad Gita App',
-      sharePositionOrigin: box != null
-          ? box.localToGlobal(Offset.zero) & box.size
-          : null,
+    SharePlus.instance.share(
+      ShareParams(
+        text: 'Check out this beautiful Bhagavad Gita app!\n\n$appLink',
+        subject: 'Bhagavad Gita App',
+        sharePositionOrigin: box != null
+            ? box.localToGlobal(Offset.zero) & box.size
+            : null,
+      ),
     );
   }
 

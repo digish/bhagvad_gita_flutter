@@ -120,9 +120,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
       final box = context.findRenderObject() as RenderBox?;
 
-      await Share.share(
-        buffer.toString(),
-        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+      await SharePlus.instance.share(
+        ShareParams(
+          text: buffer.toString(),
+          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        ),
       );
     } catch (e) {
       debugPrint('Error sharing list: $e');

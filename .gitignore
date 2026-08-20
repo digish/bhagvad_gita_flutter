@@ -15,13 +15,19 @@
 .swiftpm/
 migrate_working_dir/
 
-# Flutter generated files
+# Flutter / Dart generated
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
-/build/
+.dart_tool/
+**/build/
+coverage/
+synthetic_main.dart
+lib/generated_plugin_registrant.dart
+
+# iOS generated / local
 /ios/Pods/
 /ios/Flutter/App.framework
 /ios/Flutter/engine.xcconfig
@@ -33,47 +39,27 @@ migrate_working_dir/
 /ios/Runner/Assets.xcassets
 /ios/Runner.xcodeproj/project.xcworkspace
 /ios/Runner.xcworkspace
-/ios/Flutter/Debug.xcconfig
-/ios/Flutter/Release.xcconfig
 /ios/ServiceDefinitions.json
 # Allow Podfile.lock for version pinning.
 !/ios/Podfile.lock
 
-# Android generated files
+# Android generated / local
 /android/app/src/main/assets/flutter_assets/
-/android/app/build/
-/android/build/
-/android/.gradle/
-/android/gradle/
-/android/gradlew
-/android/gradlew.bat
+**/.gradle/
 /android/local.properties
 /android/key.properties
 /android/.idea/
 /android/app/src/main/java/io/flutter/plugins/
-# Allow .apk files for testing and sharing.
-# *.apk
-# Allow keystore files for signing.
-# *.jks
 
-# Web generated files
-/web/build/
+# Web generated
 /web/.dart_tool/
 
-# Dart & Pub generated files
-/doc/api/
-.dart_tool/
-.idea/
-pubspec.lock
-synthetic_main.dart
-lib/generated_plugin_registrant.dart
-
-# IDE files
+# IDE
 *.vscode/
 !/.vscode/launch.json
 .idea/
 
-# Local configuration files
+# Local configuration / secrets
 lib/secrets.dart
 lib/core/secrets_config.dart
 scripts/scramble_api_key.dart
@@ -81,7 +67,7 @@ scripts/scramble_api_key.dart
 # Audio and large assets (Optional, but recommended if they are very large)
 # assets/audio/
 
-# Windows generated files
+# Windows generated
 /windows/flutter/ephemeral
 /windows/flutter/generated_plugins.cmake
 /windows/runner/Debug/
@@ -93,14 +79,15 @@ scripts/scramble_api_key.dart
 /windows/runner/win32_window.obj
 /windows/runner/win32_window.pdb
 
-# Linux generated files
+# Linux generated
 /linux/flutter/ephemeral
 /linux/flutter/generated_plugins.cmake
 
-# macOS generated files
+# macOS generated
 /macos/Flutter/ephemeral
 /macos/Flutter/GeneratedPlu*
-# Large database files
+
+# Large database / embeddings
 assets/database/*.db
 assets/database/timings.json
 assets/database/build/
@@ -115,6 +102,7 @@ aeneas_stable_env
 # AI Models
 *.tflite
 assets/mobile_assets/vocab.txt
+
 # Local backup lists
 LOCAL_BACKUP_LIST.txt
 PROPRIETARY_BACKUP_LIST.txt

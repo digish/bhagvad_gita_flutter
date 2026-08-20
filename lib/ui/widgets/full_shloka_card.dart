@@ -258,12 +258,16 @@ class FullShlokaCard extends StatelessWidget {
         }
 
         if (validFilePath != null && await File(validFilePath).exists()) {
-          await Share.shareXFiles(
-            // Use application/octet-stream to force "Document" handling (attachment style)
-            [XFile(validFilePath, mimeType: 'application/octet-stream')],
-            text: shareText,
-            subject: shlokaIdentifier,
-            sharePositionOrigin: sharePositionOrigin,
+          await SharePlus.instance.share(
+            ShareParams(
+              // Use application/octet-stream to force "Document" handling (attachment style)
+              files: [
+                XFile(validFilePath, mimeType: 'application/octet-stream'),
+              ],
+              text: shareText,
+              subject: shlokaIdentifier,
+              sharePositionOrigin: sharePositionOrigin,
+            ),
           );
           return;
         }
@@ -271,10 +275,12 @@ class FullShlokaCard extends StatelessWidget {
     }
 
     // Fallback or Text Only Share
-    Share.share(
-      shareText,
-      subject: shlokaIdentifier,
-      sharePositionOrigin: sharePositionOrigin,
+    await SharePlus.instance.share(
+      ShareParams(
+        text: shareText,
+        subject: shlokaIdentifier,
+        sharePositionOrigin: sharePositionOrigin,
+      ),
     );
   }
 

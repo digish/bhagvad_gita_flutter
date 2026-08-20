@@ -17,7 +17,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Navigation
-  go_router: ^16.2.0
+  go_router: ^17.5.0
   
   # State Management
   riverpod: ^2.5.1
@@ -31,27 +31,27 @@ dependencies:
   
   # Location & Permissions
   # geolocator: ^14.0.2
-  permission_handler: ^12.0.1
+  permission_handler: ^13.0.1
   
   # 3D Graphics & Animations
   #model_viewer_plus: ^1.7.0
   #vector_math: ^2.1.4
-  animations: ^2.0.11
+  animations: ^3.0.0
   simple_animations: ^5.0.2
   
   # Astronomy & Math
-  timezone: ^0.10.1
+  timezone: ^0.11.1
   flutter_timezone: ^5.0.0
   
   # Utilities
   intl: ^0.20.2
   shared_preferences: ^2.2.3
   url_launcher: ^6.3.0
-  share_plus: ^11.1.0
+  share_plus: ^13.3.0
   flutter_svg: ^2.0.10+1
   
   # Fonts & Text
-  google_fonts: ^6.2.1
+  google_fonts: ^8.2.1
   
   # Performance & Caching
   cached_network_image: ^3.4.0
@@ -62,18 +62,20 @@ dependencies:
   uuid: ^4.4.2
   
   # UI
-  flutter_local_notifications: ^20.1.0
+  flutter_local_notifications: ^22.3.0
   flutter_speed_dial: ^7.0.0 
   flutter_markdown_plus: ^1.0.7 # Successor to flutter_markdown
   scrollable_positioned_list: ^0.3.8
   just_audio: ^0.10.4
-  audio_session: ^0.1.19 
+  audio_session: ^0.2.4 
   just_audio_background: ^0.0.1-beta.11
-  asset_delivery: ^1.1.0
-  wakelock_plus: ^1.4.0
+  # Android-only local fork: upstream has no SPM support and this app bundles iOS audio.
+  asset_delivery:
+    path: packages/asset_delivery
+  wakelock_plus: ^1.7.0
   home_widget: ^0.9.0
   google_generative_ai: ^0.4.6 # For Gemini API
-  google_mobile_ads: ^5.3.0
+  google_mobile_ads: ^9.1.0
   pretty_qr_code: ^3.6.0
 
 dev_dependencies:
