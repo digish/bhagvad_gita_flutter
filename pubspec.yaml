@@ -31,7 +31,8 @@ dependencies:
   
   # Location & Permissions
   # geolocator: ^14.0.2
-  permission_handler: ^13.0.1
+  # Keep <13: permission_handler 13+ pulls android plugin needing SDK 37 (not yet stable for Gradle).
+  permission_handler: ^12.0.1
   
   # 3D Graphics & Animations
   #model_viewer_plus: ^1.7.0

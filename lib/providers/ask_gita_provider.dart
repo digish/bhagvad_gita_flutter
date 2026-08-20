@@ -58,16 +58,17 @@ class AskGitaProvider extends ChangeNotifier {
     String script = 'dev',
     String? shlokaScript,
   }) async {
-    if (query.trim().isEmpty) return;
+    final sanitized = AskGitaService.sanitizeQuery(query);
+    if (sanitized.isEmpty) return;
 
     // 1. Add User Message
-    _messages.add(ChatMessage(text: query, sender: MessageSender.user));
+    _messages.add(ChatMessage(text: sanitized, sender: MessageSender.user));
     _isLoading = true;
     notifyListeners();
 
     try {
       // 2. Search for relevant Shlokas (The "Brain")
-      final shlokaIds = await _service.search(query);
+      final shlokaIds = await _service.search(sanitized);
 
       List<ShlokaResult> results = [];
       if (shlokaIds.isNotEmpty && _dbHelper != null) {
@@ -95,7 +96,7 @@ class AskGitaProvider extends ChangeNotifier {
 
       // 4. Stream Answer (The "Voice")
       final stream = await _service.streamAnswer(
-        query,
+        sanitized,
         results
             .map(
               (s) =>
@@ -130,7 +131,7 @@ class AskGitaProvider extends ChangeNotifier {
       );
 
       AnalyticsService.instance.logAskGita(
-        query: query,
+        query: sanitized,
         referenceCount: results.length,
       );
     } catch (e) {

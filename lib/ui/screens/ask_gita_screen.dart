@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, MaxLengthEnforcement;
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
 import '../../services/analytics_service.dart';
+import '../../services/ask_gita_service.dart';
 import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
 import '../widgets/font_size_control.dart';
 import '../../navigation/app_router.dart';
@@ -90,6 +92,19 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
+
+    if (AskGitaService.exceedsMaxLength(text)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please keep your question under ${AskGitaService.maxQueryLength} characters.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     final credits = context.read<CreditProvider>();
     final settings = context.read<SettingsProvider>();
@@ -456,6 +471,35 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
                                       controller: _textController,
                                       focusNode:
                                           _inputFocusNode, // ✨ Attach focus node
+                                      maxLength: AskGitaService.maxQueryLength,
+                                      maxLengthEnforcement:
+                                          MaxLengthEnforcement.enforced,
+                                      buildCounter:
+                                          (
+                                            context, {
+                                            required currentLength,
+                                            required isFocused,
+                                            required maxLength,
+                                          }) {
+                                            if (!isFocused &&
+                                                currentLength <
+                                                    (maxLength! * 0.8)
+                                                        .round()) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            return Text(
+                                              '$currentLength / $maxLength',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: currentLength >=
+                                                            maxLength!
+                                                        ? theme.colorScheme
+                                                              .error
+                                                        : theme
+                                                              .hintColor,
+                                                  ),
+                                            );
+                                          },
                                       decoration: InputDecoration(
                                         hintText: 'Ask Gita anything ...',
                                         border: OutlineInputBorder(

@@ -9,6 +9,9 @@ import '../core/secrets_config.dart';
 class AskGitaService {
   static const String _embeddingsPath = 'assets/gita_embeddings.json';
 
+  /// Conservative cap to limit embedding + chat token spend per request.
+  static const int maxQueryLength = 500;
+
   final String apiKey;
   late final GenerativeModel _embeddingModel;
   late final GenerativeModel _chatModel;
@@ -53,8 +56,11 @@ class AskGitaService {
     if (!_isLoaded) await init();
 
     try {
+      final sanitized = sanitizeQuery(query);
+      if (sanitized.isEmpty) return [];
+
       // 1. Embed User Query
-      final content = Content.text(query);
+      final content = Content.text(sanitized);
       final response = await _embeddingModel.embedContent(content);
       final queryVector = response.embedding.values;
 
@@ -81,14 +87,25 @@ class AskGitaService {
     String userQuery,
     List<String> contextShlokas, // Passed from UI/Provider to keep service pure
   ) async {
+    final sanitized = sanitizeQuery(userQuery);
     // Construct the Prompt using the SecretsConfig
     final prompt = SecretsConfig.aiSystemPrompt
         .replaceFirst('{{CONTEXT_SHLOKAS}}', contextShlokas.toString())
-        .replaceFirst('{{USER_QUERY}}', userQuery);
+        .replaceFirst('{{USER_QUERY}}', sanitized);
 
     final content = [Content.text(prompt)];
     return _chatModel.generateContentStream(content);
   }
+
+  /// Trims and enforces [maxQueryLength].
+  static String sanitizeQuery(String query) {
+    final trimmed = query.trim();
+    if (trimmed.length <= maxQueryLength) return trimmed;
+    return trimmed.substring(0, maxQueryLength);
+  }
+
+  static bool exceedsMaxLength(String query) =>
+      query.trim().length > maxQueryLength;
 
   // --- Math Util ---
   double _cosineSimilarity(List<double> a, List<double> b) {

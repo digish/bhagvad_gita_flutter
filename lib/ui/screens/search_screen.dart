@@ -27,6 +27,7 @@ import '../../providers/bookmark_provider.dart';
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
 import '../../services/home_widget_service.dart';
+import '../../services/ask_gita_service.dart';
 import '../../models/soul_status.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
@@ -1030,10 +1031,46 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                 ? TextInputAction.send
                 : TextInputAction.search, // ✨ Dynamic Action Button
             style: TextStyle(color: textColor),
+            maxLength: _isAiMode ? AskGitaService.maxQueryLength : null,
+            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+            buildCounter:
+                (
+                  context, {
+                  required currentLength,
+                  required isFocused,
+                  required maxLength,
+                }) {
+                  if (!_isAiMode || maxLength == null) {
+                    return const SizedBox.shrink();
+                  }
+                  if (!isFocused && currentLength < (maxLength * 0.8).round()) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(
+                    '$currentLength / $maxLength',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: currentLength >= maxLength
+                          ? Colors.redAccent
+                          : hintColor,
+                    ),
+                  );
+                },
             onChanged: (value) => provider.onSearchQueryChanged(value),
             onSubmitted: (value) {
               if (value.isNotEmpty) {
                 if (_isAiMode) {
+                  if (AskGitaService.exceedsMaxLength(value)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Please keep your question under ${AskGitaService.maxQueryLength} characters.',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
                   context.push(AppRoutes.askGita, extra: value);
                 } else {
                   context.pushNamed(
@@ -1084,9 +1121,21 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           size: 20,
                         ),
                         onPressed: () {
+                          final query = provider.searchQuery;
+                          if (AskGitaService.exceedsMaxLength(query)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Please keep your question under ${AskGitaService.maxQueryLength} characters.',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
                           context.push(
                             AppRoutes.askGita,
-                            extra: provider.searchQuery,
+                            extra: query,
                           );
                         },
                       ),
