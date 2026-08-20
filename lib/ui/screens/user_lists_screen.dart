@@ -76,6 +76,11 @@ class _UserListsScreenState extends State<UserListsScreen> {
                           backgroundColor: Colors.transparent,
                           elevation: 0,
                           centerTitle: true,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onSurface,
+                          iconTheme: IconThemeData(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                         floatingActionButton: FloatingActionButton(
                           heroTag: 'add_list_fab_wide',
@@ -140,7 +145,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
       );
     }
 
-    // ✨ Mobile Layout (Existing)
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -148,6 +153,8 @@ class _UserListsScreenState extends State<UserListsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        foregroundColor: onSurface,
+        iconTheme: IconThemeData(color: onSurface),
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_list_fab_mobile',

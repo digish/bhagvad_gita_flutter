@@ -29,11 +29,106 @@ class ListDetailScreen extends StatefulWidget {
 
 class _ListDetailScreenState extends State<ListDetailScreen> {
   late Future<List<ShlokaResult>> _shlokasFuture;
+  final ScrollController _scrollController = ScrollController();
+  List<GlobalKey> _itemKeys = [];
+  List<ShlokaResult> _shlokas = [];
+  String? _currentShlokId;
+  String? _lastScrolledId;
+  AudioProvider? _audioProvider;
 
   @override
   void initState() {
     super.initState();
     _loadShlokas();
+    _audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    _currentShlokId = _audioProvider?.currentPlayingShlokaId;
+    _audioProvider?.addListener(_handleAudioChange);
+  }
+
+  @override
+  void dispose() {
+    _audioProvider?.removeListener(_handleAudioChange);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleAudioChange() {
+    final audioProvider = _audioProvider;
+    if (audioProvider == null) return;
+
+    final newId = audioProvider.currentPlayingShlokaId;
+    if (_currentShlokId == newId) return;
+
+    setState(() {
+      _currentShlokId = newId;
+    });
+
+    if (_currentShlokId == null || _currentShlokId == _lastScrolledId) return;
+
+    final index = _shlokas.indexWhere(
+      (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
+    );
+    if (index != -1) {
+      _lastScrolledId = _currentShlokId;
+      _scrollToIndex(index);
+    }
+  }
+
+  Future<void> _scrollToIndex(int index) async {
+    if (index < 0 || index >= _itemKeys.length) return;
+
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted || !_scrollController.hasClients) return;
+
+    final key = _itemKeys[index];
+
+    // Force off-screen items to build so ensureVisible can find them.
+    if (key.currentContext == null) {
+      final targetOffset = (index * 400.0).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(targetOffset);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      var attempt = 0;
+      while (key.currentContext == null &&
+          attempt < 20 &&
+          mounted &&
+          _scrollController.hasClients) {
+        _scrollController.jumpTo(
+          (_scrollController.offset + 800).clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 50));
+        attempt++;
+      }
+    }
+
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (key.currentContext == null) return;
+
+      final renderBox = key.currentContext!.findRenderObject() as RenderBox;
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenSize = MediaQuery.of(context).size;
+      final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
+      final isVisible =
+          position.dy >= topPadding &&
+          position.dy + renderBox.size.height <= screenSize.height;
+
+      if (!isVisible) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.1,
+        );
+      }
+    });
   }
 
   void _loadShlokas() {
@@ -144,13 +239,14 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       appBar: AppBar(
         title: Text(
           widget.isEmbedded ? '' : widget.list.name,
-        ), // Hide title if embedded as header might be elsewhere? No, keep title but maybe adjust. User lists screen has NO header for right pane? It has "Collections" for left. Let's keep title.
-        // Actually, if embedded, we might want to hide the AppBar if the parent handles it?
-        // But the parent UserListsScreen just puts it in valid area.
-        // Let's keep title.
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
       floatingActionButton: Consumer<AudioProvider>(
         builder: (context, audioProvider, child) {
@@ -210,9 +306,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                 );
               }
 
+              if (_shlokas.length != shlokas.length ||
+                  _itemKeys.length != shlokas.length) {
+                _shlokas = shlokas;
+                _itemKeys = List.generate(shlokas.length, (_) => GlobalKey());
+              }
+
               return Consumer2<AudioProvider, SettingsProvider>(
                 builder: (context, audioProvider, settingsProvider, child) {
                   return ListView.builder(
+                    controller: _scrollController,
                     padding: EdgeInsets.fromLTRB(
                       MediaQuery.of(context).padding.left + 16,
                       kToolbarHeight + MediaQuery.of(context).padding.top + 16,
@@ -222,15 +325,18 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                     itemCount: shlokas.length,
                     itemBuilder: (context, index) {
                       final shloka = shlokas[index];
-                      // We wrap in a Dismissible to remove from list?
-                      // Maybe too risky for accidental deletes.
-                      // For now just list them.
                       return Padding(
+                        key: _itemKeys[index],
                         padding: const EdgeInsets.only(bottom: 16),
                         child: FullShlokaCard(
                           shloka: shloka,
-                          currentlyPlayingId:
-                              audioProvider.currentPlayingShlokaId,
+                          currentlyPlayingId: _currentShlokId,
+                          onPlayPause: () {
+                            audioProvider.playChapter(
+                              shlokas: shlokas,
+                              initialIndex: index,
+                            );
+                          },
                           config: FullShlokaCardConfig(
                             baseFontSize: settingsProvider.fontSize,
                             showAnvay: true,
