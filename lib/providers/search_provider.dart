@@ -38,8 +38,14 @@ class HeaderItem extends SearchResultItem {
 class SearchProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
   final String _language;
-  final String _script; // NEW field
-  SearchProvider(this._dbHelper, this._language, this._script);
+  final String _script;
+  final String _shlokaScript;
+  SearchProvider(
+    this._dbHelper,
+    this._language,
+    this._script, {
+    String? shlokaScript,
+  }) : _shlokaScript = shlokaScript ?? _script;
 
   String _searchQuery = '';
   List<SearchResultItem> _searchResults = [];
@@ -67,7 +73,8 @@ class SearchProvider extends ChangeNotifier {
         final shlokas = await _dbHelper.searchShlokas(
           _searchQuery,
           language: _language,
-          script: _script, // Pass script
+          script: _script,
+          shlokaScript: _shlokaScript,
         );
 
         // Deduplication Logic

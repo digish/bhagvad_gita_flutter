@@ -119,7 +119,12 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
         await credits.consumeCredit();
       }
       if (mounted) {
-        context.read<AskGitaProvider>().sendMessage(text);
+        context.read<AskGitaProvider>().sendMessage(
+          text,
+          language: settings.language,
+          script: settings.script,
+          shlokaScript: settings.shlokaScript,
+        );
         // Only clear if the text was in the controller (user typed it or we populated it)
         if (_textController.text.isNotEmpty) {
           _textController.clear();

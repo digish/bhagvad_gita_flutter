@@ -120,6 +120,7 @@ class BookmarkProvider extends ChangeNotifier {
     int listId, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   }) async {
     List<Map<String, dynamic>> references = [];
 
@@ -154,6 +155,7 @@ class BookmarkProvider extends ChangeNotifier {
       references,
       language: language,
       script: script,
+      shlokaScript: shlokaScript,
       includeCommentaries: false, // Optimize memory
     );
   }

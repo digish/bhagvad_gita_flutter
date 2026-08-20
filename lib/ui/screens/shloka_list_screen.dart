@@ -75,12 +75,14 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       context,
       listen: false,
     ).language;
-    final script = Provider.of<SettingsProvider>(context, listen: false).script;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final script = settings.script;
     _shlokaProvider = ShlokaListProvider(
       widget.searchQuery,
       dbHelper,
       language,
       script,
+      shlokaScript: settings.shlokaScript,
     );
 
     // ✨ FIX: Get the provider once and store it.

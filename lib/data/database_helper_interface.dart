@@ -21,11 +21,13 @@ abstract class DatabaseHelperInterface {
     int chapter, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   });
   Future<List<ShlokaResult>> getAllShlokas({
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   });
   Future<List<Commentary>> getCommentariesForShloka(
@@ -36,22 +38,26 @@ abstract class DatabaseHelperInterface {
     String query, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   });
   Future<List<WordResult>> searchWords(String query);
   Future<Map<String, dynamic>?> getWordDefinition(String query);
   Future<ShlokaResult?> getRandomShloka({
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   });
   Future<ShlokaResult?> getShlokaById(
     String id, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   });
   Future<List<ShlokaResult>> getShlokasByReferences(
     List<Map<String, dynamic>> references, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   });
 }

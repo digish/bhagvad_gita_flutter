@@ -157,7 +157,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                'For Shloka & Meaning',
+                                                settings.forceSanskritShloka
+                                                    ? 'For meaning & labels'
+                                                    : 'For Shloka & Meaning',
                                                 style: TextStyle(
                                                   color: subtitleColor,
                                                   fontSize: 14,
@@ -203,6 +205,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                       ],
                                     ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: SwitchListTile.adaptive(
+                                    secondary: CircleAvatar(
+                                      backgroundColor: theme.primaryColor
+                                          .withOpacity(isDark ? 0.25 : 0.1),
+                                      child: Icon(
+                                        Icons.translate,
+                                        color: theme.primaryColor,
+                                      ),
+                                    ),
+                                    title: const Text(
+                                      'Shloka in Sanskrit',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      'Keep Shloka & Anvay in Devanagari. Language setting applies only to translation.',
+                                      style: TextStyle(
+                                        color: subtitleColor,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    value: settings.forceSanskritShloka,
+                                    onChanged: (bool value) {
+                                      settings.setForceSanskritShloka(value);
+                                    },
                                   ),
                                 ),
                                 const SizedBox(height: 16),

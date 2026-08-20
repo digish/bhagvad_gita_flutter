@@ -141,6 +141,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       widget.list.id,
       language: settings.language,
       script: settings.script,
+      shlokaScript: settings.shlokaScript,
     );
   }
 

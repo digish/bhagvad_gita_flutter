@@ -45,14 +45,19 @@ class SearchScreen extends StatelessWidget {
     );
     final language = Provider.of<SettingsProvider>(context).language;
     final script = Provider.of<SettingsProvider>(context).script;
+    final shlokaScript = Provider.of<SettingsProvider>(context).shlokaScript;
 
     // Pass the helper to the SearchProvider
     return ChangeNotifierProvider(
       key: ValueKey(
-        '$language-$script',
+        '$language-$script-$shlokaScript',
       ), // Force re-creation when language or script changes
-      create: (_) =>
-          SearchProvider(dbHelper, language, script), // Re-creates on change
+      create: (_) => SearchProvider(
+        dbHelper,
+        language,
+        script,
+        shlokaScript: shlokaScript,
+      ), // Re-creates on change
       child: const _SearchScreenView(),
     );
   }
@@ -1850,6 +1855,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         result = await db.getRandomShloka(
           language: settings.language,
           script: settings.script,
+          shlokaScript: settings.shlokaScript,
         );
       } else {
         // Specific List(s)
@@ -1874,6 +1880,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             sourceId,
             language: settings.language,
             script: settings.script,
+            shlokaScript: settings.shlokaScript,
           );
 
           debugPrint(
@@ -1973,6 +1980,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       var result = await db.getRandomShloka(
         language: settings.language,
         script: settings.script,
+        shlokaScript: settings.shlokaScript,
       );
 
       if (result != null) {

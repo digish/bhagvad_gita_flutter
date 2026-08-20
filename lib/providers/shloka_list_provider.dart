@@ -20,7 +20,8 @@ class ShlokaListProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
   final String _searchQuery;
   final String _language;
-  final String _script; // NEW field
+  final String _script;
+  final String _shlokaScript;
 
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
@@ -32,13 +33,13 @@ class ShlokaListProvider extends ChangeNotifier {
   int? get initialScrollIndex => _initialScrollIndex;
   String? get lastScrolledId => _lastScrolledId;
 
-  // Updated constructor to accept script
   ShlokaListProvider(
     this._searchQuery,
     this._dbHelper,
     this._language,
-    this._script,
-  ) {
+    this._script, {
+    String? shlokaScript,
+  }) : _shlokaScript = shlokaScript ?? _script {
     _fetchShlokas();
   }
 
@@ -83,6 +84,7 @@ class ShlokaListProvider extends ChangeNotifier {
               chapter,
               language: _language,
               script: _script,
+              shlokaScript: _shlokaScript,
             );
             final match = chapterShlokas
                 .where((s) => int.tryParse(s.shlokNo) == shlokNum)
@@ -102,6 +104,7 @@ class ShlokaListProvider extends ChangeNotifier {
           chapter,
           language: _language,
           script: _script,
+          shlokaScript: _shlokaScript,
         );
         if (shlokNum != null) {
           final index = _shlokas.indexWhere(
@@ -126,6 +129,7 @@ class ShlokaListProvider extends ChangeNotifier {
         chapter,
         language: _language,
         script: _script,
+        shlokaScript: _shlokaScript,
       );
     }
     // Case #2 & #3: It's a text query.
@@ -142,6 +146,7 @@ class ShlokaListProvider extends ChangeNotifier {
             chapter,
             language: _language,
             script: _script,
+            shlokaScript: _shlokaScript,
           );
           if (shlokNum != null) {
             final index = _shlokas.indexWhere(
@@ -160,12 +165,14 @@ class ShlokaListProvider extends ChangeNotifier {
           final results1 = await _dbHelper.searchShlokas(
             _searchQuery,
             language: _language,
-            script: _script, // Pass script
+            script: _script,
+            shlokaScript: _shlokaScript,
           );
           final results2 = await _dbHelper.searchShlokas(
             stage1Result,
             language: _language,
-            script: _script, // Pass script
+            script: _script,
+            shlokaScript: _shlokaScript,
           );
 
           // Use a Set to automatically handle duplicates before converting to a List.
@@ -176,7 +183,8 @@ class ShlokaListProvider extends ChangeNotifier {
         _shlokas = await _dbHelper.searchShlokas(
           _searchQuery,
           language: _language,
-          script: _script, // Pass script
+          script: _script,
+          shlokaScript: _shlokaScript, // Pass script
         );
       }
     }

@@ -82,6 +82,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
       parayanProvider.updateSettings(
         language: settings.language,
         script: settings.script,
+        shlokaScript: settings.shlokaScript,
       );
     });
   }

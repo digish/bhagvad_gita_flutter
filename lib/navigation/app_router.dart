@@ -93,12 +93,19 @@ final GoRouter router = GoRouter(
             // 2. Read the globally provided dbHelper from the provider context.
             // This will now work because the type is known.
             final dbHelper = context.read<DatabaseHelperInterface>();
-            final language = context.read<SettingsProvider>().language;
-            final script = context.read<SettingsProvider>().script;
+            final settings = context.read<SettingsProvider>();
+            final language = settings.language;
+            final script = settings.script;
+            final shlokaScript = settings.shlokaScript;
             return CustomTransitionPage(
               key: state.pageKey,
               child: ChangeNotifierProvider(
-                create: (_) => ParayanProvider(dbHelper, language, script),
+                create: (_) => ParayanProvider(
+                  dbHelper,
+                  language,
+                  script,
+                  shlokaScript: shlokaScript,
+                ),
                 child: const ParayanScreen(),
               ),
               transitionDuration: const Duration(milliseconds: 700),

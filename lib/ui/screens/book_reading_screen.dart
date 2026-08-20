@@ -63,6 +63,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         widget.chapterNumber,
         language: settings.language,
         script: settings.script,
+        shlokaScript: settings.shlokaScript,
       );
 
       // Extract unique authors available in this chapter

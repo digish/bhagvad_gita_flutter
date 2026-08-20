@@ -55,6 +55,7 @@ class AskGitaProvider extends ChangeNotifier {
     String query, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   }) async {
     if (query.trim().isEmpty) return;
 
@@ -75,6 +76,7 @@ class AskGitaProvider extends ChangeNotifier {
           refs,
           language: language,
           script: script,
+          shlokaScript: shlokaScript,
         );
       }
 

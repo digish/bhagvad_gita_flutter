@@ -50,6 +50,7 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
       widget.shlokaId,
       language: language,
       script: script,
+      shlokaScript: settings.shlokaScript,
     );
   }
 

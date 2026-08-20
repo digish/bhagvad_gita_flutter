@@ -22,6 +22,7 @@ class ParayanProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
   String _language;
   String _script;
+  String _shlokaScript;
 
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
@@ -31,17 +32,29 @@ class ParayanProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   List<ShlokaResult> get shlokas => _shlokas;
 
-  ParayanProvider(this._dbHelper, this._language, this._script) {
+  ParayanProvider(
+    this._dbHelper,
+    this._language,
+    this._script, {
+    String? shlokaScript,
+  }) : _shlokaScript = shlokaScript ?? _script {
     _fetchAllShlokas();
   }
 
   Future<void> updateSettings({
     required String language,
     required String script,
+    String? shlokaScript,
   }) async {
-    if (_language == language && _script == script) return;
+    final nextShlokaScript = shlokaScript ?? script;
+    if (_language == language &&
+        _script == script &&
+        _shlokaScript == nextShlokaScript) {
+      return;
+    }
     _language = language;
     _script = script;
+    _shlokaScript = nextShlokaScript;
     await _fetchAllShlokas();
   }
 
@@ -54,6 +67,7 @@ class ParayanProvider extends ChangeNotifier {
         (await _dbHelper.getAllShlokas(
           language: _language,
           script: _script,
+          shlokaScript: _shlokaScript,
           includeCommentaries: false, // Fix OOM on Android
         )).where((shloka) {
           final isValidChapter = int.tryParse(shloka.chapterNo) != null;

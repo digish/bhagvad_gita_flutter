@@ -98,9 +98,11 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   }
 
   // Enhanced _buildQuery to handle Script and Language
+  // [script] drives translation lipi; [shlokaScript] drives mool/anvay (defaults to script).
   String _buildQuery(
     String language,
     String script, {
+    String? shlokaScript,
     String? whereClause,
     String extraColumns = '',
     String extraJoin = '',
@@ -108,9 +110,9 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     // 1. Determine Shloka Script Code (shloka_scripts table)
     // Map 'ro' -> 'en' because shloka_scripts uses 'en' for Roman.
     // Map 'hi' -> 'dev' because user might pass 'hi' as script for consistency, though 'dev' is standard.
-    String scriptCode = script;
-    if (script == 'ro') scriptCode = 'en';
-    if (script == 'hi') scriptCode = 'dev';
+    String scriptCode = shlokaScript ?? script;
+    if (scriptCode == 'ro') scriptCode = 'en';
+    if (scriptCode == 'hi') scriptCode = 'dev';
 
     // 2. Determine Translation Language Code (translations table)
     // If user wants English translation, always 'en'.
@@ -162,6 +164,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String query, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   }) async {
     // 1. FTS Search to get relevant IDs, Categories, AND Original Terms
     final tokens = query
@@ -245,6 +248,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     final sql = _buildQuery(
       language,
       script,
+      shlokaScript: shlokaScript,
       whereClause: "m.id IN ($idsQuote) GROUP BY m.id",
       extraJoin: extraJoins,
       extraColumns:
@@ -392,9 +396,15 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     int chapter, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   }) async {
-    final sql = _buildQuery(language, script, whereClause: "m.chapter_no = ?");
+    final sql = _buildQuery(
+      language,
+      script,
+      shlokaScript: shlokaScript,
+      whereClause: "m.chapter_no = ?",
+    );
     final fullSql = "$sql ORDER BY m.shloka_no ASC";
 
     final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql, [
@@ -435,6 +445,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     List<Map<String, dynamic>> references, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   }) async {
     if (references.isEmpty) return [];
@@ -443,6 +454,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     final sql = _buildQuery(
       language,
       script,
+      shlokaScript: shlokaScript,
       whereClause: "m.id IN ($idsList)",
     );
 
@@ -480,9 +492,10 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   Future<List<ShlokaResult>> getAllShlokas({
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
     bool includeCommentaries = true,
   }) async {
-    final sql = _buildQuery(language, script);
+    final sql = _buildQuery(language, script, shlokaScript: shlokaScript);
     final fullSql =
         "$sql ORDER BY CAST(m.chapter_no AS INTEGER), CAST(m.shloka_no AS INTEGER)";
     final List<Map<String, dynamic>> maps = await _db.rawQuery(fullSql);
@@ -513,8 +526,9 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
   Future<ShlokaResult?> getRandomShloka({
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   }) async {
-    final sql = _buildQuery(language, script);
+    final sql = _buildQuery(language, script, shlokaScript: shlokaScript);
     final List<Map<String, dynamic>> maps = await _db.rawQuery(
       "$sql ORDER BY RANDOM() LIMIT 1",
     );
@@ -560,8 +574,14 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
     String id, {
     String language = 'hi',
     String script = 'dev',
+    String? shlokaScript,
   }) async {
-    final sql = _buildQuery(language, script, whereClause: "m.id = ?");
+    final sql = _buildQuery(
+      language,
+      script,
+      shlokaScript: shlokaScript,
+      whereClause: "m.id = ?",
+    );
     final List<Map<String, dynamic>> maps = await _db.rawQuery(sql, [id]);
 
     if (maps.isNotEmpty) {

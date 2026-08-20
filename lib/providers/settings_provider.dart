@@ -163,6 +163,7 @@ class SettingsProvider extends ChangeNotifier {
   // --- Language & Script Support ---
   static const String _languageKey = 'language'; // 'hi' or 'en'
   static const String _scriptKey = 'script'; // 'dev', 'gu', 'te', 'ro', etc.
+  static const String _forceSanskritShlokaKey = 'force_sanskrit_shloka';
 
   static const String _defaultLanguage = 'en';
   static const String _defaultScript = 'en';
@@ -172,6 +173,14 @@ class SettingsProvider extends ChangeNotifier {
 
   String _script = _defaultScript; // Display Script (Lipi)
   String get script => _script;
+
+  /// When true, mool shloka & anvay always use Devanagari ('dev').
+  /// App language/script still controls translation (bhavarth) and UI labels.
+  bool _forceSanskritShloka = false;
+  bool get forceSanskritShloka => _forceSanskritShloka;
+
+  /// Script used when loading shloka/anvay text from the DB.
+  String get shlokaScript => _forceSanskritShloka ? 'dev' : _script;
 
   bool _showClassicalCommentaries = false;
   bool get showClassicalCommentaries => _showClassicalCommentaries;
@@ -190,6 +199,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_scriptKey, newScript);
+  }
+
+  Future<void> setForceSanskritShloka(bool value) async {
+    if (_forceSanskritShloka == value) return;
+    _forceSanskritShloka = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_forceSanskritShlokaKey, value);
   }
 
   Future<void> setShowClassicalCommentaries(bool value) async {
@@ -264,6 +281,7 @@ class SettingsProvider extends ChangeNotifier {
       loadedScript = _defaultScript;
     }
     _script = loadedScript;
+    _forceSanskritShloka = prefs.getBool(_forceSanskritShlokaKey) ?? false;
 
     _hasSeenLanguagePrompt = prefs.getBool('has_seen_language_prompt') ?? false;
     // Auto-mark as seen if they have already changed the language from default
