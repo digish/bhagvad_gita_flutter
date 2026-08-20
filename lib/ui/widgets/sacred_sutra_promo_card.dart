@@ -21,7 +21,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/sacred_sutra_quotes.dart';
 
-/// Contextual home card: epic quote first; tap opens Sacred Sutra discover sheet.
+/// Contextual home card: epic quote first; tap opens discover sheet (once)
+/// or Sacred Sutra (store fallback) after the user has visited the storefront.
 class SacredSutraPromoCard extends StatefulWidget {
   final bool isSimpleLight;
   /// App language code (`en`, `hi`, …). Hindi uses HI quote text.
@@ -31,7 +32,11 @@ class SacredSutraPromoCard extends StatefulWidget {
       'https://play.google.com/store/apps/details?id=org.komal.sacredsutra';
   static const String appStoreUrl =
       'https://apps.apple.com/app/sacred-sutra/id6798266974';
+  static const String androidPackage = 'org.komal.sacredsutra';
+  /// Custom scheme registered by Sacred Sutra (`sacredsutra://open`).
+  static const String appDeepLink = 'sacredsutra://open';
   static const String _quoteIndexKey = 'sacred_sutra_quote_index';
+  static const String _discoverDoneKey = 'sacred_sutra_discover_done';
 
   const SacredSutraPromoCard({
     super.key,
@@ -51,6 +56,66 @@ class SacredSutraPromoCard extends StatefulWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  /// Opens Sacred Sutra if installed; otherwise falls back to the store listing.
+  static Future<void> openAppOrStore() async {
+    if (!kIsWeb) {
+      final appUri = Uri.parse(appDeepLink);
+      try {
+        if (await canLaunchUrl(appUri)) {
+          final launched = await launchUrl(
+            appUri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (launched) return;
+        }
+      } catch (_) {
+        // Fall through to store.
+      }
+
+      // Android: package-scoped intent also lands in Play Store if missing.
+      if (Platform.isAndroid) {
+        try {
+          final intentUri = Uri.parse(
+            'intent://open#Intent;scheme=sacredsutra;'
+            'package=$androidPackage;'
+            'S.browser_fallback_url=${Uri.encodeComponent(playStoreUrl)};end',
+          );
+          final launched = await launchUrl(
+            intentUri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (launched) return;
+        } catch (_) {
+          // Fall through to store.
+        }
+      }
+    }
+    await openStore();
+  }
+
+  /// Marks discover as done so later card taps skip the sheet.
+  static Future<void> markDiscoverDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_discoverDoneKey, true);
+  }
+
+  static Future<bool> isDiscoverDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_discoverDoneKey) ?? false;
+  }
+
+  /// Graduates the user, then opens the store (first “Get” / storefront visit).
+  static Future<void> openStoreAndMarkDiscoverDone() async {
+    await markDiscoverDone();
+    await openStore();
+  }
+
+  /// Graduates the user, then opens the app (store fallback). Settings tile.
+  static Future<void> openAppOrStoreAndMarkDiscoverDone() async {
+    await markDiscoverDone();
+    await openAppOrStore();
   }
 
   /// Day-based seed used only when no saved index exists yet.
@@ -104,6 +169,7 @@ class SacredSutraPromoCard extends StatefulWidget {
     BuildContext context, {
     BeyondOwnedQuote? quote,
     String languageCode = 'en',
+    VoidCallback? onGraduated,
   }) {
     final resolved = quote ?? quoteForToday();
     showModalBottomSheet<void>(
@@ -114,6 +180,7 @@ class SacredSutraPromoCard extends StatefulWidget {
         return SacredSutraDiscoverSheet(
           quote: resolved,
           languageCode: languageCode,
+          onGraduated: onGraduated,
         );
       },
     );
@@ -130,6 +197,7 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
   late final Animation<Offset> _slide;
   late BeyondOwnedQuote _quote;
   int _quoteIndex = 0;
+  bool _discoverDone = false;
 
   @override
   void initState() {
@@ -145,15 +213,17 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
-    _restoreQuoteIndex();
+    _restorePersistedState();
   }
 
-  Future<void> _restoreQuoteIndex() async {
+  Future<void> _restorePersistedState() async {
     final index = await SacredSutraPromoCard.loadSavedIndex();
+    final done = await SacredSutraPromoCard.isDiscoverDone();
     if (!mounted) return;
     setState(() {
       _quoteIndex = index;
       _quote = SacredSutraPromoCard.quoteAt(index);
+      _discoverDone = done;
     });
   }
 
@@ -163,11 +233,18 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
     super.dispose();
   }
 
-  void _openDiscover() {
+  Future<void> _onCardTap() async {
+    if (_discoverDone) {
+      await SacredSutraPromoCard.openAppOrStore();
+      return;
+    }
     SacredSutraPromoCard.showDiscoverSheet(
       context,
       quote: _quote,
       languageCode: widget.languageCode,
+      onGraduated: () {
+        if (mounted) setState(() => _discoverDone = true);
+      },
     );
   }
 
@@ -258,7 +335,7 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20.0),
-                    onTap: _openDiscover,
+                    onTap: _onCardTap,
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -357,7 +434,9 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
                                     const SizedBox(width: 8),
                                     Flexible(
                                       child: Text(
-                                        'Sacred Sutra · tap to explore',
+                                        _discoverDone
+                                            ? 'Sacred Sutra · tap to open'
+                                            : 'Sacred Sutra · tap to explore',
                                         style: TextStyle(
                                           color: mutedColor,
                                           fontSize: 12,
@@ -389,11 +468,13 @@ class _SacredSutraPromoCardState extends State<SacredSutraPromoCard>
 class SacredSutraDiscoverSheet extends StatelessWidget {
   final BeyondOwnedQuote quote;
   final String languageCode;
+  final VoidCallback? onGraduated;
 
   const SacredSutraDiscoverSheet({
     super.key,
     required this.quote,
     this.languageCode = 'en',
+    this.onGraduated,
   });
 
   String get _sourceLabel {
@@ -406,8 +487,10 @@ class SacredSutraDiscoverSheet extends StatelessWidget {
     return 'Sacred wisdom';
   }
 
-  Future<void> _getApp(BuildContext context) async {
-    Navigator.of(context).maybePop();
+  Future<void> _graduateAndOpenStore(BuildContext context) async {
+    await SacredSutraPromoCard.markDiscoverDone();
+    onGraduated?.call();
+    if (context.mounted) Navigator.of(context).maybePop();
     await SacredSutraPromoCard.openStore();
   }
 
@@ -642,7 +725,7 @@ class SacredSutraDiscoverSheet extends StatelessWidget {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () => _getApp(context),
+                        onPressed: () => _graduateAndOpenStore(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accent,
                           foregroundColor: ctaFg,

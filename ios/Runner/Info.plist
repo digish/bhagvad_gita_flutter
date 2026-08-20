@@ -37,6 +37,12 @@
 			</array>
 		</dict>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>sacredsutra</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-9968933785213782~7198967469</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

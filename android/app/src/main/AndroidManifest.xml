@@ -85,5 +85,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Sacred Sutra: detect / open sibling app from promo card -->
+        <package android:name="org.komal.sacredsutra" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sacredsutra" />
+        </intent>
     </queries>
 </manifest>

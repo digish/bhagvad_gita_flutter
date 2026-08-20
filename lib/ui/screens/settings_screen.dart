@@ -432,8 +432,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             borderRadius: BorderRadius.circular(
                                               16,
                                             ),
-                                            onTap: () =>
-                                                SacredSutraPromoCard.openStore(),
+                                            onTap: () => SacredSutraPromoCard
+                                                .openAppOrStoreAndMarkDiscoverDone(),
                                             child: Ink(
                                               decoration: BoxDecoration(
                                                 borderRadius:
