@@ -1,5 +1,6 @@
 import 'package:home_widget/home_widget.dart';
 import '../models/shloka_result.dart';
+import 'deep_link_service.dart';
 
 class HomeWidgetService {
   static const String appGroupId =
@@ -11,6 +12,7 @@ class HomeWidgetService {
   static const String keyTranslation = 'translation';
   static const String keyChapterShloka = 'chapter_shloka';
   static const String keySpeaker = 'speaker';
+  static const String keyShlokaId = 'shloka_id';
 
   static const String keyHeader = 'header_text';
 
@@ -20,6 +22,8 @@ class HomeWidgetService {
   }) async {
     // Required for iOS to know which App Group to use
     await HomeWidget.setAppGroupId(appGroupId);
+
+    final shlokaId = '${shloka.chapterNo}.${shloka.shlokNo}';
 
     // Save data to the widget shared storage
     await HomeWidget.saveWidgetData<String>(
@@ -39,6 +43,7 @@ class HomeWidgetService {
       'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
     );
     await HomeWidget.saveWidgetData<String>(keySpeaker, shloka.speaker);
+    await HomeWidget.saveWidgetData<String>(keyShlokaId, shlokaId);
 
     // Trigger widget update
     await HomeWidget.updateWidget(
@@ -46,6 +51,19 @@ class HomeWidgetService {
       iOSName: iOSWidgetName,
     );
   }
+
+  /// Last shloka shown on the home widget, if any.
+  static Future<String?> getCurrentShlokaId() async {
+    try {
+      await HomeWidget.setAppGroupId(appGroupId);
+      return await HomeWidget.getWidgetData<String>(keyShlokaId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Uri launchUriFor(String shlokaId) =>
+      DeepLinkService.uriForShloka(shlokaId);
 
   // Helper to extract clean text (similar to SearchScreen)
   static String _processShlokaText(String rawText) {
@@ -66,33 +84,23 @@ class HomeWidgetService {
   }
 
   static String _getBestTranslation(ShlokaResult shloka) {
-    // Prefer Bhavarth (Hindi/English Translation)
-    // The model typically has 'bhavarth'
-    // If not, check 'meaning' from category snippets if available
-
-    // Check if we have English translation (often stored in translations table)
-    // For now, let's use what we have in the model.
-    // The ShlokaResult model has 'bhavarth' field? Let's check model definition if needed,
-    // but usually 'matchSnippet' or 'bhavarth' is available.
-    // Wait, let's look at ShlokaResult definition to be sure.
-    // Assuming implicit knowledge or based on previous files:
-
-    // If we look at SearchScreen logic, it uses snippets.
-
-    // Let's use simple fallbacks
     if (shloka.matchSnippet != null && shloka.matchSnippet!.isNotEmpty) {
       return shloka.matchSnippet!;
     }
 
-    // If we have category snippets
     if (shloka.categorySnippets != null) {
-      if (shloka.categorySnippets!.containsKey('bhavarth'))
+      if (shloka.categorySnippets!.containsKey('bhavarth')) {
         return shloka.categorySnippets!['bhavarth']!;
-      if (shloka.categorySnippets!.containsKey('meaning'))
+      }
+      if (shloka.categorySnippets!.containsKey('meaning')) {
         return shloka.categorySnippets!['meaning']!;
-      if (shloka.categorySnippets!.containsKey('anvay'))
+      }
+      if (shloka.categorySnippets!.containsKey('anvay')) {
         return shloka.categorySnippets!['anvay']!;
+      }
     }
+
+    if (shloka.bhavarth.isNotEmpty) return shloka.bhavarth;
 
     return "Click to read meaning";
   }

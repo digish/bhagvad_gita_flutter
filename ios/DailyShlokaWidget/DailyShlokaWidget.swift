@@ -7,17 +7,18 @@ struct Provider: TimelineProvider {
     let keyTranslation = "translation"
     let keyChapterShloka = "chapter_shloka"
     let keySpeaker = "speaker"
-    let keyHeader = "header_text" // New key
+    let keyHeader = "header_text"
+    let keyShlokaId = "shloka_id"
     
     // Suite Name must match the App Group ID if using App Groups for sharing data.
     let appGroupId = "group.org.komal.bhagvadgeeta"
     
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), shlokaText: "Loading...", translation: "Gita Wisdom", footer: "Chapter X", header: "DAILY GITA WISDOM")
+        SimpleEntry(date: Date(), shlokaText: "Loading...", translation: "Gita Wisdom", footer: "Chapter X", header: "DAILY GITA WISDOM", shlokaId: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), shlokaText: "Dharma Kshetre...", translation: "Field of Righteousness", footer: "Chapter 1, Shloka 1", header: "DAILY GITA WISDOM")
+        let entry = SimpleEntry(date: Date(), shlokaText: "Dharma Kshetre...", translation: "Field of Righteousness", footer: "Chapter 1, Shloka 1", header: "DAILY GITA WISDOM", shlokaId: "1.1")
         completion(entry)
     }
 
@@ -29,7 +30,8 @@ struct Provider: TimelineProvider {
         let shlokaText = userDefaults?.string(forKey: keyShlokaText) ?? "Open App to see Daily Shloka"
         let translation = userDefaults?.string(forKey: keyTranslation) ?? "Daily Wisdom"
         let footer = userDefaults?.string(forKey: keyChapterShloka) ?? ""
-        let header = userDefaults?.string(forKey: keyHeader) ?? "DAILY GITA WISDOM" // Read header
+        let header = userDefaults?.string(forKey: keyHeader) ?? "DAILY GITA WISDOM"
+        let shlokaId = userDefaults?.string(forKey: keyShlokaId)
         
         // Refresh every hour or when app updates
         let entry = SimpleEntry(
@@ -37,7 +39,8 @@ struct Provider: TimelineProvider {
             shlokaText: shlokaText,
             translation: translation,
             footer: footer,
-            header: header
+            header: header,
+            shlokaId: shlokaId
         )
         entries.append(entry)
 
@@ -51,7 +54,8 @@ struct SimpleEntry: TimelineEntry {
     let shlokaText: String
     let translation: String
     let footer: String
-    let header: String // Added header property
+    let header: String
+    let shlokaId: String?
 }
 
 struct DailyShlokaWidgetEntryView : View {
@@ -59,27 +63,37 @@ struct DailyShlokaWidgetEntryView : View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        if #available(iOS 17.0, *) {
-            VStack(alignment: .center, spacing: 0) {
-                content
-            }
-            .containerBackground(for: .widget) {
-                Color(.systemBackground)
-            }
-        } else {
-            ZStack {
-                Color(.systemBackground)
+        Group {
+            if #available(iOS 17.0, *) {
                 VStack(alignment: .center, spacing: 0) {
                     content
                 }
+                .containerBackground(for: .widget) {
+                    Color(.systemBackground)
+                }
+            } else {
+                ZStack {
+                    Color(.systemBackground)
+                    VStack(alignment: .center, spacing: 0) {
+                        content
+                    }
+                }
             }
         }
+        .widgetURL(launchURL)
+    }
+
+    private var launchURL: URL? {
+        if let id = entry.shlokaId, !id.isEmpty {
+            return URL(string: "bhagvadgeeta://shloka/\(id)")
+        }
+        return URL(string: "bhagvadgeeta://open")
     }
     
     var content: some View {
         Group {
             // Title
-            Text(entry.header) // Use dynamic header
+            Text(entry.header)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(Color.pink)
                 .padding(.top, 12)

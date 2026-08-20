@@ -11,10 +11,11 @@
 *
 **/
 
-// lib/main.dart
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:home_widget/home_widget.dart';
 import 'ui/theme/app_theme.dart';
 
 import 'navigation/app_router.dart';
@@ -32,6 +33,8 @@ import 'providers/ask_gita_provider.dart';
 import 'services/remote_config_service.dart';
 import 'services/timing_service.dart';
 import 'services/notification_service.dart';
+import 'services/deep_link_service.dart';
+import 'services/home_widget_service.dart';
 import 'core/secrets_config.dart';
 
 Future<void> main() async {
@@ -57,6 +60,9 @@ Future<void> main() async {
 
   // Initialize Notifications
   await NotificationService.instance.init();
+
+  // Home widget app group (needed before launch URI handling on iOS)
+  await HomeWidget.setAppGroupId(HomeWidgetService.appGroupId);
 
   runApp(const AppInitializer());
 }
@@ -130,8 +136,34 @@ class AppInitializer extends StatelessWidget {
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  StreamSubscription<Uri?>? _widgetClickSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DeepLinkService.instance.handleInitialLinks(
+        notificationsPlugin: NotificationService.instance.plugin,
+      );
+    });
+    _widgetClickSub = HomeWidget.widgetClicked.listen((uri) {
+      DeepLinkService.instance.handleUri(uri);
+    });
+  }
+
+  @override
+  void dispose() {
+    _widgetClickSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

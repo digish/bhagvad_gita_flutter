@@ -32,6 +32,7 @@ import '../ui/widgets/main_scaffold.dart';
 import '../ui/screens/book_reading_screen.dart';
 import '../ui/screens/ask_gita_screen.dart';
 import '../ui/screens/image_creator_screen.dart';
+import '../services/deep_link_parser.dart';
 
 class AppRoutes {
   static const String search = '/';
@@ -46,11 +47,59 @@ class AppRoutes {
   static const String bookReading = '/book-reading/:chapter';
   static const String askGita = '/ask-gita';
   static const String imageCreator = '/image-creator';
+
+  static String shlokaDetailPath(String id) =>
+      shlokaDetail.replaceFirst(':id', id);
 }
 
 final GoRouter router = GoRouter(
   initialLocation: AppRoutes.search,
   observers: [routeObserver],
+  redirect: (context, state) {
+    // Widget / OS deep links arrive as bhagvadgeeta://shloka/12.7
+    // Map them onto a real in-app route before go_router errors.
+    final uri = state.uri;
+    if (!DeepLinkParser.isCustomScheme(uri)) return null;
+
+    final id = DeepLinkParser.extractShlokaId(
+      uri: uri,
+      payload: uri.toString(),
+    );
+    if (id != null) {
+      return AppRoutes.shlokaDetailPath(id);
+    }
+    return AppRoutes.search;
+  },
+  errorBuilder: (context, state) {
+    // Last-resort recovery if a deep link slipped past redirect.
+    final id = DeepLinkParser.extractShlokaId(
+      uri: state.uri,
+      payload: state.uri.toString(),
+    );
+    if (id != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        router.go(AppRoutes.shlokaDetailPath(id));
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Page Not Found')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(state.error?.toString() ?? 'Page not found'),
+            TextButton(
+              onPressed: () => router.go(AppRoutes.search),
+              child: const Text('Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
   routes: [
     ShellRoute(
       builder: (context, state, child) {

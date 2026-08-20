@@ -4,6 +4,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'daily_message_service.dart';
+import 'deep_link_service.dart';
+import 'home_widget_service.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._internal();
@@ -12,6 +14,8 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
+
+  FlutterLocalNotificationsPlugin get plugin => _notificationsPlugin;
 
   Future<void> init() async {
     tz.initializeTimeZones();
@@ -51,7 +55,7 @@ class NotificationService {
     await _notificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap if needed
+        DeepLinkService.instance.handlePayload(details.payload);
       },
     );
   }
@@ -141,6 +145,9 @@ class NotificationService {
         title: title,
         body: body,
         scheduledDate: scheduledTime,
+        // Daily thought bank currently has no per-message shloka ids.
+        // Payload is reserved for when that mapping exists.
+        payload: null,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_wisdom_channel',
@@ -165,13 +172,19 @@ class NotificationService {
     await _notificationsPlugin.cancelAll();
   }
 
+  Future<String?> _payloadForTest() async {
+    return HomeWidgetService.getCurrentShlokaId();
+  }
+
   /// Test method to show an immediate notification (for development/testing only)
   Future<void> showTestNotification() async {
     final msg = await DailyMessageService.getTodaysMessage();
+    final payload = await _payloadForTest();
     await _notificationsPlugin.show(
       id: 999, // Test notification ID
       title: 'Maintain your Spiritual Streak! 🙏',
       body: msg,
+      payload: payload,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_wisdom_channel',
@@ -193,11 +206,13 @@ class NotificationService {
     ).add(const Duration(seconds: 5));
 
     final msg = await DailyMessageService.getTodaysMessage();
+    final payload = await _payloadForTest();
 
     await _notificationsPlugin.zonedSchedule(
       id: 997, // Test delayed notification ID
       title: 'Maintain your Spiritual Streak! 🙏',
       body: msg,
+      payload: payload,
       scheduledDate: scheduledTime,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -219,12 +234,14 @@ class NotificationService {
     final tz.TZDateTime scheduledTime = tz.TZDateTime.now(
       tz.local,
     ).add(const Duration(minutes: 1));
+    final payload = await _payloadForTest();
 
     await _notificationsPlugin.zonedSchedule(
       id: 998, // Test scheduled notification ID
       title: 'Maintain your Spiritual Streak! 🙏',
       body:
           'Krishna is waiting for our daily chat. A quick shloka a day keeps Maya away. 😉',
+      payload: payload,
       scheduledDate: scheduledTime,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(

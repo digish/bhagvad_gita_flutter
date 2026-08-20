@@ -9,9 +9,10 @@
 *
 *  For licensing details, see the LICENSE file in the repository.
 *
-**/
+*/
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../../models/shloka_result.dart';
@@ -19,6 +20,7 @@ import '../widgets/full_shloka_card.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../widgets/simple_gradient_background.dart';
+import '../../navigation/app_router.dart';
 
 class ShlokaDetailScreen extends StatefulWidget {
   final String shlokaId;
@@ -54,80 +56,97 @@ class _ShlokaDetailScreenState extends State<ShlokaDetailScreen> {
     );
   }
 
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // Deep link / widget open has no stack — land on home.
+      context.go(AppRoutes.search);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text("Verse ${widget.shlokaId}"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: BackButton(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white
-              : Colors.black,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text("Verse ${widget.shlokaId}"),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: BackButton(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+            onPressed: _handleBack,
+          ),
         ),
-      ),
-      body: Stack(
-        children: [
-          const SimpleGradientBackground(),
-          FutureBuilder<ShlokaResult?>(
-            future: _shlokaFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError || snapshot.data == null) {
-                return Center(
-                  child: Text(
-                    "Verse not found.",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                );
-              }
-
-              final shloka = snapshot.data!;
-              return Consumer2<AudioProvider, SettingsProvider>(
-                builder: (context, audio, settings, child) {
-                  return SafeArea(
-                    left: true,
-                    top: false,
-                    right: true,
-                    bottom: true,
-                    child: SingleChildScrollView(
-                      // Allow scrolling if card is long
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        kToolbarHeight +
-                            MediaQuery.of(context).padding.top +
-                            16,
-                        16,
-                        16,
-                      ),
-                      child: FullShlokaCard(
-                        shloka: shloka,
-                        currentlyPlayingId: audio.currentPlayingShlokaId,
-                        config: FullShlokaCardConfig(
-                          baseFontSize: settings.fontSize,
-                          showAnvay: true,
-                          showBhavarth: true,
-                          showSeparator: true,
-                          showSpeaker: true,
-                          showShlokIndex: true,
-                          showColoredCard: true,
-                          showEmblem: false, // Don't need animation here
-                          isLightTheme:
-                              Theme.of(context).brightness ==
-                              Brightness.light, // ✨ Dynamic theme
-                        ),
-                      ),
+        body: Stack(
+          children: [
+            const SimpleGradientBackground(),
+            FutureBuilder<ShlokaResult?>(
+              future: _shlokaFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || snapshot.data == null) {
+                  return const Center(
+                    child: Text(
+                      "Verse not found.",
+                      style: TextStyle(color: Colors.white70),
                     ),
                   );
-                },
-              );
-            },
-          ),
-        ],
+                }
+
+                final shloka = snapshot.data!;
+                return Consumer2<AudioProvider, SettingsProvider>(
+                  builder: (context, audio, settings, child) {
+                    return SafeArea(
+                      left: true,
+                      top: false,
+                      right: true,
+                      bottom: true,
+                      child: SingleChildScrollView(
+                        // Allow scrolling if card is long
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          kToolbarHeight +
+                              MediaQuery.of(context).padding.top +
+                              16,
+                          16,
+                          16,
+                        ),
+                        child: FullShlokaCard(
+                          shloka: shloka,
+                          currentlyPlayingId: audio.currentPlayingShlokaId,
+                          config: FullShlokaCardConfig(
+                            baseFontSize: settings.fontSize,
+                            showAnvay: true,
+                            showBhavarth: true,
+                            showSeparator: true,
+                            showSpeaker: true,
+                            showShlokIndex: true,
+                            showColoredCard: true,
+                            showEmblem: false, // Don't need animation here
+                            isLightTheme:
+                                Theme.of(context).brightness ==
+                                Brightness.light, // ✨ Dynamic theme
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
