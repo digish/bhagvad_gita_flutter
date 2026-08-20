@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'analytics_service.dart';
 
 class AdService {
   AdService._();
@@ -63,6 +64,7 @@ class AdService {
   void showRewardedAd({
     required Function(RewardItem reward) onRewardEarned,
     Function()? onAdFailedToShow,
+    String placement = 'unknown',
   }) {
     if (_rewardedAd == null) {
       debugPrint(
@@ -94,7 +96,10 @@ class AdService {
 
     _rewardedAd!.setImmersiveMode(true);
     _rewardedAd!.show(
-      onUserEarnedReward: (ad, reward) => onRewardEarned(reward),
+      onUserEarnedReward: (ad, reward) {
+        AnalyticsService.instance.logAdReward(placement: placement);
+        onRewardEarned(reward);
+      },
     );
   }
 }

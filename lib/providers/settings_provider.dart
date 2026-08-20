@@ -17,6 +17,7 @@ import '../data/predefined_lists_data.dart';
 import '../models/soul_status.dart';
 import '../services/notification_service.dart';
 import '../services/daily_message_service.dart';
+import '../services/analytics_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
@@ -116,6 +117,10 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Save the new font size to persistent storage.
     await prefs.setDouble(_fontSizeKey, newSize);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'font_size',
+      value: newSize.round().toString(),
+    );
   }
 
   Future<void> setShowBackground(bool newValue) async {
@@ -124,6 +129,10 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     // Save the new background visibility to persistent storage.
     await prefs.setBool(_showBackgroundKey, newValue);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'show_background',
+      value: newValue.toString(),
+    );
   }
 
   Future<void> setCustomAiApiKey(String key) async {
@@ -204,6 +213,11 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_languageKey, newLanguage);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'language',
+      value: newLanguage,
+    );
+    AnalyticsService.instance.setUserConfig(language: newLanguage);
   }
 
   Future<void> setScript(String newScript) async {
@@ -212,6 +226,11 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_scriptKey, newScript);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'script',
+      value: newScript,
+    );
+    AnalyticsService.instance.setUserConfig(script: newScript);
   }
 
   Future<void> setForceSanskritShloka(bool value) async {
@@ -220,6 +239,11 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_forceSanskritShlokaKey, value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'force_sanskrit_shloka',
+      value: value.toString(),
+    );
+    AnalyticsService.instance.setUserConfig(forceSanskritShloka: value);
   }
 
   Future<void> setShowClassicalCommentaries(bool value) async {
@@ -228,6 +252,11 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_classical_commentaries', value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'classical_commentaries',
+      value: value.toString(),
+    );
+    AnalyticsService.instance.setUserConfig(showClassicalCommentaries: value);
   }
 
   // Helper List for Scripts with their Display Names
@@ -385,6 +414,15 @@ class SettingsProvider extends ChangeNotifier {
 
     _isInitialized = true;
     notifyListeners();
+
+    AnalyticsService.instance.setUserConfig(
+      language: _language,
+      script: _script,
+      theme: _themeMode.name,
+      forceSanskritShloka: _forceSanskritShloka,
+      showClassicalCommentaries: _showClassicalCommentaries,
+      reminderEnabled: _reminderEnabled,
+    );
   }
 
   Future<void> _updateStreak(SharedPreferences prefs) async {
@@ -568,6 +606,10 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_random_shloka', value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'show_random_shloka',
+      value: value.toString(),
+    );
   }
 
   Future<void> setShowSacredSutraQuote(bool value) async {
@@ -576,6 +618,10 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_sacred_sutra_quote', value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'show_sacred_sutra_quote',
+      value: value.toString(),
+    );
   }
 
   Future<void> setShowTodaysAction(bool value) async {
@@ -584,6 +630,10 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_todays_action', value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'show_todays_action',
+      value: value.toString(),
+    );
   }
 
   Future<void> setShowTodaysAiQuestion(bool value) async {
@@ -592,6 +642,10 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('show_todays_ai_question', value);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'show_todays_ai_question',
+      value: value.toString(),
+    );
   }
 
   // --- Multi-select Logic ---
@@ -604,6 +658,10 @@ class SettingsProvider extends ChangeNotifier {
       sources.join(','),
     ); // Save as CSV
     notifyListeners();
+    AnalyticsService.instance.logConfigChange(
+      setting: 'random_shloka_sources',
+      value: sources.join(','),
+    );
   }
 
   Future<void> toggleRandomShlokaSource(int listId) async {
@@ -668,6 +726,11 @@ class SettingsProvider extends ChangeNotifier {
       'theme_mode',
       mode.name,
     ); // Saves 'system', 'light', 'dark'
+    AnalyticsService.instance.logConfigChange(
+      setting: 'theme_mode',
+      value: mode.name,
+    );
+    AnalyticsService.instance.setUserConfig(theme: mode.name);
   }
 
   // --- Daily Reminder Logic ---
@@ -695,6 +758,12 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.setBool('reminder_nudge_dismissed', false);
     }
 
+    AnalyticsService.instance.logConfigChange(
+      setting: 'reminder_enabled',
+      value: enabled.toString(),
+    );
+    AnalyticsService.instance.setUserConfig(reminderEnabled: enabled);
+
     if (enabled) {
       await _scheduleReminder();
     } else {
@@ -710,6 +779,12 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setInt('reminder_hour', time.hour);
     await prefs.setInt('reminder_minute', time.minute);
 
+    AnalyticsService.instance.logConfigChange(
+      setting: 'reminder_time',
+      value:
+          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+    );
+
     if (_reminderEnabled) {
       await _scheduleReminder();
     }
@@ -720,6 +795,10 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('streak_system_enabled', newValue);
+    AnalyticsService.instance.logConfigChange(
+      setting: 'streak_system_enabled',
+      value: newValue.toString(),
+    );
   }
 
   Future<void> _scheduleReminder() async {

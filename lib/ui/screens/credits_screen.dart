@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/analytics_service.dart';
 
 // Data models for clarity
 class CreditItem {
@@ -62,6 +63,7 @@ class CreditsScreen extends StatelessWidget {
 
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
+    AnalyticsService.instance.logLinkOpen(url: url, source: 'credits');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       // Could show a snackbar or dialog
       debugPrint('Could not launch $url');
@@ -73,6 +75,7 @@ class CreditsScreen extends StatelessWidget {
     final box = context.findRenderObject() as RenderBox?;
     const String appLink =
         'https://digish.github.io/project/gita.html';
+    AnalyticsService.instance.logShare(contentType: 'app');
     SharePlus.instance.share(
       ShareParams(
         text: 'Check out this beautiful Bhagavad Gita app!\n\n$appLink',

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "743728143829",
+    "firebase_url": "https://bhagvad-geeta-2a708.firebaseio.com",
+    "project_id": "bhagvad-geeta-2a708",
+    "storage_bucket": "bhagvad-geeta-2a708.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:743728143829:android:266d5f196536be89",
+        "android_client_info": {
+          "package_name": "org.komal.bhagvadgeeta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNkA5_8ahziFGpMd_mZFp9DuYoJRMBCLk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

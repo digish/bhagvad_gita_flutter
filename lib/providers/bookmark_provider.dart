@@ -4,6 +4,7 @@ import '../models/shloka_list.dart';
 import '../data/database_helper_interface.dart';
 import '../models/shloka_result.dart';
 import '../data/predefined_lists_data.dart';
+import '../services/analytics_service.dart';
 
 class BookmarkProvider extends ChangeNotifier {
   List<ShlokaList> _lists = [];
@@ -69,6 +70,7 @@ class BookmarkProvider extends ChangeNotifier {
   Future<void> createList(String name) async {
     await UserDatabaseHelper.instance.createList(name);
     await loadLists();
+    AnalyticsService.instance.logBookmark(action: 'create_list', listName: name);
   }
 
   Future<void> deleteList(int id) async {
@@ -76,11 +78,16 @@ class BookmarkProvider extends ChangeNotifier {
     // Also clear from cache locally if needed, or just clear whole cache
     _shlokaStateCache.clear();
     await loadLists();
+    AnalyticsService.instance.logBookmark(action: 'delete_list');
   }
 
   Future<void> renameList(int id, String newName) async {
     await UserDatabaseHelper.instance.renameList(id, newName);
     await loadLists();
+    AnalyticsService.instance.logBookmark(
+      action: 'rename_list',
+      listName: newName,
+    );
   }
 
   Future<void> addShlokaToList(int listId, String chapter, String shlok) async {
@@ -94,6 +101,10 @@ class BookmarkProvider extends ChangeNotifier {
       _shlokaStateCache[key] = {listId};
     }
     notifyListeners();
+    AnalyticsService.instance.logBookmark(
+      action: 'add_shloka',
+      shlokaId: '$chapter.$shlok',
+    );
   }
 
   Future<void> removeShlokaFromList(
@@ -113,6 +124,10 @@ class BookmarkProvider extends ChangeNotifier {
       _shlokaStateCache[key]!.remove(listId);
     }
     notifyListeners();
+    AnalyticsService.instance.logBookmark(
+      action: 'remove_shloka',
+      shlokaId: '$chapter.$shlok',
+    );
   }
 
   Future<List<ShlokaResult>> getShlokasForList(

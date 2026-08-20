@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import '../data/database_helper_interface.dart';
+import '../services/analytics_service.dart';
 
 abstract class SearchResultItem {}
 
@@ -141,6 +142,14 @@ class SearchProvider extends ChangeNotifier {
 
         _searchResults = newResults;
         notifyListeners();
+
+        final shlokaCount =
+            newResults.whereType<ShlokaItem>().length;
+        final wordCount = newResults.whereType<WordItem>().length;
+        AnalyticsService.instance.logSearch(
+          query: _searchQuery,
+          resultCount: shlokaCount + wordCount,
+        );
       }
     });
 

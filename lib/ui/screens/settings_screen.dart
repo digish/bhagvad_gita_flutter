@@ -21,6 +21,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/notification_service.dart';
+import '../../services/analytics_service.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/sacred_sutra_promo_card.dart';
 import 'package:flutter/foundation.dart';
@@ -1067,6 +1068,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     child: FilledButton.icon(
                                                       onPressed: () {
                                                         AdService.instance.showRewardedAd(
+                                                          placement: 'settings_credits',
                                                           onRewardEarned: (reward) {
                                                             context
                                                                 .read<
@@ -1206,6 +1208,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       final url = Uri.parse(
                                         'https://aistudio.google.com/app/apikey',
                                       );
+                                      AnalyticsService.instance.logLinkOpen(
+                                        url: url.toString(),
+                                        source: 'settings_ai_studio',
+                                      );
                                       if (!await launchUrl(
                                         url,
                                         mode: LaunchMode.externalApplication,
@@ -1242,6 +1248,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       query:
                                           'subject=Feedback for Bhagavad Gita App',
                                     );
+                                    AnalyticsService.instance.logLinkOpen(
+                                      url: emailLaunchUri.toString(),
+                                      source: 'settings_feedback',
+                                    );
                                     if (!await launchUrl(emailLaunchUri)) {
                                       debugPrint('Could not launch email');
                                     }
@@ -1258,6 +1268,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     final box =
                                         innerContext.findRenderObject()
                                             as RenderBox?;
+                                    AnalyticsService.instance.logShare(
+                                      contentType: 'app',
+                                    );
                                     SharePlus.instance.share(
                                       ShareParams(
                                         text:
@@ -1280,6 +1293,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: (innerContext) async {
                                     final Uri developerPageUri = Uri.parse(
                                       'https://digish.github.io/project/',
+                                    );
+                                    AnalyticsService.instance.logLinkOpen(
+                                      url: developerPageUri.toString(),
+                                      source: 'settings_more_apps',
                                     );
                                     if (!await launchUrl(
                                       developerPageUri,

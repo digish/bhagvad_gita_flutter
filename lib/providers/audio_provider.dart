@@ -22,6 +22,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/shloka_result.dart';
 import '../data/static_data.dart'; // ADDED for chapter titles in MediaItem
+import '../services/analytics_service.dart';
 
 // A simple utility to get shloka counts per chapter.
 const Map<int, int> _shlokaCounts = {
@@ -181,6 +182,7 @@ class AudioProvider extends ChangeNotifier {
     final nextIndex = (_playbackMode.index + 1) % PlaybackMode.values.length;
     _playbackMode = PlaybackMode.values[nextIndex];
     notifyListeners();
+    AnalyticsService.instance.logAudioModeChange(_playbackMode.name);
 
     // If currently playing or paused, re-apply the mode by reloading
     if ((_playbackState == PlaybackState.playing ||
@@ -245,9 +247,18 @@ class AudioProvider extends ChangeNotifier {
         return;
       } else if (_playbackState == PlaybackState.paused) {
         await _audioPlayer.play();
+        AnalyticsService.instance.logAudioPlay(
+          shlokaId: shlokaId,
+          mode: _playbackMode.name,
+        );
         return;
       }
     }
+
+    AnalyticsService.instance.logAudioPlay(
+      shlokaId: shlokaId,
+      mode: _playbackMode.name,
+    );
 
     // 2. Stop previous playback nicely
     await _stop(_currentPlayingShlokaId, notify: false);

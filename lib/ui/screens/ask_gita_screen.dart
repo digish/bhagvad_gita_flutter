@@ -10,6 +10,7 @@ import '../../providers/ask_gita_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../services/ad_service.dart';
+import '../../services/analytics_service.dart';
 import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
 import '../widgets/font_size_control.dart';
 import '../../navigation/app_router.dart';
@@ -218,6 +219,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
 
   void _showAd() {
     AdService.instance.showRewardedAd(
+      placement: 'ask_gita',
       onRewardEarned: (reward) {
         context.read<CreditProvider>().addCredits(
           CreditProvider.adRewardAmount,
@@ -671,6 +673,9 @@ class _ChatBubble extends StatelessWidget {
                                   ? box.localToGlobal(Offset.zero) & box.size
                                   : null;
 
+                              AnalyticsService.instance.logShare(
+                                contentType: 'ask_gita_answer',
+                              );
                               SharePlus.instance.share(
                                 ShareParams(
                                   text: message.text + footer,
@@ -703,6 +708,10 @@ class _ChatBubble extends StatelessWidget {
                                   '${message.text}\n\n'
                                   'Reason for reporting:',
                             }),
+                          );
+                          AnalyticsService.instance.logLinkOpen(
+                            url: 'mailto:digish.pandya@gmail.com',
+                            source: 'ask_gita_report',
                           );
                           if (await canLaunchUrl(emailLaunchUri)) {
                             await launchUrl(emailLaunchUri);

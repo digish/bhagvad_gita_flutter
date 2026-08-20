@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/sacred_sutra_quotes.dart';
+import '../../services/analytics_service.dart';
 
 /// Contextual home card: epic quote first; tap opens discover sheet (once)
 /// or Sacred Sutra (store fallback) after the user has visited the storefront.
@@ -53,6 +54,10 @@ class SacredSutraPromoCard extends StatefulWidget {
 
   static Future<void> openStore() async {
     final uri = Uri.parse(storeUrl);
+    AnalyticsService.instance.logLinkOpen(
+      url: storeUrl,
+      source: 'sacred_sutra_store',
+    );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -64,6 +69,10 @@ class SacredSutraPromoCard extends StatefulWidget {
       final appUri = Uri.parse(appDeepLink);
       try {
         if (await canLaunchUrl(appUri)) {
+          AnalyticsService.instance.logLinkOpen(
+            url: appDeepLink,
+            source: 'sacred_sutra_app',
+          );
           final launched = await launchUrl(
             appUri,
             mode: LaunchMode.externalApplication,
@@ -81,6 +90,10 @@ class SacredSutraPromoCard extends StatefulWidget {
             'intent://open#Intent;scheme=sacredsutra;'
             'package=$androidPackage;'
             'S.browser_fallback_url=${Uri.encodeComponent(playStoreUrl)};end',
+          );
+          AnalyticsService.instance.logLinkOpen(
+            url: playStoreUrl,
+            source: 'sacred_sutra_intent',
           );
           final launched = await launchUrl(
             intentUri,

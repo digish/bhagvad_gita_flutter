@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../navigation/app_router.dart';
 import 'deep_link_parser.dart';
+import 'analytics_service.dart';
 
 /// Handles opens from home widget taps and local notification taps,
 /// navigating to a specific shloka when an id is present.
@@ -25,6 +26,10 @@ class DeepLinkService {
   Future<void> handleUri(Uri? uri) async {
     final id = extractShlokaId(uri: uri);
     if (id == null) return;
+    AnalyticsService.instance.logDeepLink(
+      source: 'widget_or_uri',
+      shlokaId: id,
+    );
     await openShloka(id);
   }
 
@@ -34,6 +39,10 @@ class DeepLinkService {
       debugPrint('DeepLinkService: notification had no shloka payload');
       return;
     }
+    AnalyticsService.instance.logDeepLink(
+      source: 'notification',
+      shlokaId: id,
+    );
     await openShloka(id);
   }
 

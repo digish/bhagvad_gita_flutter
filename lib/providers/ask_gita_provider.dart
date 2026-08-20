@@ -3,6 +3,7 @@ import '../models/shloka_result.dart';
 import '../services/ask_gita_service.dart';
 import '../data/database_helper_mobile.dart'; // Or interface, assuming getInitializedDatabaseHelper is available
 import '../data/database_helper_interface.dart';
+import '../services/analytics_service.dart';
 
 enum MessageSender { user, ai }
 
@@ -127,6 +128,11 @@ class AskGitaProvider extends ChangeNotifier {
         references: results,
         isStreaming: false,
       );
+
+      AnalyticsService.instance.logAskGita(
+        query: query,
+        referenceCount: results.length,
+      );
     } catch (e) {
       _messages.add(
         ChatMessage(
@@ -134,6 +140,9 @@ class AskGitaProvider extends ChangeNotifier {
               "I am having trouble connecting to the divine source right now. Please try again. ($e)",
           sender: MessageSender.ai,
         ),
+      );
+      AnalyticsService.instance.logFeatureUsed(
+        feature: 'ask_gita_error',
       );
     } finally {
       _isLoading = false;

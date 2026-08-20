@@ -77,6 +77,8 @@ dependencies:
   google_generative_ai: ^0.4.6 # For Gemini API
   google_mobile_ads: ^9.1.0
   pretty_qr_code: ^3.6.0
+  firebase_core: ^4.13.0
+  firebase_analytics: ^12.4.6
 
 dev_dependencies:
   sqflite_common_ffi: ^2.3.3 # For running DB script on desktop

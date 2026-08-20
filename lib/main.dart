@@ -35,6 +35,8 @@ import 'services/timing_service.dart';
 import 'services/notification_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/home_widget_service.dart';
+import 'services/analytics_service.dart';
+import 'navigation/analytics_route_observer.dart';
 import 'core/secrets_config.dart';
 
 Future<void> main() async {
@@ -51,6 +53,9 @@ Future<void> main() async {
 
   // Initialize Mobile Ads
   await MobileAds.instance.initialize();
+
+  // Google Analytics (no-op until flutterfire configure + isConfigured)
+  await AnalyticsService.instance.init();
 
   // Initialize Remote Config for AI Models
   await RemoteConfigService.fetchConfig();
@@ -149,6 +154,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    AnalyticsRouterListener.attach(router);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       DeepLinkService.instance.handleInitialLinks(
         notificationsPlugin: NotificationService.instance.plugin,

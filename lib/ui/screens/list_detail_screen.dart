@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/audio_provider.dart';
+import '../../services/analytics_service.dart';
 
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
@@ -216,6 +217,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
       final box = context.findRenderObject() as RenderBox?;
 
+      AnalyticsService.instance.logShare(
+        contentType: 'list',
+        itemId: widget.list.name,
+      );
       await SharePlus.instance.share(
         ShareParams(
           text: buffer.toString(),

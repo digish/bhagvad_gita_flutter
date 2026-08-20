@@ -79,3 +79,15 @@ This app uses Google AdMob for rewarded ads.
 4.  **Ad Unit IDs**:
     -   Update `lib/services/ad_service.dart` with production IDs.
 
+## Google Analytics (Firebase)
+
+The app logs screen views, feature usage, settings/config changes, outbound links, search, Ask Gita, audio, shares, bookmarks, ads, and deep links via Firebase Analytics.
+
+Firebase is configured for project **bhagvad-geeta-2a708**:
+- Android: `android/app/google-services.json`
+- iOS: `ios/Runner/GoogleService-Info.plist`
+- Dart: `lib/firebase_options.dart` (`isConfigured = true`)
+
+Events appear in Firebase **Analytics → DebugView** (debug builds) and **Events** (after processing).
+
+To refresh configs after changing apps in the Firebase console, replace those two native files and update `lib/firebase_options.dart` (or run `flutterfire configure`).

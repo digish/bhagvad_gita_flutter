@@ -20,6 +20,7 @@ import '../../navigation/app_router.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/bookmark_provider.dart';
+import '../../services/analytics_service.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -224,6 +225,13 @@ class FullShlokaCard extends StatelessWidget {
     );
 
     final shareText = buffer.toString();
+
+    AnalyticsService.instance.logShare(
+      contentType: options.contains(ShareOption.audio)
+          ? 'shloka_audio'
+          : 'shloka_text',
+      itemId: '${shloka.chapterNo}.${shloka.shlokNo}',
+    );
 
     // Calculate share position origin for iPad
     final box = context.findRenderObject() as RenderBox?;

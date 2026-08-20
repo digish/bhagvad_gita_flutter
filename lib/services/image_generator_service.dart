@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'analytics_service.dart';
 
 class ImageGeneratorService {
   /// Captures a [RepaintBoundary] wrapped widget as a PNG image.
@@ -38,6 +39,7 @@ class ImageGeneratorService {
       );
       await file.writeAsBytes(bytes);
 
+      AnalyticsService.instance.logShare(contentType: 'image');
       final result = await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
