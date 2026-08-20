@@ -646,13 +646,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               ),
                                             ),
                                           ),
-                                        if (settings.showRandomShloka &&
-                                            !shouldShowResults) ...[
+                                        if (!shouldShowResults) ...[
                                           if (settings.streakSystemEnabled)
                                             _buildSoulStatusChip(settings),
                                           if (!settings.reminderEnabled)
                                             _buildReminderNudge(settings),
-                                          _buildRandomShlokaCard(),
+                                          if (settings.showRandomShloka)
+                                            _buildRandomShlokaCard(),
                                           if (settings.showSacredSutraQuote)
                                             SacredSutraPromoCard(
                                               isSimpleLight:
