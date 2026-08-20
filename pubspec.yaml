@@ -113,24 +113,44 @@ flutter:
     - assets/emblems/authors/
     - assets/database/
     - assets/fonts/
-    - assets/audio/Chapter1_audio/
-    - assets/audio/Chapter2_audio/
-    - assets/audio/Chapter3_audio/
-    - assets/audio/Chapter4_audio/
-    - assets/audio/Chapter5_audio/
-    - assets/audio/Chapter6_audio/
-    - assets/audio/Chapter7_audio/
-    - assets/audio/Chapter8_audio/
-    - assets/audio/Chapter9_audio/
-    - assets/audio/Chapter10_audio/
-    - assets/audio/Chapter11_audio/
-    - assets/audio/Chapter12_audio/
-    - assets/audio/Chapter13_audio/
-    - assets/audio/Chapter14_audio/
-    - assets/audio/Chapter15_audio/
-    - assets/audio/Chapter16_audio/
-    - assets/audio/Chapter17_audio/
-    - assets/audio/Chapter18_audio/
+    # iOS only: Android serves chapter audio via Play Asset Delivery packs.
+    # Each chapter dir must be listed — Flutter does not recurse into subfolders.
+    - path: assets/audio/Chapter1_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter2_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter3_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter4_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter5_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter6_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter7_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter8_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter9_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter10_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter11_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter12_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter13_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter14_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter15_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter16_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter17_audio/
+      platforms: [ios]
+    - path: assets/audio/Chapter18_audio/
+      platforms: [ios]
     - assets/soul_evolution/
     
 
