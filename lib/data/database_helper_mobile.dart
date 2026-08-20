@@ -18,14 +18,14 @@ Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
 }
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 5; // Increment this to force DB update
+  static const int DB_VERSION = 6; // Increment this to force DB update
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
 
   static Future<DatabaseHelperImpl> create() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, "geeta_v5.db");
+    final path = join(documentsDirectory.path, "geeta_v6.db");
 
     // Check version
     final prefs = await SharedPreferences.getInstance();
@@ -41,6 +41,11 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
 
       try {
         // 1. Clean up OLD databases to save space
+        final oldDbV5 = File(join(documentsDirectory.path, "geeta_v5.db"));
+        if (await oldDbV5.exists()) {
+          print("[DB_MOBILE] Deleting old DB: geeta_v5.db");
+          await oldDbV5.delete();
+        }
         final oldDbV4 = File(join(documentsDirectory.path, "geeta_v4.db"));
         if (await oldDbV4.exists()) {
           print("[DB_MOBILE] Deleting old DB: geeta_v4.db");
@@ -67,7 +72,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         print("[DB_MOBILE] Copying new database from assets...");
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load(
-          join("assets", "database", "geeta_v5.db"),
+          join("assets", "database", "geeta_v6.db"),
         );
         List<int> bytes = data.buffer.asUint8List(
           data.offsetInBytes,
