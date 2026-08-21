@@ -42,6 +42,7 @@ class FullShlokaCard extends StatelessWidget {
   final FullShlokaCardConfig config;
   final String? currentlyPlayingId; // The reliable ID from the parent screen
   final VoidCallback? onPlayPause; // Callback for when play/pause is pressed
+  final VoidCallback? onTap;
   final bool isFocused;
 
   const FullShlokaCard({
@@ -50,6 +51,7 @@ class FullShlokaCard extends StatelessWidget {
     this.config = const FullShlokaCardConfig(),
     this.currentlyPlayingId,
     this.onPlayPause,
+    this.onTap,
     this.isFocused = false,
   });
 
@@ -887,12 +889,16 @@ class FullShlokaCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               // Pass the audio state down to the content builder
-              child: buildCardContent(
-                context,
-                audioProvider: audioProvider,
-                isPlayingThisShloka: isPlayingThisShloka,
-                playbackState: playbackState,
-                downloadStatus: downloadStatus,
+              child: GestureDetector(
+                onTap: onTap,
+                behavior: HitTestBehavior.opaque,
+                child: buildCardContent(
+                  context,
+                  audioProvider: audioProvider,
+                  isPlayingThisShloka: isPlayingThisShloka,
+                  playbackState: playbackState,
+                  downloadStatus: downloadStatus,
+                ),
               ),
             ),
             if (config.showEmblem) SneakyEmblem(speaker: shloka.speaker),

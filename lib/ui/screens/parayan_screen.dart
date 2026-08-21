@@ -41,8 +41,8 @@ const double _kParayanCollapsedExtra = 108.0;
 /// Right inset reserved for [ChapterSeekRail].
 const double _kParayanRailInset = 28.0;
 
-/// Viewport fraction for the reading focus line (action island target).
-const double _kParayanFocusLine = 0.33;
+/// Viewport fraction for the reading focus line (cursor / card center target).
+const double _kParayanFocusLine = 0.40;
 
 double _parayanExpandedHeaderHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanExpandedExtra;
@@ -77,8 +77,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- NEW: State to track the currently playing shloka ID ---
   String? _currentlyPlayingId;
 
-  /// Shloka under the ~1/3 viewport focus line (drives action island).
-  int _focusedIndex = 0;
+  /// Selected card after tap (null = nothing selected / no cursor / no highlight).
+  int? _selectedIndex;
+  bool _actionsVisible = false;
+  bool _isSelectingCard = false;
 
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
@@ -88,7 +90,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
     super.initState();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
-    _itemPositionsListener.itemPositions.addListener(_updateFocusedIndex);
   }
 
   @override
@@ -141,37 +142,98 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   @override
   void dispose() {
-    _itemPositionsListener.itemPositions.removeListener(_updateFocusedIndex);
     _currentPositionLabelNotifier.dispose(); // ✨ Add this line
     _audioProvider?.removeListener(_handleAudioChange);
     super.dispose();
   }
 
-  void _updateFocusedIndex() {
-    if (!mounted) return;
-    final positions = _itemPositionsListener.itemPositions.value;
-    if (positions.isEmpty) return;
+  Future<void> _onCardTap(int index) async {
+    if (_isSelectingCard) return;
 
-    const focusLine = _kParayanFocusLine;
-    ItemPosition? containing;
+    // Tap same selected card → dismiss selection + controls
+    if (_selectedIndex == index && (_actionsVisible || _selectedIndex != null)) {
+      setState(() {
+        _selectedIndex = null;
+        _actionsVisible = false;
+      });
+      return;
+    }
+
+    _isSelectingCard = true;
+    setState(() {
+      _selectedIndex = null;
+      _actionsVisible = false;
+    });
+
+    try {
+      await _scrollCardCenterToFocusLine(index);
+      if (!mounted) return;
+
+      // Land at focus line → show cursor + highlight
+      setState(() => _selectedIndex = index);
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+      if (!mounted) return;
+
+      // Then pop in bottom controls
+      setState(() => _actionsVisible = true);
+    } finally {
+      _isSelectingCard = false;
+    }
+  }
+
+  /// Scroll so the focus cursor sits at the vertical center of [index].
+  Future<void> _scrollCardCenterToFocusLine(int index) async {
+    if (!_itemScrollController.isAttached) return;
+
+    await _itemScrollController.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 480),
+      curve: Curves.easeInOutCubic,
+      alignment: _alignmentForCardCenter(index) ??
+          (_kParayanFocusLine - 0.09).clamp(0.0, 1.0),
+    );
+
+    // One frame to let positions update, then fine-tune if needed.
+    await Future<void>.delayed(const Duration(milliseconds: 32));
+    if (!mounted || !_itemScrollController.isAttached) return;
+
+    final refined = _alignmentForCardCenter(index, requireVisible: true);
+    if (refined == null) return;
+
+    final positions = _itemPositionsListener.itemPositions.value;
+    ItemPosition? item;
     for (final p in positions) {
-      if (p.itemLeadingEdge <= focusLine && p.itemTrailingEdge >= focusLine) {
-        containing = p;
+      if (p.index == index) {
+        item = p;
         break;
       }
     }
+    if (item == null) return;
 
-    final focused =
-        containing ??
-        positions.reduce((a, b) {
-          final aDist = (a.itemLeadingEdge - focusLine).abs();
-          final bDist = (b.itemLeadingEdge - focusLine).abs();
-          return aDist <= bDist ? a : b;
-        });
+    final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
+    if ((center - _kParayanFocusLine).abs() <= 0.015) return;
 
-    if (focused.index != _focusedIndex) {
-      setState(() => _focusedIndex = focused.index);
+    await _itemScrollController.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      alignment: refined,
+    );
+  }
+
+  /// Viewport alignment for item leading edge so its center hits [_kParayanFocusLine].
+  double? _alignmentForCardCenter(int index, {bool requireVisible = false}) {
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if (p.index == index) {
+        final halfHeight =
+            (p.itemTrailingEdge - p.itemLeadingEdge).abs() / 2;
+        return (_kParayanFocusLine - halfHeight).clamp(0.0, 1.0);
+      }
     }
+    if (requireVisible) return null;
+    // Off-screen estimate: typical compact shloka card ≈ 16–20% of screen.
+    return (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
   }
 
   // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
@@ -264,9 +326,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
               }
 
               final shlokas = provider.shlokas;
-              final safeFocusedIndex = shlokas.isEmpty
-                  ? 0
-                  : _focusedIndex.clamp(0, shlokas.length - 1);
               final audio = Provider.of<AudioProvider>(context);
               final miniPlayerVisible =
                   audio.playbackState != PlaybackState.stopped &&
@@ -292,7 +351,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     right:
                         MediaQuery.of(context).padding.right +
                         _kParayanRailInset,
-                    bottom: miniPlayerVisible ? 180.0 : 88.0,
+                    bottom: miniPlayerVisible ? 100.0 : 16.0,
                   ),
                   itemBuilder: (context, index) {
                     final shloka = shlokas[index];
@@ -326,7 +385,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                         FullShlokaCard(
                           shloka: shloka,
                           currentlyPlayingId: _currentlyPlayingId,
-                          isFocused: index == safeFocusedIndex,
+                          isFocused: _selectedIndex == index,
+                          onTap: () => _onCardTap(index),
                           onPlayPause: () {
                             _audioProvider?.playChapter(
                               shlokas: shlokas,
@@ -410,39 +470,77 @@ class _ParayanScreenState extends State<ParayanScreen> {
               settingsProvider: settingsProvider,
             ),
           ),
-          // Exclusive focus-line pointer (triangle + short hairline at ~1/3)
-          const _ParayanFocusPointer(focusLine: _kParayanFocusLine),
-          // Shared focus-line action island (bottom-center)
+          // Cursor only after a card is selected and scrolled into place
+          if (_selectedIndex != null)
+            const _ParayanFocusPointer(focusLine: _kParayanFocusLine),
+          // Action island — pops in just above the selected card
           Consumer2<ParayanProvider, AudioProvider>(
             builder: (context, provider, audioProvider, _) {
-              if (provider.isLoading || provider.shlokas.isEmpty) {
+              if (provider.isLoading ||
+                  provider.shlokas.isEmpty ||
+                  _selectedIndex == null) {
                 return const SizedBox.shrink();
               }
-              final focusedIndex = _focusedIndex.clamp(
+              final targetIndex = _selectedIndex!.clamp(
                 0,
                 provider.shlokas.length - 1,
               );
-              final focusedShloka = provider.shlokas[focusedIndex];
-              final miniPlayerVisible =
-                  audioProvider.playbackState != PlaybackState.stopped &&
-                  audioProvider.currentPlayingShlokaId != null;
-              final bottomOffset = MediaQuery.of(context).padding.bottom +
-                  (miniPlayerVisible ? 100.0 : 12.0);
+              final targetShloka = provider.shlokas[targetIndex];
+              final accent =
+                  Theme.of(context).extension<AppColors>()?.gitaBlue ??
+                  const Color(0xFF047BC0);
 
-              return Positioned(
-                left: 0,
-                right: _kParayanRailInset,
-                bottom: bottomOffset,
-                child: ParayanActionIsland(
-                  shloka: focusedShloka,
-                  currentlyPlayingId: _currentlyPlayingId,
-                  onPlayPause: () {
-                    _audioProvider?.playChapter(
-                      shlokas: provider.shlokas,
-                      initialIndex: focusedIndex,
-                    );
-                  },
-                ),
+              return ValueListenableBuilder<Iterable<ItemPosition>>(
+                valueListenable: _itemPositionsListener.itemPositions,
+                builder: (context, positions, _) {
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final minTop = _parayanCollapsedHeaderHeight(context) + 4;
+                  const islandHeight = 56.0;
+                  const gapAboveCard = 6.0;
+
+                  double top = screenHeight * _kParayanFocusLine - 90;
+                  for (final p in positions) {
+                    if (p.index == targetIndex) {
+                      // Sit just above the selected card's top edge
+                      top =
+                          screenHeight * p.itemLeadingEdge -
+                          islandHeight -
+                          gapAboveCard;
+                      break;
+                    }
+                  }
+                  top = top.clamp(minTop, screenHeight - islandHeight - 24);
+
+                  return Positioned(
+                    left: 0,
+                    right: _kParayanRailInset,
+                    top: top,
+                    child: IgnorePointer(
+                      ignoring: !_actionsVisible,
+                      child: AnimatedScale(
+                        scale: _actionsVisible ? 1 : 0.86,
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeOutBack,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 220),
+                          opacity: _actionsVisible ? 1 : 0,
+                          child: ParayanActionIsland(
+                            accentBorder: true,
+                            accentColor: accent,
+                            shloka: targetShloka,
+                            currentlyPlayingId: _currentlyPlayingId,
+                            onPlayPause: () {
+                              _audioProvider?.playChapter(
+                                shlokas: provider.shlokas,
+                                initialIndex: targetIndex,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -491,7 +589,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
   }
 }
 
-/// Fixed triangle + hairline showing the Parayan reading focus line (~1/3 height).
+/// Persistent focus triangle on the left at the reading line.
 class _ParayanFocusPointer extends StatelessWidget {
   final double focusLine;
 
@@ -502,47 +600,19 @@ class _ParayanFocusPointer extends StatelessWidget {
     final accent =
         Theme.of(context).extension<AppColors>()?.gitaBlue ??
         const Color(0xFF047BC0);
-    final isLight = Theme.of(context).brightness == Brightness.light;
     final screenHeight = MediaQuery.of(context).size.height;
     final top = screenHeight * focusLine;
 
     return Positioned(
-      left: MediaQuery.of(context).padding.left,
-      top: top - 12,
+      left: MediaQuery.of(context).padding.left + 4,
+      top: top - 11,
       child: IgnorePointer(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Triangle pointing right into the content
-            CustomPaint(
-              size: const Size(14, 24),
-              painter: _FocusTrianglePainter(
-                color: accent,
-                shadowColor: accent.withValues(alpha: 0.45),
-              ),
-            ),
-            // Short hairline into the reading column
-            Container(
-              width: 28,
-              height: 2,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    accent,
-                    accent.withValues(alpha: isLight ? 0.15 : 0.25),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(1),
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.35),
-                    blurRadius: 6,
-                    spreadRadius: 0.5,
-                  ),
-                ],
-              ),
-            ),
-          ],
+        child: CustomPaint(
+          size: const Size(12, 22),
+          painter: _FocusTrianglePainter(
+            color: accent,
+            shadowColor: accent.withValues(alpha: 0.4),
+          ),
         ),
       ),
     );

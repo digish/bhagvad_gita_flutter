@@ -37,157 +37,191 @@ class ParayanActionIsland extends StatelessWidget {
   final ShlokaResult? shloka;
   final VoidCallback? onPlayPause;
   final String? currentlyPlayingId;
+  final bool compact;
+  final bool vertical;
+  final bool accentBorder;
+  final Color? accentColor;
 
   const ParayanActionIsland({
     super.key,
     required this.shloka,
     this.onPlayPause,
     this.currentlyPlayingId,
+    this.compact = false,
+    this.vertical = false,
+    this.accentBorder = false,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final enabled = shloka != null;
+    final iconSize = compact ? 22.0 : 30.0;
+    final hPad = compact ? (vertical ? 4.0 : 6.0) : 12.0;
+    final vPad = compact ? (vertical ? 6.0 : 2.0) : 4.0;
+    final borderColor = accentBorder
+        ? (accentColor ?? const Color(0xFF047BC0))
+        : (isLight
+              ? Colors.white.withValues(alpha: 0.5)
+              : Colors.white12);
+
+    Widget buildButtons(AudioProvider audioProvider) {
+      final current = shloka;
+      final isPlayingThis =
+          current != null &&
+          currentlyPlayingId == current.id &&
+          audioProvider.playbackState == PlaybackState.playing;
+      final isPausedThis =
+          current != null &&
+          currentlyPlayingId == current.id &&
+          audioProvider.playbackState == PlaybackState.paused;
+
+      final children = <Widget>[
+        _IslandIconButton(
+          icon: isPlayingThis
+              ? Icons.pause_circle_filled
+              : Icons.play_circle_filled,
+          iconSize: iconSize,
+          enabled: enabled,
+          onPressed: enabled
+              ? () {
+                  if (isPlayingThis || isPausedThis) {
+                    audioProvider.togglePlayback();
+                  } else {
+                    onPlayPause?.call();
+                  }
+                }
+              : null,
+        ),
+        if (current == null ||
+            current.commentaries == null ||
+            current.commentaries!.isNotEmpty)
+          _IslandIconButton(
+            icon: Icons.menu_book_rounded,
+            iconSize: iconSize,
+            enabled: enabled,
+            onPressed: enabled
+                ? () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      useRootNavigator: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => CommentarySheet(
+                        commentaries: current?.commentaries ?? [],
+                        chapterNo: current!.chapterNo,
+                        shlokNo: current.shlokNo,
+                      ),
+                    );
+                  }
+                : null,
+          ),
+        Consumer<BookmarkProvider>(
+          builder: (context, bookmarkProvider, _) {
+            final isBookmarked =
+                current != null &&
+                bookmarkProvider.isBookmarked(
+                  current.chapterNo,
+                  current.shlokNo,
+                );
+            return _IslandIconButton(
+              icon: isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+              iconSize: iconSize,
+              enabled: enabled,
+              color: isBookmarked
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+              onPressed: enabled
+                  ? () {
+                      showModalBottomSheet(
+                        context: context,
+                        useRootNavigator: true,
+                        backgroundColor: Colors.transparent,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
+                        ),
+                        builder: (context) => AddToListSheet(
+                          chapterNo: current!.chapterNo,
+                          shlokNo: current.shlokNo,
+                        ),
+                      );
+                    }
+                  : null,
+            );
+          },
+        ),
+        Builder(
+          builder: (btnContext) {
+            return _IslandIconButton(
+              icon: Icons.share_outlined,
+              iconSize: iconSize,
+              enabled: enabled,
+              onPressed: enabled
+                  ? () => _shareShloka(btnContext, current!)
+                  : null,
+            );
+          },
+        ),
+      ];
+
+      if (vertical) {
+        return Column(mainAxisSize: MainAxisSize.min, children: children);
+      }
+      return Row(mainAxisSize: MainAxisSize.min, children: children);
+    }
+
+    final island = Container(
+      decoration: BoxDecoration(
+        color: isLight
+            ? Colors.white.withValues(alpha: 0.55)
+            : Colors.black.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(compact ? 22 : 28),
+        border: Border.all(
+          color: borderColor,
+          width: accentBorder ? 2.5 : 1.5,
+        ),
+        boxShadow: [
+          if (accentBorder)
+            BoxShadow(
+              color: (accentColor ?? const Color(0xFF047BC0))
+                  .withValues(alpha: 0.35),
+              blurRadius: 14,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(compact ? 22 : 28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+            child: Consumer<AudioProvider>(
+              builder: (context, audioProvider, _) =>
+                  buildButtons(audioProvider),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (compact) return island;
 
     return Center(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 360),
         margin: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: isLight
-              ? Colors.white.withValues(alpha: 0.45)
-              : Colors.black.withValues(alpha: 0.65),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: isLight
-                ? Colors.white.withValues(alpha: 0.45)
-                : Colors.white12,
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Consumer<AudioProvider>(
-                builder: (context, audioProvider, _) {
-                  final current = shloka;
-                  final isPlayingThis =
-                      current != null &&
-                      currentlyPlayingId == current.id &&
-                      audioProvider.playbackState == PlaybackState.playing;
-                  final isPausedThis =
-                      current != null &&
-                      currentlyPlayingId == current.id &&
-                      audioProvider.playbackState == PlaybackState.paused;
-
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _IslandIconButton(
-                        icon: isPlayingThis
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        enabled: enabled,
-                        onPressed: enabled
-                            ? () {
-                                if (isPlayingThis || isPausedThis) {
-                                  audioProvider.togglePlayback();
-                                } else {
-                                  onPlayPause?.call();
-                                }
-                              }
-                            : null,
-                      ),
-                      if (current == null ||
-                          current.commentaries == null ||
-                          current.commentaries!.isNotEmpty)
-                        _IslandIconButton(
-                          icon: Icons.menu_book_rounded,
-                          enabled: enabled,
-                          onPressed: enabled
-                              ? () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    useRootNavigator: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (context) => CommentarySheet(
-                                      commentaries:
-                                          current?.commentaries ?? [],
-                                      chapterNo: current!.chapterNo,
-                                      shlokNo: current.shlokNo,
-                                    ),
-                                  );
-                                }
-                              : null,
-                        ),
-                      Consumer<BookmarkProvider>(
-                        builder: (context, bookmarkProvider, _) {
-                          final isBookmarked = current != null &&
-                              bookmarkProvider.isBookmarked(
-                                current.chapterNo,
-                                current.shlokNo,
-                              );
-                          return _IslandIconButton(
-                            icon: isBookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_outline,
-                            enabled: enabled,
-                            color: isBookmarked
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                            onPressed: enabled
-                                ? () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      useRootNavigator: true,
-                                      backgroundColor: Colors.transparent,
-                                      isScrollControlled: true,
-                                      shape: const RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(16),
-                                        ),
-                                      ),
-                                      builder: (context) => AddToListSheet(
-                                        chapterNo: current!.chapterNo,
-                                        shlokNo: current.shlokNo,
-                                      ),
-                                    );
-                                  }
-                                : null,
-                          );
-                        },
-                      ),
-                      Builder(
-                        builder: (btnContext) {
-                          return _IslandIconButton(
-                            icon: Icons.share_outlined,
-                            enabled: enabled,
-                            onPressed: enabled
-                                ? () => _shareShloka(btnContext, current!)
-                                : null,
-                          );
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
+        child: island,
       ),
     );
   }
@@ -327,12 +361,14 @@ class _IslandIconButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool enabled;
   final Color? color;
+  final double iconSize;
 
   const _IslandIconButton({
     required this.icon,
     required this.onPressed,
     this.enabled = true,
     this.color,
+    this.iconSize = 30,
   });
 
   @override
@@ -344,11 +380,11 @@ class _IslandIconButton extends StatelessWidget {
             ? (color ?? Theme.of(context).iconTheme.color)
             : Theme.of(context).disabledColor,
       ),
-      iconSize: 30,
+      iconSize: iconSize,
       onPressed: enabled ? onPressed : null,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       constraints: const BoxConstraints(),
-      splashRadius: 22,
+      splashRadius: 20,
     );
   }
 }
