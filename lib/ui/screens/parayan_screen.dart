@@ -20,6 +20,7 @@ import '../../data/static_data.dart';
 import 'dart:ui';
 
 import '../../providers/parayan_provider.dart';
+import '../../models/shloka_result.dart';
 import '../widgets/chapter_seek_rail.dart';
 import '../widgets/parayan_action_island.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -45,11 +46,96 @@ const double _kParayanRailInset = 72.0;
 /// Viewport fraction for the reading focus line (cursor / card center target).
 const double _kParayanFocusLine = 0.40;
 
+/// Sticky speaker band below the glass header.
+const double _kParayanStickySpeakerHeight = 44.0;
+
 double _parayanExpandedHeaderHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanExpandedExtra;
 
 double _parayanCollapsedHeaderHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanCollapsedExtra;
+
+/// Emblem asset for a speaker name (Parayan headers / sticky bar).
+String? _parayanSpeakerEmblemPath(String speakerName) {
+  final lower = speakerName.toLowerCase();
+  if (lower.contains('bhagvan') ||
+      lower.contains('bhagavan') ||
+      lower.contains('krishna')) {
+    return 'assets/emblems/krishna.png';
+  }
+  if (lower.contains('arjun')) return 'assets/emblems/arjun.png';
+  if (lower.contains('sanjay')) return 'assets/emblems/sanjay.png';
+  if (lower.contains('dhritarashtra')) {
+    return 'assets/emblems/dhrutrashtra.png';
+  }
+  if (speakerName.contains('श्री भगवान') || speakerName.contains('श्रीभगवान')) {
+    return 'assets/emblems/krishna.png';
+  }
+  if (speakerName.contains('अर्जुन')) return 'assets/emblems/arjun.png';
+  if (speakerName.contains('संजय')) return 'assets/emblems/sanjay.png';
+  if (speakerName.contains('धृतराष्ट्र')) {
+    return 'assets/emblems/dhrutrashtra.png';
+  }
+  return null;
+}
+
+/// True when this list index shows an inline [_SpeakerHeader].
+bool _parayanHasInlineSpeaker(List<ShlokaResult> shlokas, int index) {
+  if (index < 0 || index >= shlokas.length) return false;
+  if (index == 0) return true;
+  final prev = shlokas[index - 1];
+  final cur = shlokas[index];
+  return prev.speaker != cur.speaker || prev.chapterNo != cur.chapterNo;
+}
+
+/// Chapter-start items put a title above the speaker line — offset so sticky
+/// only locks once the speaker row itself reaches the pin line.
+const double _kParayanChapterTitleFrac = 0.055;
+
+/// Speaker that should pin in the sticky bar, or null before the first inline
+/// speaker line has reached the sticky band.
+String? _parayanStickySpeaker({
+  required List<ShlokaResult> shlokas,
+  required Iterable<ItemPosition> positions,
+  required double stickyFrac,
+}) {
+  if (shlokas.isEmpty || positions.isEmpty) return null;
+
+  final byIndex = <int, ItemPosition>{
+    for (final p in positions) p.index: p,
+  };
+  final minVisible = positions
+      .map((p) => p.index)
+      .reduce((a, b) => a < b ? a : b);
+
+  String? pinned;
+  for (var i = 0; i < shlokas.length; i++) {
+    if (!_parayanHasInlineSpeaker(shlokas, i)) continue;
+    // Past any visible item — later boundaries can't be pinned yet.
+    if (i > minVisible && !byIndex.containsKey(i)) break;
+
+    final pos = byIndex[i];
+    if (pos == null) {
+      // Scrolled fully above the viewport ⇒ already passed the sticky line.
+      if (i < minVisible) {
+        pinned = shlokas[i].speaker;
+      }
+      continue;
+    }
+
+    final isChapterStart =
+        i == 0 || shlokas[i].chapterNo != shlokas[i - 1].chapterNo;
+    // Approximate top of the inline speaker row within the item.
+    final speakerTop =
+        pos.itemLeadingEdge + (isChapterStart ? _kParayanChapterTitleFrac : 0.0);
+
+    if (speakerTop <= stickyFrac) {
+      pinned = shlokas[i].speaker;
+    }
+  }
+
+  return pinned;
+}
 
 // PlaybackMode is now imported from audio_provider.dart
 
@@ -369,7 +455,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
-                    top: _parayanExpandedHeaderHeight(context),
+                    top: _parayanExpandedHeaderHeight(context) +
+                        _kParayanStickySpeakerHeight,
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
@@ -468,9 +555,20 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   final double topPadding = isAtTop
                       ? _parayanExpandedHeaderHeight(context)
                       : _parayanCollapsedHeaderHeight(context);
+                  final screenH = MediaQuery.of(context).size.height;
+                  final stickyFrac =
+                      (topPadding + _kParayanStickySpeakerHeight) / screenH;
+                  final stickySpeaker = _parayanStickySpeaker(
+                    shlokas: provider.shlokas,
+                    positions: positions,
+                    stickyFrac: stickyFrac,
+                  );
+                  final stickyBand = stickySpeaker == null
+                      ? 0.0
+                      : _kParayanStickySpeakerHeight;
                   return Positioned(
                     right: MediaQuery.of(context).padding.right,
-                    top: topPadding,
+                    top: topPadding + stickyBand,
                     bottom: 8,
                     child: ChapterSeekRail(
                       itemPositionsListener: _itemPositionsListener,
@@ -501,6 +599,50 @@ class _ParayanScreenState extends State<ParayanScreen> {
               itemPositionsListener: _itemPositionsListener,
               settingsProvider: settingsProvider,
             ),
+          ),
+          // Sticky speaker — pins only when the inline speaker line reaches it
+          Consumer<ParayanProvider>(
+            builder: (context, provider, _) {
+              if (provider.isLoading || provider.shlokas.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return ValueListenableBuilder<Iterable<ItemPosition>>(
+                valueListenable: _itemPositionsListener.itemPositions,
+                builder: (context, positions, _) {
+                  final isAtTop =
+                      positions.isEmpty ||
+                      (positions.first.index == 0 &&
+                          positions.first.itemLeadingEdge >= 0);
+                  final headerH = isAtTop
+                      ? _parayanExpandedHeaderHeight(context)
+                      : _parayanCollapsedHeaderHeight(context);
+                  final screenH = MediaQuery.of(context).size.height;
+                  final stickyFrac =
+                      (headerH + _kParayanStickySpeakerHeight) / screenH;
+                  final speaker = _parayanStickySpeaker(
+                    shlokas: provider.shlokas,
+                    positions: positions,
+                    stickyFrac: stickyFrac,
+                  );
+
+                  if (speaker == null || speaker.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Positioned(
+                    left: MediaQuery.of(context).padding.left,
+                    right: _kParayanRailInset,
+                    top: headerH,
+                    height: _kParayanStickySpeakerHeight,
+                    child: _StickySpeakerBar(
+                      speaker: speaker,
+                      script: settingsProvider.script,
+                      fontSize: settingsProvider.fontSize,
+                    ),
+                  );
+                },
+              );
+            },
           ),
           // Cursor only after a card is selected and scrolled into place
           if (_selectedIndex != null)
@@ -1099,6 +1241,88 @@ class _ChapterStartHeader extends StatelessWidget {
   }
 }
 
+class _StickySpeakerBar extends StatelessWidget {
+  final String speaker;
+  final String script;
+  final double fontSize;
+
+  const _StickySpeakerBar({
+    required this.speaker,
+    required this.script,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final accent = Theme.of(context).colorScheme.secondary;
+    final lineColor = accent.withValues(alpha: isLight ? 0.45 : 0.55);
+    final localized = StaticData.localizeSpeaker(speaker, script);
+    final emblemPath = _parayanSpeakerEmblemPath(speaker);
+    final emblemSize = (fontSize * 1.1).clamp(18.0, 28.0);
+    final labelSize = (fontSize * 0.72).clamp(13.0, 22.0);
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: isLight
+                ? Colors.white.withValues(alpha: 0.55)
+                : Colors.black.withValues(alpha: 0.55),
+            border: Border(
+              bottom: BorderSide(
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.06)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: Row(
+                key: ValueKey(localized),
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (emblemPath != null) ...[
+                    Image.asset(emblemPath, height: emblemSize),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    localized,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontFamily: 'NotoSerif',
+                      fontSize: labelSize,
+                      color: accent,
+                      fontWeight: FontWeight.w600,
+                      fontStyle: FontStyle.italic,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 12,
+                      child: CustomPaint(
+                        painter: _SpeakerFlourishPainter(color: lineColor),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SpeakerHeader extends StatelessWidget {
   final String speaker;
   final String script;
@@ -1110,30 +1334,9 @@ class _SpeakerHeader extends StatelessWidget {
     required this.fontSize,
   });
 
-  // ✨ Helper function to get the emblem asset path based on the speaker's name
-  String? _getSpeakerEmblemPath(String speakerName) {
-    final lower = speakerName.toLowerCase();
-    if (lower.contains('bhagvan') ||
-        lower.contains('bhagavan') ||
-        lower.contains('krishna'))
-      return 'assets/emblems/krishna.png';
-    if (lower.contains('arjun')) return 'assets/emblems/arjun.png';
-    if (lower.contains('sanjay')) return 'assets/emblems/sanjay.png';
-    if (lower.contains('dhritarashtra'))
-      return 'assets/emblems/dhrutrashtra.png';
-    // Fallback for "Sri Bhagavan" logic in Hindi
-    if (speakerName.contains('श्री भगवान') || speakerName.contains('श्रीभगवान'))
-      return 'assets/emblems/krishna.png';
-    if (speakerName.contains('अर्जुन')) return 'assets/emblems/arjun.png';
-    if (speakerName.contains('संजय')) return 'assets/emblems/sanjay.png';
-    if (speakerName.contains('धृतराष्ट्र'))
-      return 'assets/emblems/dhrutrashtra.png';
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final String? emblemPath = _getSpeakerEmblemPath(speaker);
+    final String? emblemPath = _parayanSpeakerEmblemPath(speaker);
     final localizedSpeaker = StaticData.localizeSpeaker(speaker, script);
     final accent = Theme.of(context).colorScheme.secondary;
     final isLight = Theme.of(context).brightness == Brightness.light;
