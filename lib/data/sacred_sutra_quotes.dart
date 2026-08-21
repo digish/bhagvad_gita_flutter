@@ -2,7 +2,8 @@
 ///
 /// Poetic bilingual EN/HI lines from Sacred Sutra daily quotes
 /// (Mahabharata & Ramayana). Order is a fixed shuffle for variety.
-/// Source: sacredsutra/lib/content/daily_quotes.dart
+/// Source of truth shared with sacredsutra/lib/content/daily_quotes.dart
+/// (kept in sync; last merged from linguistic review + clarity pass).
 library;
 
 class BeyondOwnedQuote {
