@@ -1328,9 +1328,8 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
           : (config.isLightTheme
                 ? const Color(0xFF1C1917)
                 : primaryTextColor);
-      final karaokeHighlight = isFourLine
-          ? const Color(0xFFFACC15)
-          : const Color(0xFFCA8A04);
+      // Bright yellow karaoke highlight — readable on both ink and plum verses.
+      const karaokeHighlight = Color(0xFFFFD700);
 
       final verseStyle = TextStyle(
         fontSize: base,

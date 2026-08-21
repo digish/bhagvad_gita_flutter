@@ -105,7 +105,7 @@ class KaraokeTextDisplay extends StatelessWidget {
   ) {
     final baseStyle = (style ?? DefaultTextStyle.of(context).style);
     final defaultColor = baseStyle.color ?? Colors.black;
-    final Color activeHighlight = highlightColor ?? const Color(0xFFCA8A04);
+    final Color activeHighlight = highlightColor ?? const Color(0xFFFFD700);
     final maxWidth = wrapMaxWidth!;
     final indent = continuationIndent ?? 0.0;
     final wrapper = wrapLine!;
@@ -213,9 +213,9 @@ class KaraokeTextDisplay extends StatelessWidget {
       fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
     );
     final defaultColor = baseStyle.color ?? Colors.black;
-    // Default gold; continuous Parayan passes hue-matched yellows per verse type.
+    // Default bright yellow; continuous Parayan can override via highlightColor.
     final Color activeHighlight =
-        highlightColor ?? const Color(0xFFCA8A04);
+        highlightColor ?? const Color(0xFFFFD700);
 
     final spans = <InlineSpan>[];
     var timingIndex = 0;
