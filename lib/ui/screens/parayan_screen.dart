@@ -17,6 +17,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
@@ -45,6 +46,18 @@ const double _kParayanRailInset = 72.0;
 
 /// Viewport fraction for the reading focus line (cursor / card center target).
 const double _kParayanFocusLine = 0.40;
+
+/// Leading list item (blue lotus) so shloka 0 can scroll to the focus line.
+const int _kParayanLeadingLotusItems = 1;
+
+/// Must match home [DecorativeForeground] blue lotus Hero.
+const String _kParayanBlueLotusHero = 'blueLotusHero';
+
+/// Once-per-install coach mark: tap a shloka to reveal controls.
+const String _kParayanTapDiscoverKey = 'parayan_tap_discover_done';
+
+/// Once-per-install coach mark: chapter seek rail / glass.
+const String _kParayanSeekDiscoverKey = 'parayan_seek_rail_discover_done';
 
 double _parayanChromeHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanChromeExtra;
@@ -94,26 +107,32 @@ String? _parayanStickySpeaker({
   required Iterable<ItemPosition> positions,
   required double stickyFrac,
   required double screenHeight,
+  int listIndexOffset = _kParayanLeadingLotusItems,
 }) {
   if (shlokas.isEmpty || positions.isEmpty || screenHeight <= 0) return null;
 
   final byIndex = <int, ItemPosition>{
     for (final p in positions) p.index: p,
   };
-  final minVisible = positions
+  final minVisibleList = positions
       .map((p) => p.index)
       .reduce((a, b) => a < b ? a : b);
+  final minVisibleShloka = (minVisibleList - listIndexOffset).clamp(
+    0,
+    shlokas.length - 1,
+  );
 
   String? pinned;
   for (var i = 0; i < shlokas.length; i++) {
     if (!_parayanHasInlineSpeaker(shlokas, i)) continue;
+    final listIndex = i + listIndexOffset;
     // Past any visible item — later boundaries can't be pinned yet.
-    if (i > minVisible && !byIndex.containsKey(i)) break;
+    if (i > minVisibleShloka && !byIndex.containsKey(listIndex)) break;
 
-    final pos = byIndex[i];
+    final pos = byIndex[listIndex];
     if (pos == null) {
       // Scrolled fully above the viewport ⇒ already passed the sticky line.
-      if (i < minVisible) {
+      if (i < minVisibleShloka) {
         pinned = shlokas[i].speaker;
       }
       continue;
@@ -122,6 +141,8 @@ String? _parayanStickySpeaker({
     final isChapterStart =
         i == 0 || shlokas[i].chapterNo != shlokas[i - 1].chapterNo;
     // Top of the emblem/name row (not the item/column top).
+    // First shloka also has the leading lotus above chapter/speaker in the
+    // same list item? No — lotus is its own leading list item.
     final rowOffsetPx = _kParayanInlineSpeakerPadTopPx +
         (isChapterStart ? _kParayanChapterTitlePx : 0.0);
     final speakerTop = pos.itemLeadingEdge + rowOffsetPx / screenHeight;
@@ -148,6 +169,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
+
+  int _listIndexForShloka(int shlokaIndex) =>
+      shlokaIndex + _kParayanLeadingLotusItems;
+
+  int? _shlokaIndexForList(int listIndex) {
+    if (listIndex < _kParayanLeadingLotusItems) return null;
+    return listIndex - _kParayanLeadingLotusItems;
+  }
 
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
@@ -180,6 +209,16 @@ class _ParayanScreenState extends State<ParayanScreen> {
   bool _suppressFontDockScroll = false;
   DateTime? _fontDockScrollStartedAt;
 
+  /// First-visit coach: tap a shloka for the action island.
+  bool _showTapDiscoverHint = false;
+  Timer? _tapDiscoverShowTimer;
+  Timer? _tapDiscoverHideTimer;
+
+  /// First-visit coach: drag the seek-rail glass.
+  bool _showSeekDiscoverHint = false;
+  Timer? _seekDiscoverShowTimer;
+  Timer? _seekDiscoverHideTimer;
+
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
@@ -189,18 +228,88 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
     _itemPositionsListener.itemPositions.addListener(_onParayanScrollForFontDock);
+    _scheduleDiscoverHints();
   }
 
   @override
   void dispose() {
     _fontDockRevealTimer?.cancel();
     _fontDockTuckTimer?.cancel();
+    _tapDiscoverShowTimer?.cancel();
+    _tapDiscoverHideTimer?.cancel();
+    _seekDiscoverShowTimer?.cancel();
+    _seekDiscoverHideTimer?.cancel();
     _itemPositionsListener.itemPositions.removeListener(
       _onParayanScrollForFontDock,
     );
     _currentPositionLabelNotifier.dispose(); // ✨ Add this line
     _audioProvider?.removeListener(_handleAudioChange);
     super.dispose();
+  }
+
+  Future<void> _scheduleDiscoverHints() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tapDone = prefs.getBool(_kParayanTapDiscoverKey) ?? false;
+    final seekDone = prefs.getBool(_kParayanSeekDiscoverKey) ?? false;
+    if (!mounted) return;
+    if (!tapDone) {
+      // Let the list paint first, then fade the tip in.
+      _tapDiscoverShowTimer = Timer(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+        setState(() => _showTapDiscoverHint = true);
+        _tapDiscoverHideTimer = Timer(const Duration(seconds: 6), () {
+          _dismissTapDiscoverHint();
+        });
+      });
+    } else if (!seekDone) {
+      _scheduleSeekDiscoverHint(
+        delay: const Duration(milliseconds: 900),
+      );
+    }
+  }
+
+  void _scheduleSeekDiscoverHint({required Duration delay}) {
+    _seekDiscoverShowTimer?.cancel();
+    _seekDiscoverHideTimer?.cancel();
+    _seekDiscoverShowTimer = Timer(delay, () async {
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_kParayanSeekDiscoverKey) ?? false) return;
+      if (!mounted) return;
+      setState(() => _showSeekDiscoverHint = true);
+      _seekDiscoverHideTimer = Timer(const Duration(seconds: 6), () {
+        _dismissSeekDiscoverHint();
+      });
+    });
+  }
+
+  Future<void> _dismissTapDiscoverHint() async {
+    _tapDiscoverShowTimer?.cancel();
+    _tapDiscoverHideTimer?.cancel();
+    final wasShowing = _showTapDiscoverHint;
+    if (_showTapDiscoverHint && mounted) {
+      setState(() => _showTapDiscoverHint = false);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kParayanTapDiscoverKey, true);
+    final seekDone = prefs.getBool(_kParayanSeekDiscoverKey) ?? false;
+    if (!seekDone) {
+      _scheduleSeekDiscoverHint(
+        delay: wasShowing
+            ? const Duration(milliseconds: 450)
+            : const Duration(milliseconds: 900),
+      );
+    }
+  }
+
+  Future<void> _dismissSeekDiscoverHint() async {
+    _seekDiscoverShowTimer?.cancel();
+    _seekDiscoverHideTimer?.cancel();
+    if (_showSeekDiscoverHint && mounted) {
+      setState(() => _showSeekDiscoverHint = false);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kParayanSeekDiscoverKey, true);
   }
 
   void _onParayanScrollForFontDock() {
@@ -277,7 +386,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
     if (positions.isEmpty || count <= 0) {
       return _selectedIndex ?? 0;
     }
-    final focusItem = positions.reduce((a, b) {
+    final shlokaPositions = positions
+        .where((p) => _shlokaIndexForList(p.index) != null)
+        .toList();
+    if (shlokaPositions.isEmpty) return _selectedIndex ?? 0;
+    final focusItem = shlokaPositions.reduce((a, b) {
       final aCenter = (a.itemLeadingEdge + a.itemTrailingEdge) / 2;
       final bCenter = (b.itemLeadingEdge + b.itemTrailingEdge) / 2;
       return (aCenter - _kParayanFocusLine).abs() <=
@@ -285,7 +398,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
           ? a
           : b;
     });
-    return focusItem.index.clamp(0, count - 1);
+    return _shlokaIndexForList(focusItem.index)!.clamp(0, count - 1);
   }
 
   /// Change font without losing the focused shloka or tucking the dock.
@@ -345,9 +458,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
         return;
       }
       if (_itemScrollController.isAttached) {
+        final listIndex = _listIndexForShloka(keepIndex);
         final alignment = _alignmentForCardCenter(keepIndex) ??
             (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
-        _itemScrollController.jumpTo(index: keepIndex, alignment: alignment);
+        _itemScrollController.jumpTo(index: listIndex, alignment: alignment);
       }
       // Refine once new item heights are known, then reseed dock baseline.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -359,7 +473,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
           );
           if (refined != null) {
             _itemScrollController.jumpTo(
-              index: keepIndex,
+              index: _listIndexForShloka(keepIndex),
               alignment: refined,
             );
           }
@@ -431,6 +545,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   Future<void> _onCardTap(int index) async {
     if (_isSelectingCard) return;
+    unawaited(_dismissTapDiscoverHint());
 
     // Tap same selected card → dismiss selection + controls
     if (_selectedIndex == index && (_actionsVisible || _selectedIndex != null)) {
@@ -451,8 +566,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
       // Skip scroll when the card is already near the focus line.
       var needsScroll = true;
       final positions = _itemPositionsListener.itemPositions.value;
+      final listIndex = _listIndexForShloka(index);
       for (final p in positions) {
-        if (p.index == index) {
+        if (p.index == listIndex) {
           final center = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
           if ((center - _kParayanFocusLine).abs() <= 0.045) {
             needsScroll = false;
@@ -475,15 +591,16 @@ class _ParayanScreenState extends State<ParayanScreen> {
     }
   }
 
-  /// Scroll so the focus cursor sits at the vertical center of [index].
-  Future<void> _scrollCardCenterToFocusLine(int index) async {
+  /// Scroll so the focus cursor sits at the vertical center of [shlokaIndex].
+  Future<void> _scrollCardCenterToFocusLine(int shlokaIndex) async {
     if (!_itemScrollController.isAttached) return;
+    final listIndex = _listIndexForShloka(shlokaIndex);
 
     await _itemScrollController.scrollTo(
-      index: index,
+      index: listIndex,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      alignment: _alignmentForCardCenter(index) ??
+      alignment: _alignmentForCardCenter(shlokaIndex) ??
           (_kParayanFocusLine - 0.09).clamp(0.0, 1.0),
     );
 
@@ -491,13 +608,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 16));
     if (!mounted || !_itemScrollController.isAttached) return;
 
-    final refined = _alignmentForCardCenter(index, requireVisible: true);
+    final refined = _alignmentForCardCenter(shlokaIndex, requireVisible: true);
     if (refined == null) return;
 
     final positions = _itemPositionsListener.itemPositions.value;
     ItemPosition? item;
     for (final p in positions) {
-      if (p.index == index) {
+      if (p.index == listIndex) {
         item = p;
         break;
       }
@@ -508,7 +625,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     if ((center - _kParayanFocusLine).abs() <= 0.025) return;
 
     await _itemScrollController.scrollTo(
-      index: index,
+      index: listIndex,
       duration: const Duration(milliseconds: 90),
       curve: Curves.easeOutCubic,
       alignment: refined,
@@ -516,10 +633,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
   }
 
   /// Viewport alignment for item leading edge so its center hits [_kParayanFocusLine].
-  double? _alignmentForCardCenter(int index, {bool requireVisible = false}) {
+  double? _alignmentForCardCenter(int shlokaIndex, {bool requireVisible = false}) {
+    final listIndex = _listIndexForShloka(shlokaIndex);
     final positions = _itemPositionsListener.itemPositions.value;
     for (final p in positions) {
-      if (p.index == index) {
+      if (p.index == listIndex) {
         final halfHeight =
             (p.itemTrailingEdge - p.itemLeadingEdge).abs() / 2;
         return (_kParayanFocusLine - halfHeight).clamp(0.0, 1.0);
@@ -531,18 +649,23 @@ class _ParayanScreenState extends State<ParayanScreen> {
   }
 
   // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
-  void _scrollToIndex(int index) {
+  void _scrollToIndex(int shlokaIndex) {
+    unawaited(_dismissSeekDiscoverHint());
     // Align the target shloka to the same 40% focus line the glass tracks.
-    _scrollCardCenterToFocusLine(index);
+    _scrollCardCenterToFocusLine(shlokaIndex);
   }
 
   /// Instant seek used while dragging the glass — keep center on the focus line
   /// so the label and the verse under the cursor stay in sync.
-  void _jumpToIndex(int index) {
+  void _jumpToIndex(int shlokaIndex) {
+    unawaited(_dismissSeekDiscoverHint());
     if (!_itemScrollController.isAttached) return;
-    final alignment = _alignmentForCardCenter(index) ??
+    final alignment = _alignmentForCardCenter(shlokaIndex) ??
         (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
-    _itemScrollController.jumpTo(index: index, alignment: alignment);
+    _itemScrollController.jumpTo(
+      index: _listIndexForShloka(shlokaIndex),
+      alignment: alignment,
+    );
   }
 
   // REMOVED: _cyclePlaybackMode
@@ -585,10 +708,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
             ),
           Consumer<ParayanProvider>(
             builder: (context, provider, child) {
-              if (provider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
               // Continuous reading: shlok only. Anvay / tika expand under the
               // selected card after tap.
               final cardConfig = FullShlokaCardConfig(
@@ -611,16 +730,27 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   audio.playbackState != PlaybackState.stopped &&
                   audio.currentPlayingShlokaId != null;
 
-              // ✨ FIX: Revert to ScrollablePositionedList
+              // Always build the leading lotus Hero on first frame so the
+              // search→parayan flight can run (loading used to hide it).
+              final listItemCount =
+                  shlokas.length + _kParayanLeadingLotusItems;
+              final lotusHeaderHeight =
+                  (MediaQuery.of(context).size.height * 0.30).clamp(
+                    140.0,
+                    260.0,
+                  );
+
               return ResponsiveWrapper(
                 maxWidth: 1200, // ✨ NEW: Increased width for iPad
-                child: ScrollablePositionedList.builder(
+                child: Stack(
+                  children: [
+                    ScrollablePositionedList.builder(
                   key: const PageStorageKey(
                     'parayan_list',
                   ), // ✨ FIX: Persist scroll state
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
-                  itemCount: shlokas.length,
+                  itemCount: listItemCount,
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
@@ -632,7 +762,16 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     right: MediaQuery.of(context).padding.right,
                     bottom: miniPlayerVisible ? 148.0 : 64.0,
                   ),
-                  itemBuilder: (context, index) {
+                  itemBuilder: (context, listIndex) {
+                    if (listIndex < _kParayanLeadingLotusItems) {
+                      return _ParayanLeadingLotusHeader(
+                        height: lotusHeaderHeight,
+                      );
+                    }
+                    final index = listIndex - _kParayanLeadingLotusItems;
+                    if (index >= shlokas.length) {
+                      return const SizedBox.shrink();
+                    }
                     final shloka = shlokas[index];
                     final previousShloka = (index > 0)
                         ? shlokas[index - 1]
@@ -708,6 +847,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     );
                   },
                 ),
+                    if (provider.isLoading)
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                  ],
+                ),
               );
             },
           ),
@@ -730,18 +877,31 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     bottom: 8,
                     child: ChapterSeekRail(
                       itemPositionsListener: _itemPositionsListener,
-                      itemCount: provider.shlokas.length,
-                      chapterMarkers: provider.chapterStartIndices,
+                      itemCount:
+                          provider.shlokas.length + _kParayanLeadingLotusItems,
+                      chapterMarkers: [
+                        for (final i in provider.chapterStartIndices)
+                          i + _kParayanLeadingLotusItems,
+                      ],
                       focusLine: _kParayanFocusLine,
-                      chapterForIndex: (index) {
-                        return provider.shlokas[index].chapterNo;
+                      chapterForIndex: (listIndex) {
+                        final s = _shlokaIndexForList(listIndex);
+                        if (s == null) {
+                          return provider.shlokas.isEmpty
+                              ? '1'
+                              : provider.shlokas.first.chapterNo;
+                        }
+                        return provider.shlokas[s].chapterNo;
                       },
                       onChapterTap: (chapterIndex) {
                         final shlokaIndex =
                             provider.chapterStartIndices[chapterIndex];
                         _scrollToIndex(shlokaIndex);
                       },
-                      onSeekToIndex: _jumpToIndex,
+                      onSeekToIndex: (listIndex) {
+                        final s = _shlokaIndexForList(listIndex);
+                        if (s != null) _jumpToIndex(s);
+                      },
                     ),
                   );
                 },
@@ -797,9 +957,33 @@ class _ParayanScreenState extends State<ParayanScreen> {
             height: _parayanChromeHeight(context),
             child: const _ParayanChrome(),
           ),
-          // Cursor only after a card is selected and scrolled into place
+          // Cursor tracks the selected card; resets to the focus line on new tap
+          // (selection is cleared during scroll-to-focus, then reappears at home).
           if (_selectedIndex != null)
-            const _ParayanFocusPointer(focusLine: _kParayanFocusLine),
+            ValueListenableBuilder<Iterable<ItemPosition>>(
+              valueListenable: _itemPositionsListener.itemPositions,
+              builder: (context, positions, _) {
+                var focusLine = _kParayanFocusLine;
+                final selectedList = _listIndexForShloka(_selectedIndex!);
+                for (final p in positions) {
+                  if (p.index == selectedList) {
+                    focusLine =
+                        (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
+                    break;
+                  }
+                }
+                return _ParayanFocusPointer(focusLine: focusLine);
+              },
+            ),
+          if (_showTapDiscoverHint)
+            _ParayanTapDiscoverHint(
+              focusLine: _kParayanFocusLine,
+              onDismiss: _dismissTapDiscoverHint,
+            ),
+          if (_showSeekDiscoverHint)
+            _ParayanSeekDiscoverHint(
+              onDismiss: _dismissSeekDiscoverHint,
+            ),
           // Action island — pops in just above the selected card
           Consumer2<ParayanProvider, AudioProvider>(
             builder: (context, provider, audioProvider, _) {
@@ -824,8 +1008,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   const gapAboveCard = 20.0;
 
                   double? top;
+                  final targetList = _listIndexForShloka(targetIndex);
                   for (final p in positions) {
-                    if (p.index == targetIndex) {
+                    if (p.index == targetList) {
                       // Travel with the card — sit just above its top edge,
                       // even if that means going off-screen.
                       top =
@@ -904,7 +1089,252 @@ class _ParayanScreenState extends State<ParayanScreen> {
   }
 }
 
-/// Persistent focus triangle on the left at the reading line.
+/// Soft first-visit tip near the reading line — tap a shloka for controls.
+class _ParayanTapDiscoverHint extends StatelessWidget {
+  final double focusLine;
+  final VoidCallback onDismiss;
+
+  const _ParayanTapDiscoverHint({
+    required this.focusLine,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final top = (screenHeight * focusLine) - 52;
+
+    return Positioned(
+      left: MediaQuery.of(context).padding.left + 20,
+      right: _kParayanRailInset + 8,
+      top: top.clamp(
+        _parayanChromeHeight(context) + 8,
+        screenHeight - 120,
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) {
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, 8 * (1 - t)),
+              child: child,
+            ),
+          );
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onDismiss,
+            borderRadius: BorderRadius.circular(18),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isLight
+                        ? Colors.white.withValues(alpha: 0.72)
+                        : Colors.black.withValues(alpha: 0.62),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.55),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.touch_app_rounded,
+                          size: 26,
+                          color: isLight
+                              ? const Color(0xFF8B6914)
+                              : const Color(0xFFFFD700),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Tap a shloka to play, bookmark, share, or expand meaning',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.25,
+                              fontWeight: FontWeight.w500,
+                              color: isLight
+                                  ? Colors.black87
+                                  : Colors.white.withValues(alpha: 0.92),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: onDismiss,
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: isLight
+                                ? Colors.black45
+                                : Colors.white54,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          tooltip: 'Dismiss',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// First-visit tip for the chapter seek rail — sits beside the circular glass.
+class _ParayanSeekDiscoverHint extends StatelessWidget {
+  final VoidCallback onDismiss;
+
+  const _ParayanSeekDiscoverHint({required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final media = MediaQuery.of(context);
+    final screenHeight = media.size.height;
+    final railTop = _parayanChromeHeight(context);
+    const railBottom = 8.0;
+    final railHeight = screenHeight - railTop - railBottom;
+    // Glass rests on the reading focus line within the rail track.
+    const trackPad = 20.0;
+    final glassCenterY =
+        railTop +
+        trackPad +
+        _kParayanFocusLine * (railHeight - 2 * trackPad);
+    const tipHeight = 72.0;
+    // Tip ends just left of the glass (glass sits on the inner side of the rail).
+    final tipRight =
+        media.padding.right +
+        ChapterSeekRail.width -
+        (ChapterSeekRail.glassRadius + 2) -
+        6;
+
+    return Positioned(
+      right: tipRight.clamp(8.0, media.size.width * 0.5),
+      width: (media.size.width * 0.58).clamp(200.0, 280.0),
+      top: (glassCenterY - tipHeight / 2).clamp(
+        railTop + 4,
+        screenHeight - tipHeight - 24,
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) {
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(10 * (1 - t), 0),
+              child: child,
+            ),
+          );
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onDismiss,
+            borderRadius: BorderRadius.circular(18),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isLight
+                        ? Colors.white.withValues(alpha: 0.72)
+                        : Colors.black.withValues(alpha: 0.62),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: const Color(0xFF047BC0).withValues(alpha: 0.55),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF047BC0).withValues(alpha: 0.16),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Drag the glass or tap chapter dots to jump through the Parayan',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.25,
+                              fontWeight: FontWeight.w500,
+                              color: isLight
+                                  ? Colors.black87
+                                  : Colors.white.withValues(alpha: 0.92),
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_right_alt_rounded,
+                          size: 28,
+                          color: isLight
+                              ? const Color(0xFF047BC0)
+                              : const Color(0xFF7EC8F0),
+                        ),
+                        IconButton(
+                          onPressed: onDismiss,
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: isLight
+                                ? Colors.black45
+                                : Colors.white54,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          tooltip: 'Dismiss',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Focus triangle on the left — sits on [focusLine] (selected card center while scrolling).
 class _ParayanFocusPointer extends StatelessWidget {
   final double focusLine;
 
@@ -1143,6 +1573,62 @@ class _ParayanFontSizeDock extends StatelessWidget {
 }
 
 // --- Reusable private widgets for the list items ---
+
+/// Scrolls away above chapter 1 — gives room for shloka 0 on the focus line.
+/// Hero matches Adhyay: same tag flight as home (rotate + move). Tap → search.
+class _ParayanLeadingLotusHeader extends StatelessWidget {
+  final double height;
+
+  const _ParayanLeadingLotusHeader({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Center(
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              // Prefer pop (keeps Hero reverse flight); else go search home.
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Hero(
+                tag: _kParayanBlueLotusHero,
+                // Same rotate shuttle as home / Adhyay white lotus flight.
+                flightShuttleBuilder: (
+                  flightContext,
+                  animation,
+                  flightDirection,
+                  fromHeroContext,
+                  toHeroContext,
+                ) {
+                  return RotationTransition(
+                    turns: animation,
+                    child: (toHeroContext.widget as Hero).child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/images/lotus_blue12.png',
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ChapterStartHeader extends StatelessWidget {
   final int chapterNumber;

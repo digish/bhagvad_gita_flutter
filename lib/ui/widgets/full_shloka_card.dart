@@ -127,10 +127,20 @@ class FullShlokaCard extends StatelessWidget {
       return _hardWrapVerseLine(trimmed, style, maxWidth);
     }
 
-    final first = trimmed.substring(0, breakAt).trimRight();
-    final second = trimmed.substring(breakAt).trimLeft();
+    var first = trimmed.substring(0, breakAt).trimRight();
+    var second = trimmed.substring(breakAt).trimLeft();
+    // Keep trailing danda / pipe with the previous chunk — orphan `|` / `।` / `॥`
+    // on a continuation line reads as a "ghost" stroke under the next verse.
+    final orphanPunct = RegExp(r'^[|\s।॥]+$');
+    if (second.isNotEmpty && orphanPunct.hasMatch(second)) {
+      first = '$first$second'.trimRight();
+      second = '';
+    }
     if (first.isEmpty) return wrapVerseLine(second, style, maxWidth);
-    if (second.isEmpty) return wrapVerseLine(first, style, maxWidth);
+    if (second.isEmpty) {
+      if (_lineFits(first, style, maxWidth)) return [first];
+      return _hardWrapVerseLine(first, style, maxWidth);
+    }
 
     // Recurse if a half is still too wide (very large fonts).
     return [
@@ -145,13 +155,16 @@ class FullShlokaCard extends StatelessWidget {
     final mid = text.length ~/ 2;
 
     // Search outward from midpoint for a space / Devanagari danda pause.
-    final breakChars = RegExp(r'[\s।|]');
+    // Include double-danda; do not break so the next chunk is only punctuation.
+    final breakChars = RegExp(r'[\s।|॥]');
     var best = -1;
     var bestDist = 1 << 30;
     for (var i = 0; i < text.length; i++) {
       if (!breakChars.hasMatch(text[i])) continue;
       // Don't break at leading/trailing edge.
       if (i == 0 || i >= text.length - 1) continue;
+      final after = text.substring(i + 1).trimLeft();
+      if (after.isEmpty || RegExp(r'^[|\s।॥]+$').hasMatch(after)) continue;
       final dist = (i - mid).abs();
       if (dist < bestDist) {
         bestDist = dist;
@@ -168,7 +181,36 @@ class FullShlokaCard extends StatelessWidget {
       maxLines: 1,
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: double.infinity);
-    return painter.width <= maxWidth + 0.5;
+    // Safety margin: TextPainter vs on-screen glyphs (letterSpacing / subpixel)
+    // can disagree by a px or two; softWrap:false then bleeds trailing danda.
+    return painter.width <= maxWidth - 2.0;
+  }
+
+  /// Verse spans with drop shadow on letters, but none on `|` / `।` / `॥`
+  /// (thin danda shadows paint as detached ghost strokes).
+  static List<InlineSpan> verseSpansSkipDandaShadow(
+    String text,
+    TextStyle style,
+  ) {
+    if (text.isEmpty) return [TextSpan(text: text, style: style)];
+    final plain = style.copyWith(shadows: const <Shadow>[]);
+    final spans = <InlineSpan>[];
+    final danda = RegExp(r'[|।॥]+');
+    var start = 0;
+    for (final match in danda.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(
+          TextSpan(text: text.substring(start, match.start), style: style),
+        );
+      }
+      spans.add(TextSpan(text: match.group(0), style: plain));
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: style));
+    }
+    if (spans.isEmpty) spans.add(TextSpan(text: text, style: style));
+    return spans;
   }
 
   static List<String> _hardWrapVerseLine(
@@ -1245,14 +1287,23 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
           verseMaxWidth,
         );
         for (var i = 0; i < parts.length; i++) {
+          final lineIndent = i == 0 ? 0.0 : indent;
           lineWidgets.add(
             Padding(
-              padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
-              child: Text(
-                parts[i],
-                textAlign: TextAlign.left,
-                softWrap: false,
-                style: verseStyle,
+              padding: EdgeInsets.only(left: lineIndent),
+              child: SizedBox(
+                width: (verseMaxWidth - lineIndent).clamp(40.0, verseMaxWidth),
+                child: RichText(
+                  textAlign: TextAlign.left,
+                  softWrap: false,
+                  overflow: TextOverflow.clip,
+                  text: TextSpan(
+                    children: FullShlokaCard.verseSpansSkipDandaShadow(
+                      parts[i],
+                      verseStyle,
+                    ),
+                  ),
+                ),
               ),
             ),
           );
@@ -1289,26 +1340,6 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
         height: lineHeight,
         letterSpacing: letterSpacing,
         fontWeight: isFourLine ? FontWeight.w500 : FontWeight.w400,
-        shadows: config.isLightTheme
-            ? const [
-                Shadow(
-                  color: Color(0x66FFFFFF),
-                  blurRadius: 10,
-                  offset: Offset(0, 0),
-                ),
-                Shadow(
-                  color: Color(0x1A000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1.5),
-                ),
-              ]
-            : const [
-                Shadow(
-                  color: Color(0x66000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 1.5),
-                ),
-              ],
       );
 
       final logicalLines = KaraokeTextDisplay.displayLinesFromRaw(shloka.shlok);
@@ -1320,14 +1351,23 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
           verseMaxWidth,
         );
         for (var i = 0; i < parts.length; i++) {
+          final lineIndent = i == 0 ? 0.0 : indent;
           lineWidgets.add(
             Padding(
-              padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
-              child: Text(
-                parts[i],
-                textAlign: TextAlign.left,
-                softWrap: false,
-                style: verseStyle,
+              padding: EdgeInsets.only(left: lineIndent),
+              child: SizedBox(
+                width: (verseMaxWidth - lineIndent).clamp(40.0, verseMaxWidth),
+                child: RichText(
+                  textAlign: TextAlign.left,
+                  softWrap: false,
+                  overflow: TextOverflow.clip,
+                  text: TextSpan(
+                    children: FullShlokaCard.verseSpansSkipDandaShadow(
+                      parts[i],
+                      verseStyle,
+                    ),
+                  ),
+                ),
               ),
             ),
           );
@@ -1358,8 +1398,13 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
 
     if (!config.showShlokIndex) return verseBody;
 
-    final numberRight =
-        ChapterSeekRail.width - ChapterSeekRail.glassRadius - 6;
+    // Align with the circular glass column (rail overlays the right 72px).
+    // Content is inset from the screen edge, so a small/negative [right]
+    // pulls the # into the glass lane — clear of the track (~10px inset).
+    const trackClearance = 8.0; // gap so digits don't touch the seek line
+    final numberRight = -(
+      ChapterSeekRail.glassRadius - trackClearance
+    ); // ≈ -18 → sits on glass x, left of track
     final fontSize = (config.baseFontSize * 2.2).clamp(24.0, 34.0);
     final numberColor = config.isLightTheme
         ? primaryTextColor.withValues(alpha: 0.14)

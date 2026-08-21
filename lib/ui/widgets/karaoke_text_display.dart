@@ -135,16 +135,39 @@ class KaraokeTextDisplay extends StatelessWidget {
             timingIndex++;
           }
 
-          spans.add(
-            TextSpan(
-              text: word,
-              style: baseStyle.copyWith(
-                color: isHighlighted ? activeHighlight : defaultColor,
-                fontWeight:
-                    isHighlighted ? FontWeight.w700 : baseStyle.fontWeight,
-              ),
-            ),
+          final wordStyle = baseStyle.copyWith(
+            color: isHighlighted ? activeHighlight : defaultColor,
+            fontWeight: isHighlighted ? FontWeight.w700 : baseStyle.fontWeight,
           );
+          // Strip shadows from embedded danda so they don't ghost beside the line.
+          if (RegExp(r'[|।॥]').hasMatch(word)) {
+            final plain = wordStyle.copyWith(shadows: const <Shadow>[]);
+            var start = 0;
+            for (final m in RegExp(r'[|।॥]+').allMatches(word)) {
+              if (m.start > start) {
+                spans.add(
+                  TextSpan(
+                    text: word.substring(start, m.start),
+                    style: wordStyle,
+                  ),
+                );
+              }
+              spans.add(TextSpan(text: m.group(0), style: plain));
+              start = m.end;
+            }
+            if (start < word.length) {
+              spans.add(TextSpan(text: word.substring(start), style: wordStyle));
+            }
+          } else {
+            spans.add(
+              TextSpan(
+                text: word,
+                style: wordStyle.copyWith(
+                  shadows: isPunctuation ? const <Shadow>[] : wordStyle.shadows,
+                ),
+              ),
+            );
+          }
           if (w < words.length - 1) {
             spans.add(TextSpan(text: ' ', style: baseStyle));
           }
@@ -153,10 +176,14 @@ class KaraokeTextDisplay extends StatelessWidget {
         lineWidgets.add(
           Padding(
             padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
-            child: RichText(
-              textAlign: TextAlign.left,
-              softWrap: false,
-              text: TextSpan(style: baseStyle, children: spans),
+            child: SizedBox(
+              width: (maxWidth - (i == 0 ? 0.0 : indent)).clamp(40.0, maxWidth),
+              child: RichText(
+                textAlign: TextAlign.left,
+                softWrap: false,
+                overflow: TextOverflow.clip,
+                text: TextSpan(style: baseStyle, children: spans),
+              ),
             ),
           ),
         );
