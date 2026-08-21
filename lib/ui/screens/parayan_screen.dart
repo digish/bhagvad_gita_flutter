@@ -20,7 +20,7 @@ import '../../data/static_data.dart';
 import 'dart:ui';
 
 import '../../providers/parayan_provider.dart';
-import '../widgets/custom_scroll_indicator.dart';
+import '../widgets/chapter_seek_rail.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
@@ -30,6 +30,21 @@ import '../theme/app_colors.dart';
 
 // --- NEW: Enum to manage the content display modes ---
 enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
+
+/// Expanded header band below the status bar (glass island + docked lotus).
+const double _kParayanExpandedExtra = 120.0;
+
+/// Collapsed header band below the status bar.
+const double _kParayanCollapsedExtra = 108.0;
+
+/// Right inset reserved for [ChapterSeekRail].
+const double _kParayanRailInset = 28.0;
+
+double _parayanExpandedHeaderHeight(BuildContext context) =>
+    MediaQuery.of(context).padding.top + _kParayanExpandedExtra;
+
+double _parayanCollapsedHeaderHeight(BuildContext context) =>
+    MediaQuery.of(context).padding.top + _kParayanCollapsedExtra;
 
 // PlaybackMode is now imported from audio_provider.dart
 
@@ -46,7 +61,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
 
-  ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokAndAnvay;
+  ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokOnly;
 
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
@@ -130,8 +145,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
       index: index,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOutCubic,
-      alignment: 0.3, // Center the item (0.0 is top, 1.0 is bottom)
+      alignment: 0.12, // Keep chapter start near top so seek-rail chapter matches
     );
+  }
+
+  void _jumpToIndex(int index) {
+    _itemScrollController.jumpTo(index: index, alignment: 0.15);
   }
 
   // REMOVED: _cyclePlaybackMode
@@ -220,14 +239,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 340,
+                    top: _parayanExpandedHeaderHeight(context),
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
                     right:
-                        50 +
                         MediaQuery.of(context).padding.right +
-                        24.0, // Added SafeMargin to Right
+                        _kParayanRailInset,
                     bottom: 8.0,
                   ),
                   itemBuilder: (context, index) {
@@ -317,29 +335,22 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       (positions.first.index == 0 &&
                           positions.first.itemLeadingEdge >= 0);
                   final double topPadding = isAtTop
-                      ? 340.0 // Expanded header height
-                      : MediaQuery.of(context).padding.top +
-                            150; // Collapsed header height
+                      ? _parayanExpandedHeaderHeight(context)
+                      : _parayanCollapsedHeaderHeight(context);
                   return Positioned(
-                    right:
-                        MediaQuery.of(context).padding.right +
-                        24.0, // Added SafeMargin to Right
+                    right: MediaQuery.of(context).padding.right,
                     top: topPadding,
-                    bottom: 0,
-                    child: CustomScrollIndicator(
-                      itemPositionsListener:
-                          _itemPositionsListener, // ✨ FIX: Pass the listener
+                    bottom: 8,
+                    child: ChapterSeekRail(
+                      itemPositionsListener: _itemPositionsListener,
                       itemCount: provider.shlokas.length,
                       chapterMarkers: provider.chapterStartIndices,
-                      chapterLabels: provider.chapterStartIndices.map((i) {
-                        final chapterNo = provider.shlokas[i].chapterNo;
-                        return chapterNo;
-                      }).toList(),
-                      onLotusTap: (index) {
-                        final chapterIndex =
-                            provider.chapterStartIndices[index];
-                        _scrollToIndex(chapterIndex);
+                      onChapterTap: (chapterIndex) {
+                        final shlokaIndex =
+                            provider.chapterStartIndices[chapterIndex];
+                        _scrollToIndex(shlokaIndex);
                       },
+                      onSeekToIndex: _jumpToIndex,
                     ),
                   );
                 },
@@ -497,17 +508,16 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
     // Calculate animation value based on scroll position
     if (absoluteTopItem.index == 0) {
       final viewportHeight = MediaQuery.of(context).size.height;
-      final paddingTop = MediaQuery.of(context).padding.top;
 
       // The Y position of the first item's top edge
       final itemY = absoluteTopItem.itemLeadingEdge * viewportHeight;
 
       // Define the scroll range for the animation
       // Start: Item is at its initial padded position (Expanded Header)
-      final startY = paddingTop + 340.0;
+      final startY = _parayanExpandedHeaderHeight(context);
 
       // End: Item is at the bottom of the collapsed header (Collapsed Header)
-      final endY = paddingTop + kToolbarHeight + 90;
+      final endY = _parayanCollapsedHeaderHeight(context);
 
       // Calculate progress t: 0.0 at startY, 1.0 at endY
       // As itemY goes down (scrolling up), t should go to 0? No, itemY goes UP when scrolling DOWN.
@@ -523,8 +533,8 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
     // --- Shloka Count Logic ---
     // ✨ FIX: Find the first item that is visible *below* the header.
     final double headerHeight = lerpDouble(
-      340.0,
-      MediaQuery.of(context).padding.top + kToolbarHeight + 90,
+      _parayanExpandedHeaderHeight(context),
+      _parayanCollapsedHeaderHeight(context),
       _animationController.value,
     )!;
     final visibleBelowHeader = positions.where(
@@ -552,316 +562,198 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 
   @override
   Widget build(BuildContext context) {
-    // These values are now static within the build method.
-    const double maxHeaderHeight = 340; // Increased height to prevent overlap
-    final double minHeaderHeight = MediaQuery.of(context).padding.top + 150;
+    final double maxHeaderHeight = _parayanExpandedHeaderHeight(context);
+    final double minHeaderHeight = _parayanCollapsedHeaderHeight(context);
 
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        // The animation progress 't' is now driven by the AnimationController.
         final t = _animationController.value;
+        final headerHeight = lerpDouble(maxHeaderHeight, minHeaderHeight, t)!;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            // All the lerp calculations remain the same.
-            const double maxLotusSize = 120.0;
-            const double minLotusSize = 40.0;
-            final double currentLotusSize = lerpDouble(
-              maxLotusSize,
-              minLotusSize,
-              t,
-            )!;
-            final double maxLotusTop = MediaQuery.of(context).padding.top;
-            // Center Lotus with Island: Island Bottom = 16, Island Height = 104 -> Center = 16+52=68 from bottom.
-            // Lotus Center = 68 from bottom. Lotus Top = 68 + (40/2) = 88 from bottom.
-            // Top = Height - 88.
-            // Center Lotus with Island: Island Bottom = 16, Island Height = 110 -> Center = 16+55=71 from bottom.
-            // Lotus Center = 71 from bottom. Lotus Top = 71 + (40/2) = 91 from bottom.
-            // Top = Height - 91.
-            final double minLotusTop = minHeaderHeight - 91.0;
-            final double currentLotusTop = lerpDouble(
-              maxLotusTop,
-              minLotusTop,
-              t,
-            )!;
-
-            final double paddingRight = 50.0; // Matches list padding
-            // Center in the available local width (excluding list padding)
-            final double maxLotusLeft =
-                (width - paddingRight - maxLotusSize) / 2;
-
-            // For the floating animation target, we want it to move towards the docked position.
-            // The Button Island is centered with constraints.
-            // Island Width = (width - 32).clamp(300.0, 700.0);
-            // Island Left Offset = (width - Island Width) / 2;
-            // Target Lotus Left = Island Left Offset + 16 (padding) + 24 (icon) + 8 (gap).
-            final double islandWidth = (width - 32.0).clamp(300.0, 700.0);
-            final double islandLeftOffset = (width - islandWidth) / 2;
-            final double minLotusLeft = islandLeftOffset + 16.0 + 24.0 + 8.0;
-
-            final double currentLotusLeft = lerpDouble(
-              maxLotusLeft,
-              minLotusLeft,
-              t,
-            )!;
-
-            return Container(
-              height: lerpDouble(maxHeaderHeight, minHeaderHeight, t),
-              color: Colors.transparent,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Back Button (Removed - integrated into island)
-
-                  // Expanded Controls (unchanged)
-                  // Collapsed Controls (unchanged)
-                  // --- Button Island (Docked Controls & Title) ---
-                  Positioned(
-                    bottom: 16, // Float near bottom
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: 700,
-                          minWidth: 300,
+        return SizedBox(
+          height: headerHeight,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // --- Glass island with docked lotus (always inside the bar) ---
+              Positioned(
+                bottom: 12,
+                left: 0,
+                right: _kParayanRailInset,
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      maxWidth: 700,
+                      minWidth: 300,
+                    ),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.white.withValues(alpha: 0.4)
+                          : Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? Colors.white.withValues(alpha: 0.4)
+                            : Colors.white12,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 16,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 8),
                         ),
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                              ? Colors.white.withOpacity(0.4)
-                              : Colors.black.withOpacity(
-                                  0.6,
-                                ), // Semi-transparent for glass effect
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color:
-                                Theme.of(context).brightness == Brightness.light
-                                ? Colors.white.withOpacity(0.4)
-                                : Colors.white12,
-                            width: 1.5,
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 8.0,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 16,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10.0,
-                                vertical: 8.0,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // 1. Back Button & Docked Lotus Group
-                                  GestureDetector(
-                                    onTap:
-                                        MediaQuery.of(context).size.width > 600
-                                        ? null
-                                        : () {
-                                            if (context.canPop()) {
-                                              context.pop();
-                                            } else {
-                                              context.go('/');
-                                            }
-                                          },
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Back Icon
-                                        // Only show back icon if relevant (not tablet split view?)
-                                        // User asked for it, so we show it.
-                                        if (MediaQuery.of(context).size.width <=
-                                            600) ...[
-                                          const Icon(
-                                            Icons.arrow_back_ios_new,
-                                            size: 20,
-                                            // color: Colors.black87, // Removed hardcoded color
-                                          ),
-                                          const SizedBox(width: 8),
-                                        ],
-
-                                        // Lotus Slot
-                                        if (t > 0.95)
-                                          Hero(
-                                            tag: 'blueLotusHero',
-                                            child: Image.asset(
-                                              'assets/images/lotus_blue12.png',
-                                              width: 50,
-                                              height: 50,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          )
-                                        else
-                                          const SizedBox(width: 50, height: 50),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 8),
-
-                                  // 2. Right Content (Title + Controls)
-                                  Expanded(
-                                    child: SizedBox(
-                                      height:
-                                          110, // Increased height for 3 rows
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          // Line 1: Title
-                                          SizedBox(
-                                            height: 20,
-                                            child: Center(
-                                              child: Text(
-                                                _currentLabel,
-                                                textAlign: TextAlign.center,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      // color: Colors.black87, // Removed hardcoded color
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 15,
-                                                      height: 1.2,
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 4),
-
-                                          // Line 2: Font Controls & Display Mode (Merged)
-                                          SizedBox(
-                                            height: 48,
-                                            child: LayoutBuilder(
-                                              builder: (context, constraints) {
-                                                return FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      FontSizeControl(
-                                                        currentSize: widget
-                                                            .settingsProvider
-                                                            .fontSize,
-                                                        onSizeChanged:
-                                                            (newSize) => widget
-                                                                .settingsProvider
-                                                                .setFontSize(
-                                                                  newSize,
-                                                                ),
-                                                        color:
-                                                            Theme.of(context)
-                                                                .textTheme
-                                                                .bodyMedium
-                                                                ?.color ??
-                                                            Colors.black87,
-                                                      ),
-
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        width: 1,
-                                                        height: 20,
-                                                        color: Theme.of(
-                                                          context,
-                                                        ).dividerColor,
-                                                      ),
-                                                      const SizedBox(width: 8),
-
-                                                      (context
-                                                              .findAncestorStateOfType<
-                                                                _ParayanScreenState
-                                                              >()!)
-                                                          ._buildDisplayModeButton(),
-                                                    ],
+                          child: Row(
+                            children: [
+                              // Back + docked lotus
+                              GestureDetector(
+                                onTap: MediaQuery.of(context).size.width > 600
+                                    ? null
+                                    : () {
+                                        if (context.canPop()) {
+                                          context.pop();
+                                        } else {
+                                          context.go('/');
+                                        }
+                                      },
+                                behavior: HitTestBehavior.opaque,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (MediaQuery.of(context).size.width <=
+                                        600) ...[
+                                      const Icon(
+                                        Icons.arrow_back_ios_new,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Hero(
+                                      tag: 'blueLotusHero',
+                                      flightShuttleBuilder:
+                                          (
+                                            flightContext,
+                                            animation,
+                                            flightDirection,
+                                            fromHeroContext,
+                                            toHeroContext,
+                                          ) {
+                                            final rotationAnimation = animation
+                                                .drive(
+                                                  Tween<double>(
+                                                    begin: 0.0,
+                                                    end: 1.0,
                                                   ),
                                                 );
-                                              },
-                                            ),
-                                          ),
-                                        ],
+                                            return RotationTransition(
+                                              turns: rotationAnimation,
+                                              child:
+                                                  (toHeroContext.widget as Hero)
+                                                      .child,
+                                            );
+                                          },
+                                      child: Image.asset(
+                                        'assets/images/lotus_blue12.png',
+                                        width: 44,
+                                        height: 44,
+                                        fit: BoxFit.contain,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
+
+                              const SizedBox(width: 8),
+
+                              // Title + controls
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      _currentLabel,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            height: 1.2,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    SizedBox(
+                                      height: 40,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            FontSizeControl(
+                                              currentSize: widget
+                                                  .settingsProvider
+                                                  .fontSize,
+                                              onSizeChanged: (newSize) => widget
+                                                  .settingsProvider
+                                                  .setFontSize(newSize),
+                                              color:
+                                                  Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.color ??
+                                                  Colors.black87,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              width: 1,
+                                              height: 20,
+                                              color: Theme.of(
+                                                context,
+                                              ).dividerColor,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            (context
+                                                    .findAncestorStateOfType<
+                                                      _ParayanScreenState
+                                                    >()!)
+                                                ._buildDisplayModeButton(),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
-
-                  // --- Floating Lotus (Visible when expanded/animating) ---
-                  if (t <= 0.95)
-                    Positioned(
-                      top: currentLotusTop,
-                      left: currentLotusLeft,
-                      child: GestureDetector(
-                        onTap: MediaQuery.of(context).size.width > 600
-                            ? null
-                            : () {
-                                if (context.canPop()) {
-                                  context.pop();
-                                } else {
-                                  context.go('/');
-                                }
-                              },
-                        child: Hero(
-                          tag: 'blueLotusHero',
-                          flightShuttleBuilder:
-                              (
-                                flightContext,
-                                animation,
-                                flightDirection,
-                                fromHeroContext,
-                                toHeroContext,
-                              ) {
-                                final rotationAnimation = animation.drive(
-                                  Tween<double>(begin: 0.0, end: 1.0),
-                                );
-                                return RotationTransition(
-                                  turns: rotationAnimation,
-                                  child: (toHeroContext.widget as Hero).child,
-                                );
-                              },
-                          child: Image.asset(
-                            'assets/images/lotus_blue12.png',
-                            height: currentLotusSize,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -944,26 +836,25 @@ class _SpeakerHeader extends StatelessWidget {
     // So we just use that.
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-      // Use a Column to stack the emblem and text vertically
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Conditionally show the emblem only if a path exists
           if (emblemPath != null) ...[
             Image.asset(
               emblemPath,
-              height: 50, // Adjust the size of the emblem as needed
+              height: 50,
             ),
-            const SizedBox(height: 8), // Adds a little space
+            const SizedBox(width: 12),
           ],
-
-          // The original speaker text
-          Text(
-            localizedSpeaker, // Using full localized string
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.secondary,
-              fontWeight: FontWeight.bold,
+          Flexible(
+            child: Text(
+              localizedSpeaker,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Theme.of(context).colorScheme.secondary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
