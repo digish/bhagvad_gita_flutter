@@ -730,104 +730,208 @@ class FullShlokaCard extends StatelessWidget {
                     );
                   },
                 ),
-                if (config.showAnvay ||
-                    config.showBhavarth ||
-                    config.showSeparator)
-                  config.spacingCompact
-                      ? const SizedBox(height: 5)
-                      : const SizedBox(height: 10),
-                if (config.showSeparator)
-                  Center(
-                    child: SizedBox(
-                      width: 150, // Constrain the width to make it smaller
-                      child: isLightTheme
-                          ? ColorFiltered(
-                              colorFilter: ColorFilter.mode(
-                                Colors.grey[700]!,
-                                BlendMode.srcIn,
-                              ),
-                              child: Image.asset(
-                                'assets/images/line_seperator.png',
-                              ),
-                            )
-                          : Image.asset('assets/images/line_seperator.png'),
-                    ),
-                  ),
+                if (config.showAnvay || config.showBhavarth)
+                  SizedBox(height: continuous ? 14 : (config.spacingCompact ? 5 : 10)),
 
-                if (config.showSeparator)
-                  config.spacingCompact
-                      ? const SizedBox(height: 5)
-                      : const SizedBox(height: 10),
-                if (config.showAnvay && shloka.anvay.isNotEmpty) ...[
-                  Center(
-                    child: Text(
-                      StaticData.localizeTerm(
-                        'anvay',
-                        Provider.of<SettingsProvider>(context).script,
-                      ),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ),
-                  config.spacingCompact
-                      ? const SizedBox(height: 4)
-                      : const SizedBox(height: 8),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          children: formatItalicText(
-                            shloka.anvay,
-                            TextStyle(
-                              // The base style for Anvay
-                              fontSize:
-                                  config.baseFontSize, // Use the new property
-                              fontStyle: FontStyle.italic, // Italic for Anvay
-                              color: secondaryTextColor,
-                              fontFamily: 'NotoSerif',
-                              height: 1.6,
-                            ),
-                            constraints.maxWidth,
-                          ),
+                if (continuous &&
+                    (config.showAnvay || config.showBhavarth)) ...[
+                  // Expanded Parayan: no labels / lotus — verse-like body text.
+                  Builder(
+                    builder: (context) {
+                      const leftInset = 16.0;
+                      const rightInset = 56.0;
+                      final meaningSize = (config.baseFontSize - 2).clamp(
+                        12.0,
+                        40.0,
+                      );
+                      final anvayColor = isLightTheme
+                          ? const Color(0xFF3F4A6B) // muted slate-indigo
+                          : const Color(0xFFB8C0D8);
+                      final tikaColor = isLightTheme
+                          ? const Color(0xFF6B4E3D) // warm manuscript brown
+                          : const Color(0xFFD2B48C);
+                      final ruleColor = isLightTheme
+                          ? const Color(0xFFB8860B).withValues(alpha: 0.35)
+                          : const Color(0xFFFFD700).withValues(alpha: 0.35);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          left: leftInset,
+                          right: rightInset,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (config.showAnvay && shloka.anvay.isNotEmpty)
+                              LayoutBuilder(
+                                builder: (context, meaningConstraints) {
+                                  final anvayStyle = TextStyle(
+                                    fontFamily: 'NotoSerif',
+                                    fontSize: meaningSize,
+                                    fontStyle: FontStyle.italic,
+                                    color: anvayColor,
+                                    height: 1.55,
+                                    letterSpacing: 0.2,
+                                  );
+                                  final maxW = meaningConstraints.maxWidth
+                                      .clamp(120.0, 1200.0);
+                                  final indent =
+                                      (meaningSize * 1.35).clamp(18.0, 36.0);
+                                  final lineWidgets = <Widget>[];
+                                  for (final logical
+                                      in KaraokeTextDisplay.displayLinesFromRaw(
+                                    shloka.anvay,
+                                  )) {
+                                    final parts = FullShlokaCard.wrapVerseLine(
+                                      logical,
+                                      anvayStyle,
+                                      maxW,
+                                    );
+                                    for (var i = 0; i < parts.length; i++) {
+                                      lineWidgets.add(
+                                        Padding(
+                                          padding: EdgeInsets.only(
+                                            left: i == 0 ? 0.0 : indent,
+                                          ),
+                                          child: Text(
+                                            parts[i],
+                                            textAlign: TextAlign.left,
+                                            softWrap: false,
+                                            style: anvayStyle,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: lineWidgets,
+                                  );
+                                },
+                              ),
+                            if (config.showAnvay &&
+                                shloka.anvay.isNotEmpty &&
+                                config.showBhavarth &&
+                                shloka.bhavarth.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 12,
+                                width: double.infinity,
+                                child: CustomPaint(
+                                  painter: _MeaningRulePainter(color: ruleColor),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            if (config.showBhavarth &&
+                                shloka.bhavarth.isNotEmpty)
+                              Text(
+                                shloka.bhavarth.trim(),
+                                textAlign: TextAlign.left,
+                                style: TextStyle(
+                                  fontFamily: 'NotoSerif',
+                                  fontSize: meaningSize,
+                                  fontStyle: FontStyle.normal,
+                                  color: tikaColor,
+                                  height: 1.55,
+                                  letterSpacing: 0.15,
+                                ),
+                              ),
+                          ],
                         ),
                       );
                     },
                   ),
-                  config.spacingCompact
-                      ? const SizedBox(height: 5)
-                      : const SizedBox(height: 10),
-                ],
-                if (config.showBhavarth && shloka.bhavarth.isNotEmpty) ...[
-                  Center(
-                    child: Text(
-                      StaticData.localizeTerm(
-                        'tika',
-                        Provider.of<SettingsProvider>(context).script,
-                      ),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
+                ] else ...[
+                  if (config.showSeparator)
+                    Center(
+                      child: SizedBox(
+                        width: 150,
+                        child: isLightTheme
+                            ? ColorFiltered(
+                                colorFilter: ColorFilter.mode(
+                                  Colors.grey[700]!,
+                                  BlendMode.srcIn,
+                                ),
+                                child: Image.asset(
+                                  'assets/images/line_seperator.png',
+                                ),
+                              )
+                            : Image.asset('assets/images/line_seperator.png'),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    shloka.bhavarth,
-                    style: TextStyle(
-                      fontSize:
-                          config.baseFontSize -
-                          4, // Keep bhavarth slightly smaller
-                      fontStyle: FontStyle.normal,
-                      color: secondaryTextColor,
-                      fontFamily: 'NotoSerif', // Consistent font family
-                      height: 1.5, // Improved line spacing for readability
+                  if (config.showSeparator)
+                    config.spacingCompact
+                        ? const SizedBox(height: 5)
+                        : const SizedBox(height: 10),
+                  if (config.showAnvay && shloka.anvay.isNotEmpty) ...[
+                    Center(
+                      child: Text(
+                        StaticData.localizeTerm(
+                          'anvay',
+                          Provider.of<SettingsProvider>(context).script,
+                        ),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: accentColor,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
                     ),
-                  ),
+                    config.spacingCompact
+                        ? const SizedBox(height: 4)
+                        : const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            children: formatItalicText(
+                              shloka.anvay,
+                              TextStyle(
+                                fontSize: config.baseFontSize,
+                                fontStyle: FontStyle.italic,
+                                color: secondaryTextColor,
+                                fontFamily: 'NotoSerif',
+                                height: 1.6,
+                              ),
+                              constraints.maxWidth,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    config.spacingCompact
+                        ? const SizedBox(height: 5)
+                        : const SizedBox(height: 10),
+                  ],
+                  if (config.showBhavarth && shloka.bhavarth.isNotEmpty) ...[
+                    Center(
+                      child: Text(
+                        StaticData.localizeTerm(
+                          'tika',
+                          Provider.of<SettingsProvider>(context).script,
+                        ),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: accentColor,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      shloka.bhavarth,
+                      style: TextStyle(
+                        fontSize: config.baseFontSize - 4,
+                        fontStyle: FontStyle.normal,
+                        color: secondaryTextColor,
+                        fontFamily: 'NotoSerif',
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ],
         ],
       ),
@@ -1317,4 +1421,45 @@ class FullShlokaCardConfig {
       continuousReading: continuousReading ?? this.continuousReading,
     );
   }
+}
+
+/// Subtle hairline + diamond between anvay and tika on expanded Parayan cards.
+class _MeaningRulePainter extends CustomPainter {
+  final Color color;
+
+  _MeaningRulePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width < 12) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final midY = size.height / 2;
+    final midX = size.width / 2;
+    const diamond = 3.0;
+    const gap = 6.0;
+
+    canvas.drawLine(Offset(0, midY), Offset(midX - diamond - gap, midY), paint);
+    canvas.drawLine(
+      Offset(midX + diamond + gap, midY),
+      Offset(size.width, midY),
+      paint,
+    );
+
+    final path = Path()
+      ..moveTo(midX, midY - diamond)
+      ..lineTo(midX + diamond, midY)
+      ..lineTo(midX, midY + diamond)
+      ..lineTo(midX - diamond, midY)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MeaningRulePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

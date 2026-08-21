@@ -30,14 +30,8 @@ import '../widgets/responsive_wrapper.dart';
 import '../widgets/font_size_control.dart';
 import '../theme/app_colors.dart';
 
-// --- NEW: Enum to manage the content display modes ---
-enum ParayanDisplayMode { shlokOnly, shlokAndAnvay, all }
-
-/// Expanded header band below the status bar (glass island + docked lotus).
-const double _kParayanExpandedExtra = 120.0;
-
-/// Collapsed header band below the status bar.
-const double _kParayanCollapsedExtra = 108.0;
+/// Compact top chrome below the status bar (back button only).
+const double _kParayanChromeExtra = 48.0;
 
 /// Right inset used where chrome must clear the floating [ChapterSeekRail]
 /// (header / action island). The shloka list itself stays full-width.
@@ -46,14 +40,11 @@ const double _kParayanRailInset = 72.0;
 /// Viewport fraction for the reading focus line (cursor / card center target).
 const double _kParayanFocusLine = 0.40;
 
-/// Sticky speaker band below the glass header.
+/// Sticky speaker band below the top chrome.
 const double _kParayanStickySpeakerHeight = 44.0;
 
-double _parayanExpandedHeaderHeight(BuildContext context) =>
-    MediaQuery.of(context).padding.top + _kParayanExpandedExtra;
-
-double _parayanCollapsedHeaderHeight(BuildContext context) =>
-    MediaQuery.of(context).padding.top + _kParayanCollapsedExtra;
+double _parayanChromeHeight(BuildContext context) =>
+    MediaQuery.of(context).padding.top + _kParayanChromeExtra;
 
 /// Emblem asset for a speaker name (Parayan headers / sticky bar).
 String? _parayanSpeakerEmblemPath(String speakerName) {
@@ -152,8 +143,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
 
-  ParayanDisplayMode _displayMode = ParayanDisplayMode.shlokOnly;
-
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
   final ValueNotifier<String> _currentPositionLabelNotifier = ValueNotifier(
@@ -168,6 +157,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
   int? _selectedIndex;
   bool _actionsVisible = false;
   bool _isSelectingCard = false;
+
+  /// Remember expand/collapse of anvay+translation across shloka selection.
+  bool _meaningsExpanded = false;
 
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
@@ -386,55 +378,21 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // --- NEW: Determine card configuration based on display mode ---
-              final FullShlokaCardConfig cardConfig;
-              switch (_displayMode) {
-                case ParayanDisplayMode.shlokOnly:
-                  cardConfig = FullShlokaCardConfig(
-                    baseFontSize: settingsProvider.fontSize,
-                    showAnvay: false,
-                    showBhavarth: false,
-                    showSeparator: false,
-                    showActions: false,
-                    showSpeaker: false,
-                    showColoredCard: false,
-                    showEmblem: false,
-                    showShlokIndex: true,
-                    spacingCompact: true,
-                    continuousReading: true,
-                  );
-                  break;
-                case ParayanDisplayMode.shlokAndAnvay:
-                  cardConfig = FullShlokaCardConfig(
-                    baseFontSize: settingsProvider.fontSize,
-                    showAnvay: true,
-                    showBhavarth: false,
-                    showSeparator: true,
-                    showActions: false,
-                    showSpeaker: false,
-                    showColoredCard: false,
-                    showEmblem: false,
-                    showShlokIndex: true,
-                    spacingCompact: true,
-                    continuousReading: true,
-                  );
-                  break;
-                case ParayanDisplayMode.all:
-                  cardConfig = FullShlokaCardConfig(
-                    baseFontSize: settingsProvider.fontSize,
-                    showAnvay: true,
-                    showBhavarth: true,
-                    showSeparator: true,
-                    showActions: false,
-                    showSpeaker: false,
-                    showColoredCard: false,
-                    showEmblem: false,
-                    showShlokIndex: true,
-                    spacingCompact: true,
-                    continuousReading: true,
-                  );
-                  break;
-              }
+              // Continuous reading: shlok only. Anvay / tika expand under the
+              // selected card after tap.
+              final cardConfig = FullShlokaCardConfig(
+                baseFontSize: settingsProvider.fontSize,
+                showAnvay: false,
+                showBhavarth: false,
+                showSeparator: false,
+                showActions: false,
+                showSpeaker: false,
+                showColoredCard: false,
+                showEmblem: false,
+                showShlokIndex: true,
+                spacingCompact: true,
+                continuousReading: true,
+              );
 
               final shlokas = provider.shlokas;
               final audio = Provider.of<AudioProvider>(context);
@@ -455,14 +413,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
-                    top: _parayanExpandedHeaderHeight(context) +
+                    top: _parayanChromeHeight(context) +
                         _kParayanStickySpeakerHeight,
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
                     // Full-width cards — seek rail floats on top, does not inset the list.
                     right: MediaQuery.of(context).padding.right,
-                    bottom: miniPlayerVisible ? 100.0 : 16.0,
+                    bottom: miniPlayerVisible ? 148.0 : 64.0,
                   ),
                   itemBuilder: (context, index) {
                     final shloka = shlokas[index];
@@ -514,6 +472,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             spacingCompact: true,
                             showActions: false,
                             continuousReading: true,
+                            // Meanings follow the remembered expand state.
+                            showAnvay:
+                                _selectedIndex == index && _meaningsExpanded,
+                            showBhavarth:
+                                _selectedIndex == index && _meaningsExpanded,
+                            showSeparator: false,
                             isLightTheme:
                                 Theme.of(context).brightness ==
                                 Brightness.light,
@@ -548,13 +512,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
               return ValueListenableBuilder<Iterable<ItemPosition>>(
                 valueListenable: _itemPositionsListener.itemPositions,
                 builder: (context, positions, _) {
-                  bool isAtTop =
-                      positions.isEmpty ||
-                      (positions.first.index == 0 &&
-                          positions.first.itemLeadingEdge >= 0);
-                  final double topPadding = isAtTop
-                      ? _parayanExpandedHeaderHeight(context)
-                      : _parayanCollapsedHeaderHeight(context);
+                  final topPadding = _parayanChromeHeight(context);
                   final screenH = MediaQuery.of(context).size.height;
                   final stickyFrac =
                       (topPadding + _kParayanStickySpeakerHeight) / screenH;
@@ -590,15 +548,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
               );
             },
           ),
-          // --- Animating Header Layer ---
+          // Compact chrome: back only
           Positioned(
             left: MediaQuery.of(context).padding.left,
             top: 0,
-            right: 0,
-            child: AnimatingParayanHeader(
-              itemPositionsListener: _itemPositionsListener,
-              settingsProvider: settingsProvider,
-            ),
+            right: _kParayanRailInset,
+            height: _parayanChromeHeight(context),
+            child: const _ParayanChrome(),
           ),
           // Sticky speaker — pins only when the inline speaker line reaches it
           Consumer<ParayanProvider>(
@@ -609,13 +565,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
               return ValueListenableBuilder<Iterable<ItemPosition>>(
                 valueListenable: _itemPositionsListener.itemPositions,
                 builder: (context, positions, _) {
-                  final isAtTop =
-                      positions.isEmpty ||
-                      (positions.first.index == 0 &&
-                          positions.first.itemLeadingEdge >= 0);
-                  final headerH = isAtTop
-                      ? _parayanExpandedHeaderHeight(context)
-                      : _parayanCollapsedHeaderHeight(context);
+                  final headerH = _parayanChromeHeight(context);
                   final screenH = MediaQuery.of(context).size.height;
                   final stickyFrac =
                       (headerH + _kParayanStickySpeakerHeight) / screenH;
@@ -631,7 +581,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
                   return Positioned(
                     left: MediaQuery.of(context).padding.left,
-                    right: _kParayanRailInset,
+                    // Extend toward the verse column; leave room for the glass.
+                    right: ChapterSeekRail.glassRadius + 12,
                     top: headerH,
                     height: _kParayanStickySpeakerHeight,
                     child: _StickySpeakerBar(
@@ -703,6 +654,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             accentColor: accent,
                             shloka: targetShloka,
                             currentlyPlayingId: _currentlyPlayingId,
+                            meaningsExpanded: _meaningsExpanded,
+                            onToggleMeanings: () {
+                              setState(() {
+                                _meaningsExpanded = !_meaningsExpanded;
+                              });
+                            },
                             onPlayPause: () {
                               _audioProvider?.playChapter(
                                 shlokas: provider.shlokas,
@@ -718,47 +675,27 @@ class _ParayanScreenState extends State<ParayanScreen> {
               );
             },
           ),
+          // Font size — dedicated control at the bottom
+          Consumer<AudioProvider>(
+            builder: (context, audio, _) {
+              final miniPlayerVisible =
+                  audio.playbackState != PlaybackState.stopped &&
+                  audio.currentPlayingShlokaId != null;
+              final bottomSafe = MediaQuery.of(context).padding.bottom;
+              return Positioned(
+                left: 0,
+                right: _kParayanRailInset,
+                bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
+                child: Center(
+                  child: _ParayanFontSizeDock(
+                    settingsProvider: settingsProvider,
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
-    );
-  }
-
-  // --- NEW: Cycle button for display mode ---
-  void _cycleDisplayMode() {
-    setState(() {
-      final nextIndex =
-          (_displayMode.index + 1) % ParayanDisplayMode.values.length;
-      _displayMode = ParayanDisplayMode.values[nextIndex];
-    });
-  }
-
-  Widget _buildDisplayModeButton() {
-    IconData icon;
-    String tooltip;
-
-    switch (_displayMode) {
-      case ParayanDisplayMode.shlokOnly:
-        icon = Icons.article_outlined;
-        tooltip = 'Shlok Only';
-        break;
-      case ParayanDisplayMode.shlokAndAnvay:
-        icon = Icons.segment;
-        tooltip = 'Shlok & Anvay';
-        break;
-      case ParayanDisplayMode.all:
-        icon = Icons.view_headline;
-        tooltip = 'Show All';
-        break;
-    }
-
-    // Returning an IconButton for compact layout in the island
-    return IconButton(
-      onPressed: _cycleDisplayMode,
-      icon: Icon(icon, color: Theme.of(context).iconTheme.color),
-      tooltip: tooltip,
-      iconSize: 24,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(),
     );
   }
 }
@@ -819,350 +756,67 @@ class _FocusTrianglePainter extends CustomPainter {
       oldDelegate.color != color || oldDelegate.shadowColor != shadowColor;
 }
 
-// ✨ NEW: A dedicated StatefulWidget for the animating header.
-class AnimatingParayanHeader extends StatefulWidget {
-  final ItemPositionsListener itemPositionsListener;
-  final SettingsProvider settingsProvider;
-
-  const AnimatingParayanHeader({
-    super.key,
-    required this.itemPositionsListener,
-    required this.settingsProvider,
-  });
-
-  @override
-  State<AnimatingParayanHeader> createState() => _AnimatingParayanHeaderState();
-}
-
-class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-  String _currentLabel = 'अध्याय 1, श्लोक 1';
-  int _lastTopIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    // ✨ FIX: Initialize label correctly based on current script
-    // We can set the initial label directly without setState since we are in initState.
-    // However, we rely on Provider to get data. If provider is empty, it returns default.
-    // We wrapped _getLabel with try-catch and empty check.
-    _currentLabel = _getLabel(
-      0,
-    ); // Initialize with Chapter 1, Shloka 1 (index 0)
-    widget.itemPositionsListener.itemPositions.addListener(_scrollListener);
-  }
-
-  // ✨ REFACTORED: Helper to get localized label
-  String _getLabel(int index) {
-    if (!mounted) return _currentLabel;
-    try {
-      final parayanProvider = Provider.of<ParayanProvider>(
-        context,
-        listen: false,
-      );
-      if (parayanProvider.shlokas.isNotEmpty &&
-          index < parayanProvider.shlokas.length) {
-        final shloka = parayanProvider.shlokas[index];
-        final script = widget.settingsProvider.script;
-        final chapLabel = StaticData.getChapterLabel(script);
-        final chapNum = StaticData.localizeNumber(
-          int.tryParse(shloka.chapterNo) ?? 1,
-          script,
-        );
-        final shlokNum = StaticData.localizeNumber(
-          int.tryParse(shloka.shlokNo) ?? 1,
-          script,
-        );
-        // "Shloka" label localization - simple fallback
-        String shlokaLabel = 'Shloka';
-        if (script == 'gu')
-          shlokaLabel = 'શ્લોક';
-        else if (script == 'te')
-          shlokaLabel = 'శ్లోక';
-        else if (script == 'bn')
-          shlokaLabel = 'শ্লোক';
-        else if (script == 'hi' || script == 'dev' || script == 'mr')
-          shlokaLabel = 'श्लोक';
-
-        return '$chapLabel $chapNum, $shlokaLabel $shlokNum';
-      }
-    } catch (_) {}
-    return _currentLabel;
-  }
-
-  @override
-  void dispose() {
-    widget.itemPositionsListener.itemPositions.removeListener(_scrollListener);
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _scrollListener() {
-    final positions = widget.itemPositionsListener.itemPositions.value;
-    if (positions.isEmpty || !mounted) return;
-
-    // --- Trigger Logic ---
-    // Find the item with the smallest index.
-    final absoluteTopItem = positions.reduce(
-      (min, p) => p.index < min.index ? p : min,
-    );
-
-    // Calculate animation value based on scroll position
-    if (absoluteTopItem.index == 0) {
-      final viewportHeight = MediaQuery.of(context).size.height;
-
-      // The Y position of the first item's top edge
-      final itemY = absoluteTopItem.itemLeadingEdge * viewportHeight;
-
-      // Define the scroll range for the animation
-      // Start: Item is at its initial padded position (Expanded Header)
-      final startY = _parayanExpandedHeaderHeight(context);
-
-      // End: Item is at the bottom of the collapsed header (Collapsed Header)
-      final endY = _parayanCollapsedHeaderHeight(context);
-
-      // Calculate progress t: 0.0 at startY, 1.0 at endY
-      // As itemY goes down (scrolling up), t should go to 0? No, itemY goes UP when scrolling DOWN.
-      // Scrolling DOWN (content moves UP): itemY decreases.
-      // We want t to go 0 -> 1 as itemY goes startY -> endY.
-      final t = (startY - itemY) / (startY - endY);
-      _animationController.value = t.clamp(0.0, 1.0);
-    } else {
-      // If the first item is scrolled out of view, we are fully collapsed
-      _animationController.value = 1.0;
-    }
-
-    // --- Shloka Count Logic ---
-    // ✨ FIX: Find the first item that is visible *below* the header.
-    final double headerHeight = lerpDouble(
-      _parayanExpandedHeaderHeight(context),
-      _parayanCollapsedHeaderHeight(context),
-      _animationController.value,
-    )!;
-    final visibleBelowHeader = positions.where(
-      (p) => p.itemTrailingEdge > headerHeight,
-    );
-
-    // ✨ FIX: Check if any items are visible below the header before reducing.
-    final ItemPosition topVisibleItem = visibleBelowHeader.isNotEmpty
-        ? visibleBelowHeader.reduce(
-            (min, p) => p.itemLeadingEdge < min.itemLeadingEdge ? p : min,
-          )
-        : absoluteTopItem; // Fallback to the absolute top item if none are fully visible yet.
-
-    if (topVisibleItem.index != _lastTopIndex) {
-      final newLabel = _getLabel(topVisibleItem.index);
-      // Only call setState if label or index actually changed
-      if (_currentLabel != newLabel || _lastTopIndex != topVisibleItem.index) {
-        setState(() {
-          _currentLabel = newLabel;
-          _lastTopIndex = topVisibleItem.index;
-        });
-      }
-    }
-  }
+/// Minimal top chrome: independent back button.
+class _ParayanChrome extends StatelessWidget {
+  const _ParayanChrome();
 
   @override
   Widget build(BuildContext context) {
-    final double maxHeaderHeight = _parayanExpandedHeaderHeight(context);
-    final double minHeaderHeight = _parayanCollapsedHeaderHeight(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor =
+        Theme.of(context).iconTheme.color ??
+        (isLight ? Colors.black87 : Colors.white);
 
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        final t = _animationController.value;
-        final headerHeight = lerpDouble(maxHeaderHeight, minHeaderHeight, t)!;
+    return SafeArea(
+      bottom: false,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: MediaQuery.of(context).size.width <= 600
+            ? IconButton(
+                tooltip: 'Back',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+                icon: Icon(Icons.arrow_back_ios_new, size: 20, color: iconColor),
+              )
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
 
-        return SizedBox(
-          height: headerHeight,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // --- Glass island with docked lotus (always inside the bar) ---
-              Positioned(
-                bottom: 12,
-                left: 0,
-                right: _kParayanRailInset,
-                child: Center(
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      maxWidth: 700,
-                      minWidth: 300,
-                    ),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? Colors.white.withValues(alpha: 0.4)
-                          : Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? Colors.white.withValues(alpha: 0.4)
-                            : Colors.white12,
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 16,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10.0,
-                            vertical: 8.0,
-                          ),
-                          child: Row(
-                            children: [
-                              // Back + docked lotus
-                              GestureDetector(
-                                onTap: MediaQuery.of(context).size.width > 600
-                                    ? null
-                                    : () {
-                                        if (context.canPop()) {
-                                          context.pop();
-                                        } else {
-                                          context.go('/');
-                                        }
-                                      },
-                                behavior: HitTestBehavior.opaque,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (MediaQuery.of(context).size.width <=
-                                        600) ...[
-                                      const Icon(
-                                        Icons.arrow_back_ios_new,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    Hero(
-                                      tag: 'blueLotusHero',
-                                      flightShuttleBuilder:
-                                          (
-                                            flightContext,
-                                            animation,
-                                            flightDirection,
-                                            fromHeroContext,
-                                            toHeroContext,
-                                          ) {
-                                            final rotationAnimation = animation
-                                                .drive(
-                                                  Tween<double>(
-                                                    begin: 0.0,
-                                                    end: 1.0,
-                                                  ),
-                                                );
-                                            return RotationTransition(
-                                              turns: rotationAnimation,
-                                              child:
-                                                  (toHeroContext.widget as Hero)
-                                                      .child,
-                                            );
-                                          },
-                                      child: Image.asset(
-                                        'assets/images/lotus_blue12.png',
-                                        width: 44,
-                                        height: 44,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+/// Bottom font-size dock for Parayan reading.
+class _ParayanFontSizeDock extends StatelessWidget {
+  final SettingsProvider settingsProvider;
 
-                              const SizedBox(width: 8),
+  const _ParayanFontSizeDock({required this.settingsProvider});
 
-                              // Title + controls
-                              Expanded(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      _currentLabel,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            height: 1.2,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    SizedBox(
-                                      height: 40,
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            FontSizeControl(
-                                              currentSize: widget
-                                                  .settingsProvider
-                                                  .fontSize,
-                                              onSizeChanged: (newSize) => widget
-                                                  .settingsProvider
-                                                  .setFontSize(newSize),
-                                              color:
-                                                  Theme.of(context)
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.color ??
-                                                  Colors.black87,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              width: 1,
-                                              height: 20,
-                                              color: Theme.of(
-                                                context,
-                                              ).dividerColor,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            (context
-                                                    .findAncestorStateOfType<
-                                                      _ParayanScreenState
-                                                    >()!)
-                                                ._buildDisplayModeButton(),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor =
+        Theme.of(context).iconTheme.color ??
+        (isLight ? Colors.black87 : Colors.white);
+
+    return Material(
+      elevation: 2,
+      shadowColor: Colors.black26,
+      color: isLight
+          ? Colors.white.withValues(alpha: 0.72)
+          : Colors.black.withValues(alpha: 0.55),
+      borderRadius: BorderRadius.circular(22),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: FontSizeControl(
+          currentSize: settingsProvider.fontSize,
+          onSizeChanged: settingsProvider.setFontSize,
+          color: iconColor,
+        ),
+      ),
     );
   }
 }
@@ -1262,7 +916,10 @@ class _StickySpeakerBar extends StatelessWidget {
     final emblemSize = (fontSize * 1.1).clamp(18.0, 28.0);
     final labelSize = (fontSize * 0.72).clamp(13.0, 22.0);
 
-    return ClipRect(
+    return ClipRRect(
+      borderRadius: const BorderRadius.horizontal(
+        right: Radius.circular(22),
+      ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: DecoratedBox(
@@ -1270,16 +927,17 @@ class _StickySpeakerBar extends StatelessWidget {
             color: isLight
                 ? Colors.white.withValues(alpha: 0.55)
                 : Colors.black.withValues(alpha: 0.55),
-            border: Border(
-              bottom: BorderSide(
-                color: isLight
-                    ? Colors.black.withValues(alpha: 0.06)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(22),
+            ),
+            border: Border.all(
+              color: isLight
+                  ? Colors.black.withValues(alpha: 0.06)
+                  : Colors.white.withValues(alpha: 0.08),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOut,

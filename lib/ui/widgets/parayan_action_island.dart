@@ -41,6 +41,8 @@ class ParayanActionIsland extends StatelessWidget {
   final bool vertical;
   final bool accentBorder;
   final Color? accentColor;
+  final bool meaningsExpanded;
+  final VoidCallback? onToggleMeanings;
 
   const ParayanActionIsland({
     super.key,
@@ -51,6 +53,8 @@ class ParayanActionIsland extends StatelessWidget {
     this.vertical = false,
     this.accentBorder = false,
     this.accentColor,
+    this.meaningsExpanded = false,
+    this.onToggleMeanings,
   });
 
   @override
@@ -161,6 +165,17 @@ class ParayanActionIsland extends StatelessWidget {
                   : null,
             );
           },
+        ),
+        _IslandIconButton(
+          icon: meaningsExpanded
+              ? Icons.unfold_less
+              : Icons.unfold_more,
+          iconSize: iconSize,
+          enabled: enabled && onToggleMeanings != null,
+          color: meaningsExpanded
+              ? (accentColor ?? Theme.of(context).colorScheme.primary)
+              : null,
+          onPressed: enabled ? onToggleMeanings : null,
         ),
         Builder(
           builder: (btnContext) {
