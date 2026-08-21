@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -143,6 +144,65 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     if (lift != _lotusLift.value) {
       _lotusLift.value = lift;
     }
+  }
+
+  /// Sync lotus overlay to the current scroll offset (no motion).
+  void _ensureLotusLiftSynced() {
+    if (_homeScrollController.hasClients) {
+      _lotusLift.value =
+          _homeScrollController.offset.clamp(0.0, double.infinity);
+    } else {
+      _lotusLift.value = 0.0;
+    }
+  }
+
+  /// Ease home scroll (and lotus lift) back to rest after theme / layout changes.
+  Future<void> _resetLotusScrollLift() async {
+    final gate = Completer<void>();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        if (!mounted) return;
+        final hasScroll = _homeScrollController.hasClients;
+        final offset = hasScroll ? _homeScrollController.offset : 0.0;
+
+        if (hasScroll && offset > 0.5) {
+          // Lotuses track scroll via listener — ease both down together.
+          await _homeScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 750),
+            curve: Curves.easeOutCubic,
+          );
+        } else if (_lotusLift.value > 0.5) {
+          // Scroll already at top but overlay lift is stale — ease lotuses down.
+          final start = _lotusLift.value;
+          final controller = AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 750),
+          );
+          final animation = CurvedAnimation(
+            parent: controller,
+            curve: Curves.easeOutCubic,
+          );
+          void tick() {
+            _lotusLift.value = start * (1.0 - animation.value);
+          }
+
+          animation.addListener(tick);
+          try {
+            await controller.forward();
+          } finally {
+            animation.removeListener(tick);
+            controller.dispose();
+          }
+        }
+        if (mounted) {
+          _lotusLift.value = 0.0;
+        }
+      } finally {
+        if (!gate.isCompleted) gate.complete();
+      }
+    });
+    return gate.future;
   }
 
   @override
@@ -422,6 +482,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
                   _revealCenter = Offset(buttonX, buttonY);
                   _isBackgroundRequested = settings.showBackground;
+                  _resetLotusScrollLift();
                   _revealController.forward(from: 0);
                 } else {
                   // Phone/Narrow layout - just sync state without animation if we can't determine source,
@@ -429,6 +490,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   // Ideally this case doesn't happen often as the FAB is the only changer,
                   // but if it did, we just update local state.
                   _isBackgroundRequested = settings.showBackground;
+                  _resetLotusScrollLift();
                 }
               } else if (!_revealController.isAnimating) {
                 // Ensure strict sync when idle
@@ -826,6 +888,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
                                     HapticFeedback.lightImpact();
                                     _captureThemeTogglePosition();
+                                    // Ease lotuses/content back to rest while revealing.
+                                    _resetLotusScrollLift();
                                     setState(() {
                                       _isBackgroundRequested =
                                           !settings.showBackground;
@@ -836,6 +900,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                       settings.setShowBackground(
                                         _isBackgroundRequested!,
                                       );
+                                      // Don't jump again — just heal any leftover stale lift.
+                                      _ensureLotusLiftSynced();
                                     });
                                   },
                                   child: Icon(
