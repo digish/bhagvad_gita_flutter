@@ -523,7 +523,7 @@ class SettingsProvider extends ChangeNotifier {
 
       // Set celebration message
       _lastSoulStatusMessage =
-          '${currentStatus.title} achieved! 🎉 You have 2 lifelines to protect your streak!';
+          'You reached ${currentStatus.title}! You now have 2 lifelines to protect your streak.';
       await prefs.setString(
         'last_soul_status_message',
         _lastSoulStatusMessage!,

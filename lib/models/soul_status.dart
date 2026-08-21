@@ -17,114 +17,116 @@ class SoulStatus {
     this.imageAssetName,
   });
 
+  /// Warm gold used for the day-1 spark icon and ring.
+  static const Color sparkGold = Color(0xFFFFD54F);
+
   static const List<SoulStatus> allMilestones = [
     SoulStatus(
-      title: 'Sacred Spark',
-      description: 'Your journey has begun. A tiny flame of curiosity is lit.',
-      icon: Icons.auto_awesome_outlined,
-      color: Colors.white24,
+      title: 'First Spark',
+      description: 'Your daily reading habit begins here.',
+      icon: Icons.flare,
+      color: sparkGold,
       threshold: 0,
     ),
     SoulStatus(
-      title: 'Seeking Soul',
-      description: 'Three days of dedication! You are now a true Seeker.',
+      title: 'Warming Up',
+      description: 'Three days in. Keep showing up.',
       icon: Icons.explore,
       color: Colors.grey,
       threshold: 3,
       imageAssetName: 'seeking_soul.png',
     ),
     SoulStatus(
-      title: 'Awakening Soul',
-      description: 'One full week! Your soul is waking up to divine wisdom.',
+      title: 'In Rhythm',
+      description: 'A full week of returning to the text.',
       icon: Icons.wb_incandescent_outlined,
       color: Colors.blueAccent,
       threshold: 7,
       imageAssetName: 'awakening_soul.png',
     ),
     SoulStatus(
-      title: 'Steady Soul',
-      description: 'Two weeks of consistency. You are building inner strength.',
+      title: 'Steady Habit',
+      description: 'Two weeks of consistent practice.',
       icon: Icons.self_improvement,
       color: Colors.cyan,
       threshold: 14,
       imageAssetName: 'steady_soul.png',
     ),
     SoulStatus(
-      title: 'Faithful Follower',
-      description:
-          '21 days of focus—a habit is born! You are walking the path.',
+      title: 'Habit Formed',
+      description: 'Twenty-one days—your rhythm is settling in.',
       icon: Icons.volunteer_activism,
       color: Colors.green,
       threshold: 21,
       imageAssetName: 'faithful_follower.png',
     ),
     SoulStatus(
-      title: 'Devoted Disciple',
-      description: 'One month of evolution. Your devotion shines bright.',
+      title: 'One Month In',
+      description: 'A month of daily practice.',
       icon: Icons.favorite,
       color: Colors.teal,
       threshold: 30,
       imageAssetName: 'devoted_disciple.png',
     ),
     SoulStatus(
-      title: 'Radiant Student',
-      description: '50 days of light! You are glowing with Gita wisdom.',
+      title: 'Deepening',
+      description: 'Fifty days of returning to the Gita.',
       icon: Icons.school,
       color: Colors.amber,
       threshold: 50,
       imageAssetName: 'radiant_student.png',
     ),
     SoulStatus(
-      title: 'Resilient Seeker',
-      description: '75 days of peace. Maya cannot disturb your focus.',
+      title: 'Anchored',
+      description: 'Seventy-five days of steady attention.',
       icon: Icons.shield,
       color: Colors.orange,
       threshold: 75,
       imageAssetName: 'resilient_seeker.png',
     ),
     SoulStatus(
-      title: 'Wise Soul',
-      description: '100 days of wisdom. Your heart understands the dharma.',
+      title: 'Century Mark',
+      description: 'One hundred days of practice.',
       icon: Icons.psychology,
       color: Colors.deepOrange,
       threshold: 100,
       imageAssetName: 'wise_soul.png',
     ),
     SoulStatus(
-      title: 'Tranquil Heart',
-      description: '150 days of stillness. You have found the spring within.',
+      title: 'Quiet Consistency',
+      description: 'One hundred fifty days, still showing up.',
       icon: Icons.spa,
       color: Colors.indigo,
       threshold: 150,
       imageAssetName: 'tranquil_heart.png',
     ),
     SoulStatus(
-      title: 'Divine Instrument',
-      description: '200 days! You are a vessel for timeless truths.',
+      title: 'Long Commitment',
+      description: 'Two hundred days of daily return.',
       icon: Icons.music_note,
       color: Colors.purple,
       threshold: 200,
       imageAssetName: 'divine_instrument.png',
     ),
     SoulStatus(
-      title: 'Evolved Essence',
-      description: '300 days of evolution. Your essence is pure and light.',
+      title: 'Near a Year',
+      description: 'Three hundred days of daily practice.',
       icon: Icons.auto_awesome,
       color: Colors.deepPurple,
       threshold: 300,
       imageAssetName: 'evolved_essence.png',
     ),
     SoulStatus(
-      title: 'Master of Self',
-      description: 'Approaching one year. You have mastered your inner world.',
+      title: 'Almost There',
+      description: 'Approaching a full year of practice.',
       icon: Icons.verified_user,
       color: Colors.pink,
       threshold: 330,
       imageAssetName: 'master_of_self.png',
     ),
     SoulStatus(
-      title: 'Paramahansa',
-      description: 'A full year of evolution! Divine light, absolute Zen.',
+      title: 'Full Year',
+      description: 'Three hundred sixty-five days of daily practice.',
       icon: Icons.waves,
       color: Colors.amberAccent,
       threshold: 365,
@@ -146,11 +148,11 @@ class SoulStatus {
 
   static String getDropMessage(int prevStreak) {
     if (prevStreak >= 30) {
-      return 'Maya blinked, and a day was missed. But don\'t worry—the wisdom you\'ve gained is yours forever. Krishna is walking with you again.';
+      return 'You missed a day, so your streak reset. Your past progress still counts—start again whenever you\'re ready.';
     } else if (prevStreak >= 7) {
-      return 'A brief pause in the journey. Come back to the light, your soul misses the shlokas! Every moment is a new awakening.';
+      return 'You missed a day and your streak reset. Come back tomorrow and build it up again.';
     } else {
-      return 'The path is still right here. Take a breath and start again; your spiritual evolution is a marathon, not a sprint.';
+      return 'Your streak reset after a missed day. No worries—you can start fresh today.';
     }
   }
 }

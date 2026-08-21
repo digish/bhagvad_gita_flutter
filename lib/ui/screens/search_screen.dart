@@ -273,7 +273,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           children: [
             Icon(Icons.sync_problem, color: Colors.amberAccent),
             SizedBox(width: 12),
-            Text('Maya Check!', style: TextStyle(color: Colors.white)),
+            Text('Streak update', style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Text(
@@ -287,7 +287,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               Navigator.pop(context);
             },
             child: const Text(
-              'I am back on the path',
+              'Got it',
               style: TextStyle(color: Colors.amberAccent),
             ),
           ),
@@ -666,9 +666,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           height: shouldShowResults
                                               ? 16
                                               : (settings.showBackground
-                                                    ? 260
+                                                    // Tighter under lotuses; chip sits in this gap when shown
+                                                    ? 190
                                                     : 60),
                                         ),
+                                        if (!shouldShowResults &&
+                                            settings.streakSystemEnabled)
+                                          _buildSoulStatusChip(settings),
                                         _buildSearchBar(provider),
                                         // ✨ AI Suggestions
                                         // Only show if focused, in AI mode, AND text field is empty
@@ -732,8 +736,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                             ),
                                           ),
                                         if (!shouldShowResults) ...[
-                                          if (settings.streakSystemEnabled)
-                                            _buildSoulStatusChip(settings),
                                           if (!settings.reminderEnabled)
                                             _buildReminderNudge(settings),
                                           if (settings.showRandomShloka)
@@ -1371,79 +1373,72 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final isSimpleLight =
         !settings.showBackground &&
         Theme.of(context).brightness == Brightness.light;
+    final textColor = isSimpleLight ? Colors.brown.shade900 : Colors.white;
+    final mutedColor = isSimpleLight
+        ? Colors.brown.shade600
+        : Colors.white70;
+    final bool usesImage = status.imageAssetName != null;
+    // Match DecorativeForeground lotus size (phone 100 / tablet 150).
+    final bool isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+    final double emblemSize = isTablet ? 150.0 : 100.0;
+    final double innerSize = emblemSize * 0.62;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
-      child: GestureDetector(
-        onTap: () => _showEvolutionRoadmap(context, settings),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSimpleLight
-                ? Colors.white.withOpacity(0.6)
-                : Colors.black.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: status.color.withOpacity(0.5),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: status.color.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Row(
+      padding: const EdgeInsets.only(bottom: 18, right: 4),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: GestureDetector(
+          onTap: () => _showEvolutionRoadmap(context, settings),
+          behavior: HitTestBehavior.opaque,
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 24,
-                height: 24,
-                child: status.imageAssetName != null
-                    ? Image.asset(
-                        'assets/soul_evolution/${status.imageAssetName}',
-                        fit: BoxFit.contain,
-                      )
-                    : Icon(status.icon, color: status.color, size: 20),
+                width: emblemSize,
+                height: emblemSize,
+                child: Center(
+                  child: usesImage
+                      ? Image.asset(
+                          'assets/soul_evolution/${status.imageAssetName}',
+                          width: innerSize,
+                          height: innerSize,
+                          fit: BoxFit.contain,
+                        )
+                      : Icon(
+                          status.icon,
+                          color: SoulStatus.sparkGold,
+                          size: innerSize,
+                        ),
+                ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    status.title,
-                    style: TextStyle(
-                      color: isSimpleLight
-                          ? Colors.brown.shade900
-                          : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${displayStreak} Day Streak',
-                    style: TextStyle(
-                      color: isSimpleLight
-                          ? Colors.brown.shade700
-                          : Colors.white60,
-                      fontSize: 10,
-                    ),
-                  ),
-                  if (kDebugMode && _debugStreakOverride != null)
-                    const Text(
-                      'DEBUG MODE',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                status.title,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  height: 1.1,
+                ),
               ),
+              Text(
+                '${displayStreak}d',
+                style: TextStyle(
+                  color: mutedColor,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  height: 1.1,
+                ),
+              ),
+              if (kDebugMode && _debugStreakOverride != null)
+                const Text(
+                  'DEBUG',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 7,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             ],
           ),
         ),
