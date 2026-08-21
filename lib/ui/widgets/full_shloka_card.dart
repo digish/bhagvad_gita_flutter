@@ -562,14 +562,19 @@ class FullShlokaCard extends StatelessWidget {
                                     : (config.spacingCompact ? 8 : 16),
                               ),
 
-                            // 3. Sanskrit Text — continuous: full-width verse;
-                            // faint Orbitron # behind text, scaled near focus line.
+                            // 3. Continuous list body.
+                            // Expanded: always shloka (+ anvay/tika below).
+                            // Collapsed: shloka / anvay / translation from toggle.
                             if (continuous)
                               _ContinuousVerseWithNumber(
                                 shloka: shloka,
                                 config: config,
                                 primaryTextColor: primaryTextColor,
                                 constraints: constraints,
+                                collapsedBody: (config.showAnvay ||
+                                        config.showBhavarth)
+                                    ? ContinuousListBody.shloka
+                                    : config.listBodyMode,
                               )
                             else
                               KaraokeTextDisplay(
@@ -1173,17 +1178,19 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
   final FullShlokaCardConfig config;
   final Color primaryTextColor;
   final BoxConstraints constraints;
+  /// Collapsed list primary body (ignored when expanded meanings are shown).
+  final ContinuousListBody collapsedBody;
 
   const _ContinuousVerseWithNumber({
     required this.shloka,
     required this.config,
     required this.primaryTextColor,
     required this.constraints,
+    this.collapsedBody = ContinuousListBody.shloka,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Left-aligned reading band; leave room on the right for Orbitron #.
     const leftInset = 16.0;
     const rightInset = 56.0;
     final verseMaxWidth =
@@ -1192,88 +1199,67 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
     final base = config.baseFontSize;
     final lineHeight = base >= 24 ? 1.55 : (base >= 20 ? 1.65 : 1.75);
     final letterSpacing = base >= 24 ? 0.15 : 0.35;
-    final isFourLine = shloka.shlok.contains('<C>');
     final indent = (base * 1.35).clamp(18.0, 36.0);
 
-    // Strong hue split so 2-line vs 4-line reads instantly on lavender:
-    // ink charcoal vs deep plum (karaoke uses a matching gold below).
-    final verseColor = isFourLine
-        ? (config.isLightTheme
-              ? const Color(0xFF6B21A8) // purple-800
-              : const Color(0xFFD8B4FE)) // purple-300
-        : (config.isLightTheme
-              ? const Color(0xFF1C1917) // warm near-black
-              : primaryTextColor);
-    final karaokeHighlight = isFourLine
-        ? const Color(0xFFFACC15) // yellow-400 — pops on plum
-        : const Color(0xFFCA8A04); // yellow-600 — readable on ink
-
-    final verseStyle = TextStyle(
-      fontSize: base,
-      fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
-      color: verseColor,
-      fontFamily: 'NotoSerif',
-      height: lineHeight,
-      letterSpacing: letterSpacing,
-      fontWeight: isFourLine ? FontWeight.w500 : FontWeight.w400,
-      // Soft lift off the lavender gradient — keep subtle so Devanagari stays crisp.
-      shadows: config.isLightTheme
-          ? const [
-              Shadow(
-                color: Color(0x66FFFFFF),
-                blurRadius: 10,
-                offset: Offset(0, 0),
-              ),
-              Shadow(
-                color: Color(0x1A000000),
-                blurRadius: 4,
-                offset: Offset(0, 1.5),
-              ),
-            ]
-          : const [
-              Shadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-                offset: Offset(0, 1.5),
-              ),
-            ],
-    );
-
-    final logicalLines = KaraokeTextDisplay.displayLinesFromRaw(shloka.shlok);
-    final lineWidgets = <Widget>[];
-    for (final logical in logicalLines) {
-      final parts = FullShlokaCard.wrapVerseLine(
-        logical,
-        verseStyle,
-        verseMaxWidth,
+    final Widget verseBody;
+    if (collapsedBody == ContinuousListBody.translation) {
+      final tikaColor = config.isLightTheme
+          ? const Color(0xFF6B4E3D)
+          : const Color(0xFFD2B48C);
+      final verseStyle = TextStyle(
+        fontSize: base,
+        fontStyle: FontStyle.normal,
+        color: tikaColor,
+        fontFamily: 'NotoSerif',
+        height: lineHeight,
+        letterSpacing: letterSpacing,
       );
-      for (var i = 0; i < parts.length; i++) {
-        lineWidgets.add(
-          Padding(
-            // Continuations indent — natural manuscript-style wrap.
-            padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
-            child: Text(
-              parts[i],
-              textAlign: TextAlign.left,
-              softWrap: false,
-              style: verseStyle,
-            ),
-          ),
+      final text = shloka.bhavarth.trim().isEmpty
+          ? '—'
+          : shloka.bhavarth.trim();
+      verseBody = Padding(
+        padding: const EdgeInsets.only(left: leftInset, right: rightInset),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(text, textAlign: TextAlign.left, style: verseStyle),
+        ),
+      );
+    } else if (collapsedBody == ContinuousListBody.anvay) {
+      final anvayColor = config.isLightTheme
+          ? const Color(0xFF3F4A6B)
+          : const Color(0xFFB8C0D8);
+      final verseStyle = TextStyle(
+        fontSize: base,
+        fontStyle: FontStyle.italic,
+        color: anvayColor,
+        fontFamily: 'NotoSerif',
+        height: lineHeight,
+        letterSpacing: letterSpacing,
+      );
+      final raw = shloka.anvay.trim().isEmpty ? '—' : shloka.anvay;
+      final lineWidgets = <Widget>[];
+      for (final logical in KaraokeTextDisplay.displayLinesFromRaw(raw)) {
+        final parts = FullShlokaCard.wrapVerseLine(
+          logical,
+          verseStyle,
+          verseMaxWidth,
         );
+        for (var i = 0; i < parts.length; i++) {
+          lineWidgets.add(
+            Padding(
+              padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
+              child: Text(
+                parts[i],
+                textAlign: TextAlign.left,
+                softWrap: false,
+                style: verseStyle,
+              ),
+            ),
+          );
+        }
       }
-    }
-
-    final verse = Padding(
-      padding: const EdgeInsets.only(left: leftInset, right: rightInset),
-      child: KaraokeTextDisplay(
-        shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
-        originalText: shloka.shlok,
-        style: verseStyle,
-        textAlign: TextAlign.left,
-        highlightColor: karaokeHighlight,
-        wrapMaxWidth: verseMaxWidth,
-        continuationIndent: indent,
-        wrapLine: FullShlokaCard.wrapVerseLine,
+      verseBody = Padding(
+        padding: const EdgeInsets.only(left: leftInset, right: rightInset),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Column(
@@ -1281,22 +1267,100 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
             children: lineWidgets,
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      final isFourLine = shloka.shlok.contains('<C>');
+      final verseColor = isFourLine
+          ? (config.isLightTheme
+                ? const Color(0xFF6B21A8)
+                : const Color(0xFFD8B4FE))
+          : (config.isLightTheme
+                ? const Color(0xFF1C1917)
+                : primaryTextColor);
+      final karaokeHighlight = isFourLine
+          ? const Color(0xFFFACC15)
+          : const Color(0xFFCA8A04);
 
-    if (!config.showShlokIndex) return verse;
+      final verseStyle = TextStyle(
+        fontSize: base,
+        fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
+        color: verseColor,
+        fontFamily: 'NotoSerif',
+        height: lineHeight,
+        letterSpacing: letterSpacing,
+        fontWeight: isFourLine ? FontWeight.w500 : FontWeight.w400,
+        shadows: config.isLightTheme
+            ? const [
+                Shadow(
+                  color: Color(0x66FFFFFF),
+                  blurRadius: 10,
+                  offset: Offset(0, 0),
+                ),
+                Shadow(
+                  color: Color(0x1A000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 1.5),
+                ),
+              ]
+            : const [
+                Shadow(
+                  color: Color(0x66000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 1.5),
+                ),
+              ],
+      );
 
-    // Align with the circular glass column (rail overlays the right 72px).
-    // Content is inset from the screen edge, so a small/negative [right]
-    // pulls the # into the glass lane — clear of the track (~10px inset).
-    const trackClearance = 8.0; // gap so digits don't touch the seek line
-    final numberRight = -(
-      ChapterSeekRail.glassRadius - trackClearance
-    ); // ≈ -18 → sits on glass x, left of track
+      final logicalLines = KaraokeTextDisplay.displayLinesFromRaw(shloka.shlok);
+      final lineWidgets = <Widget>[];
+      for (final logical in logicalLines) {
+        final parts = FullShlokaCard.wrapVerseLine(
+          logical,
+          verseStyle,
+          verseMaxWidth,
+        );
+        for (var i = 0; i < parts.length; i++) {
+          lineWidgets.add(
+            Padding(
+              padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
+              child: Text(
+                parts[i],
+                textAlign: TextAlign.left,
+                softWrap: false,
+                style: verseStyle,
+              ),
+            ),
+          );
+        }
+      }
 
-    // Fixed size — formerly the 40% focus peak (no proximity scaling).
+      verseBody = Padding(
+        padding: const EdgeInsets.only(left: leftInset, right: rightInset),
+        child: KaraokeTextDisplay(
+          shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
+          originalText: shloka.shlok,
+          style: verseStyle,
+          textAlign: TextAlign.left,
+          highlightColor: karaokeHighlight,
+          wrapMaxWidth: verseMaxWidth,
+          continuationIndent: indent,
+          wrapLine: FullShlokaCard.wrapVerseLine,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: lineWidgets,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!config.showShlokIndex) return verseBody;
+
+    final numberRight =
+        ChapterSeekRail.width - ChapterSeekRail.glassRadius - 6;
     final fontSize = (config.baseFontSize * 2.2).clamp(24.0, 34.0);
-    // Light: whisper on lavender. Dark: higher alpha so white digits stay faint but readable.
     final numberColor = config.isLightTheme
         ? primaryTextColor.withValues(alpha: 0.14)
         : Colors.white.withValues(alpha: 0.32);
@@ -1324,13 +1388,18 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
             ),
           ),
         ),
-        verse,
+        verseBody,
       ],
     );
   }
 }
 
-// Your existing config class, unchanged.
+enum ContinuousListBody {
+  shloka,
+  anvay,
+  translation,
+}
+
 class FullShlokaCardConfig {
   final bool showSpeaker;
   final bool showAnvay;
@@ -1345,6 +1414,8 @@ class FullShlokaCardConfig {
   final bool showActions;
   /// Parayan continuous reading: no card chrome unless focused.
   final bool continuousReading;
+  /// Collapsed Parayan list primary body.
+  final ContinuousListBody listBodyMode;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -1359,6 +1430,7 @@ class FullShlokaCardConfig {
     this.baseFontSize = 20.0,
     this.showActions = true,
     this.continuousReading = false,
+    this.listBodyMode = ContinuousListBody.shloka,
   });
 
   static const minimal = FullShlokaCardConfig(
@@ -1405,6 +1477,7 @@ class FullShlokaCardConfig {
     double? baseFontSize,
     bool? showActions,
     bool? continuousReading,
+    ContinuousListBody? listBodyMode,
   }) {
     return FullShlokaCardConfig(
       showSpeaker: showSpeaker ?? this.showSpeaker,
@@ -1419,6 +1492,7 @@ class FullShlokaCardConfig {
       baseFontSize: baseFontSize ?? this.baseFontSize,
       showActions: showActions ?? this.showActions,
       continuousReading: continuousReading ?? this.continuousReading,
+      listBodyMode: listBodyMode ?? this.listBodyMode,
     );
   }
 }

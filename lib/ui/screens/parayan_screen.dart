@@ -11,13 +11,15 @@
 *
 **/
 
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
-import 'dart:ui';
 
 import '../../providers/parayan_provider.dart';
 import '../../models/shloka_result.dart';
@@ -30,8 +32,12 @@ import '../widgets/responsive_wrapper.dart';
 import '../widgets/font_size_control.dart';
 import '../theme/app_colors.dart';
 
-/// Compact top chrome below the status bar (back button only).
+/// Compact top chrome below the status bar (back + optional sticky speaker).
 const double _kParayanChromeExtra = 48.0;
+
+/// Left inset so sticky speaker emblem/name clears the overlaid back button.
+/// Keep in sync with inline [_SpeakerHeader] padding for vertical alignment.
+const double _kParayanSpeakerBackClearance = 56.0;
 
 /// Right inset used where chrome must clear the floating [ChapterSeekRail]
 /// (header / action island). The shloka list itself stays full-width.
@@ -39,9 +45,6 @@ const double _kParayanRailInset = 72.0;
 
 /// Viewport fraction for the reading focus line (cursor / card center target).
 const double _kParayanFocusLine = 0.40;
-
-/// Sticky speaker band below the top chrome.
-const double _kParayanStickySpeakerHeight = 44.0;
 
 double _parayanChromeHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanChromeExtra;
@@ -81,16 +84,18 @@ bool _parayanHasInlineSpeaker(List<ShlokaResult> shlokas, int index) {
 
 /// Chapter-start items put a title above the speaker line — offset so sticky
 /// only locks once the speaker row itself reaches the pin line.
-const double _kParayanChapterTitleFrac = 0.055;
+const double _kParayanChapterTitlePx = 64.0;
+const double _kParayanInlineSpeakerPadTopPx = 18.0;
 
 /// Speaker that should pin in the sticky bar, or null before the first inline
-/// speaker line has reached the sticky band.
+/// speaker line has reached the pin line (bottom of the top chrome / sticky).
 String? _parayanStickySpeaker({
   required List<ShlokaResult> shlokas,
   required Iterable<ItemPosition> positions,
   required double stickyFrac,
+  required double screenHeight,
 }) {
-  if (shlokas.isEmpty || positions.isEmpty) return null;
+  if (shlokas.isEmpty || positions.isEmpty || screenHeight <= 0) return null;
 
   final byIndex = <int, ItemPosition>{
     for (final p in positions) p.index: p,
@@ -116,9 +121,10 @@ String? _parayanStickySpeaker({
 
     final isChapterStart =
         i == 0 || shlokas[i].chapterNo != shlokas[i - 1].chapterNo;
-    // Approximate top of the inline speaker row within the item.
-    final speakerTop =
-        pos.itemLeadingEdge + (isChapterStart ? _kParayanChapterTitleFrac : 0.0);
+    // Top of the emblem/name row (not the item/column top).
+    final rowOffsetPx = _kParayanInlineSpeakerPadTopPx +
+        (isChapterStart ? _kParayanChapterTitlePx : 0.0);
+    final speakerTop = pos.itemLeadingEdge + rowOffsetPx / screenHeight;
 
     if (speakerTop <= stickyFrac) {
       pinned = shlokas[i].speaker;
@@ -161,6 +167,19 @@ class _ParayanScreenState extends State<ParayanScreen> {
   /// Remember expand/collapse of anvay+translation across shloka selection.
   bool _meaningsExpanded = false;
 
+  /// Collapsed list body: shloka → anvay → translation.
+  ContinuousListBody _listBodyMode = ContinuousListBody.shloka;
+
+  /// Font-size dock: expanded when idle, tucks into the left wall while scrolling.
+  bool _fontDockExpanded = true;
+  Timer? _fontDockRevealTimer;
+  Timer? _fontDockTuckTimer;
+  int? _fontDockLastIndex;
+  double? _fontDockLastLead;
+  /// Ignore layout-driven position noise while changing font size.
+  bool _suppressFontDockScroll = false;
+  DateTime? _fontDockScrollStartedAt;
+
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
@@ -169,6 +188,193 @@ class _ParayanScreenState extends State<ParayanScreen> {
     super.initState();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
+    _itemPositionsListener.itemPositions.addListener(_onParayanScrollForFontDock);
+  }
+
+  @override
+  void dispose() {
+    _fontDockRevealTimer?.cancel();
+    _fontDockTuckTimer?.cancel();
+    _itemPositionsListener.itemPositions.removeListener(
+      _onParayanScrollForFontDock,
+    );
+    _currentPositionLabelNotifier.dispose(); // ✨ Add this line
+    _audioProvider?.removeListener(_handleAudioChange);
+    super.dispose();
+  }
+
+  void _onParayanScrollForFontDock() {
+    if (_suppressFontDockScroll) return;
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty || !mounted) return;
+
+    final top = positions.reduce(
+      (a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b,
+    );
+    // Seed baseline without treating first callback as a scroll.
+    if (_fontDockLastIndex == null || _fontDockLastLead == null) {
+      _fontDockLastIndex = top.index;
+      _fontDockLastLead = top.itemLeadingEdge;
+      return;
+    }
+
+    // Ignore tiny jitter / one-finger nudges.
+    final leadDelta = (top.itemLeadingEdge - _fontDockLastLead!).abs();
+    final indexChanged = _fontDockLastIndex != top.index;
+    final meaningfulScroll = indexChanged || leadDelta > 0.012;
+    _fontDockLastIndex = top.index;
+    _fontDockLastLead = top.itemLeadingEdge;
+    if (!meaningfulScroll) return;
+
+    final now = DateTime.now();
+    _fontDockScrollStartedAt ??= now;
+
+    // Keep resetting the reveal timer while scrolling continues.
+    _fontDockRevealTimer?.cancel();
+    _fontDockRevealTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      _fontDockScrollStartedAt = null;
+      _fontDockTuckTimer?.cancel();
+      _fontDockTuckTimer = null;
+      if (!_fontDockExpanded) {
+        setState(() => _fontDockExpanded = true);
+      }
+    });
+
+    // Only tuck after sustained scrolling (~2s), not on brief flicks.
+    if (_fontDockExpanded && _fontDockTuckTimer == null) {
+      final alreadyScrollingFor = now.difference(_fontDockScrollStartedAt!);
+      final remaining = const Duration(seconds: 2) - alreadyScrollingFor;
+      _fontDockTuckTimer = Timer(
+        remaining.isNegative ? Duration.zero : remaining,
+        () {
+          _fontDockTuckTimer = null;
+          if (!mounted || _suppressFontDockScroll) return;
+          // Still in an active scroll window if reveal hasn't fired yet.
+          if (_fontDockRevealTimer?.isActive == true && _fontDockExpanded) {
+            setState(() => _fontDockExpanded = false);
+          }
+        },
+      );
+    }
+  }
+
+  void _revealFontDockNow() {
+    _fontDockRevealTimer?.cancel();
+    _fontDockTuckTimer?.cancel();
+    _fontDockTuckTimer = null;
+    _fontDockScrollStartedAt = null;
+    if (!_fontDockExpanded) {
+      setState(() => _fontDockExpanded = true);
+    }
+  }
+
+  /// Shloka whose center is nearest the reading focus line.
+  int _indexNearestFocusLine() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    final count =
+        Provider.of<ParayanProvider>(context, listen: false).shlokas.length;
+    if (positions.isEmpty || count <= 0) {
+      return _selectedIndex ?? 0;
+    }
+    final focusItem = positions.reduce((a, b) {
+      final aCenter = (a.itemLeadingEdge + a.itemTrailingEdge) / 2;
+      final bCenter = (b.itemLeadingEdge + b.itemTrailingEdge) / 2;
+      return (aCenter - _kParayanFocusLine).abs() <=
+              (bCenter - _kParayanFocusLine).abs()
+          ? a
+          : b;
+    });
+    return focusItem.index.clamp(0, count - 1);
+  }
+
+  /// Change font without losing the focused shloka or tucking the dock.
+  Future<void> _onFontSizeChanged(double newSize) async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final keepIndex = _selectedIndex ?? _indexNearestFocusLine();
+
+    _suppressFontDockScroll = true;
+    _fontDockRevealTimer?.cancel();
+    _fontDockTuckTimer?.cancel();
+    _fontDockTuckTimer = null;
+    _fontDockScrollStartedAt = null;
+    if (!_fontDockExpanded && mounted) {
+      setState(() => _fontDockExpanded = true);
+    }
+
+    await settings.setFontSize(newSize);
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+
+    await _repinFocusAfterLayoutChange(keepIndex);
+  }
+
+  Future<void> _onToggleListContent() async {
+    final keepIndex = _selectedIndex ?? _indexNearestFocusLine();
+    _suppressFontDockScroll = true;
+    _fontDockRevealTimer?.cancel();
+    _fontDockTuckTimer?.cancel();
+    _fontDockTuckTimer = null;
+    _fontDockScrollStartedAt = null;
+    if (!_fontDockExpanded && mounted) {
+      setState(() => _fontDockExpanded = true);
+    }
+
+    setState(() {
+      _listBodyMode = switch (_listBodyMode) {
+        ContinuousListBody.shloka => ContinuousListBody.anvay,
+        ContinuousListBody.anvay => ContinuousListBody.translation,
+        ContinuousListBody.translation => ContinuousListBody.shloka,
+      };
+    });
+    await _repinFocusAfterLayoutChange(keepIndex);
+  }
+
+  Future<void> _repinFocusAfterLayoutChange(int keepIndex) async {
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+
+    // Let cards rebuild, then pin the same shloka to the focus line.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _suppressFontDockScroll = false;
+        return;
+      }
+      if (_itemScrollController.isAttached) {
+        final alignment = _alignmentForCardCenter(keepIndex) ??
+            (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
+        _itemScrollController.jumpTo(index: keepIndex, alignment: alignment);
+      }
+      // Refine once new item heights are known, then reseed dock baseline.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_itemScrollController.isAttached) {
+          final refined = _alignmentForCardCenter(
+            keepIndex,
+            requireVisible: true,
+          );
+          if (refined != null) {
+            _itemScrollController.jumpTo(
+              index: keepIndex,
+              alignment: refined,
+            );
+          }
+        }
+        final positions = _itemPositionsListener.itemPositions.value;
+        if (positions.isNotEmpty) {
+          final top = positions.reduce(
+            (a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b,
+          );
+          _fontDockLastIndex = top.index;
+          _fontDockLastLead = top.itemLeadingEdge;
+        }
+        _suppressFontDockScroll = false;
+      });
+    });
   }
 
   @override
@@ -223,13 +429,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _currentPositionLabelNotifier.dispose(); // ✨ Add this line
-    _audioProvider?.removeListener(_handleAudioChange);
-    super.dispose();
-  }
-
   Future<void> _onCardTap(int index) async {
     if (_isSelectingCard) return;
 
@@ -249,16 +448,28 @@ class _ParayanScreenState extends State<ParayanScreen> {
     });
 
     try {
-      await _scrollCardCenterToFocusLine(index);
+      // Skip scroll when the card is already near the focus line.
+      var needsScroll = true;
+      final positions = _itemPositionsListener.itemPositions.value;
+      for (final p in positions) {
+        if (p.index == index) {
+          final center = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
+          if ((center - _kParayanFocusLine).abs() <= 0.045) {
+            needsScroll = false;
+          }
+          break;
+        }
+      }
+      if (needsScroll) {
+        await _scrollCardCenterToFocusLine(index);
+      }
       if (!mounted) return;
 
-      // Land at focus line → show cursor + highlight
-      setState(() => _selectedIndex = index);
-      await Future<void>.delayed(const Duration(milliseconds: 90));
-      if (!mounted) return;
-
-      // Then pop in bottom controls
-      setState(() => _actionsVisible = true);
+      // After the snappy scroll lands — show highlight + action island.
+      setState(() {
+        _selectedIndex = index;
+        _actionsVisible = true;
+      });
     } finally {
       _isSelectingCard = false;
     }
@@ -270,14 +481,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
     await _itemScrollController.scrollTo(
       index: index,
-      duration: const Duration(milliseconds: 480),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       alignment: _alignmentForCardCenter(index) ??
           (_kParayanFocusLine - 0.09).clamp(0.0, 1.0),
     );
 
     // One frame to let positions update, then fine-tune if needed.
-    await Future<void>.delayed(const Duration(milliseconds: 32));
+    await Future<void>.delayed(const Duration(milliseconds: 16));
     if (!mounted || !_itemScrollController.isAttached) return;
 
     final refined = _alignmentForCardCenter(index, requireVisible: true);
@@ -294,11 +505,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
     if (item == null) return;
 
     final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
-    if ((center - _kParayanFocusLine).abs() <= 0.015) return;
+    if ((center - _kParayanFocusLine).abs() <= 0.025) return;
 
     await _itemScrollController.scrollTo(
       index: index,
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 90),
       curve: Curves.easeOutCubic,
       alignment: refined,
     );
@@ -413,8 +624,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
-                    top: _parayanChromeHeight(context) +
-                        _kParayanStickySpeakerHeight,
+                    top: _parayanChromeHeight(context),
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
@@ -472,6 +682,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             spacingCompact: true,
                             showActions: false,
                             continuousReading: true,
+                            listBodyMode: _listBodyMode,
                             // Meanings follow the remembered expand state.
                             showAnvay:
                                 _selectedIndex == index && _meaningsExpanded,
@@ -513,20 +724,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 valueListenable: _itemPositionsListener.itemPositions,
                 builder: (context, positions, _) {
                   final topPadding = _parayanChromeHeight(context);
-                  final screenH = MediaQuery.of(context).size.height;
-                  final stickyFrac =
-                      (topPadding + _kParayanStickySpeakerHeight) / screenH;
-                  final stickySpeaker = _parayanStickySpeaker(
-                    shlokas: provider.shlokas,
-                    positions: positions,
-                    stickyFrac: stickyFrac,
-                  );
-                  final stickyBand = stickySpeaker == null
-                      ? 0.0
-                      : _kParayanStickySpeakerHeight;
                   return Positioned(
                     right: MediaQuery.of(context).padding.right,
-                    top: topPadding + stickyBand,
+                    top: topPadding,
                     bottom: 8,
                     child: ChapterSeekRail(
                       itemPositionsListener: _itemPositionsListener,
@@ -548,15 +748,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
               );
             },
           ),
-          // Compact chrome: back only
-          Positioned(
-            left: MediaQuery.of(context).padding.left,
-            top: 0,
-            right: _kParayanRailInset,
-            height: _parayanChromeHeight(context),
-            child: const _ParayanChrome(),
-          ),
-          // Sticky speaker — pins only when the inline speaker line reaches it
+          // Sticky speaker shares the back-button row (drawn under the back hit target)
           Consumer<ParayanProvider>(
             builder: (context, provider, _) {
               if (provider.isLoading || provider.shlokas.isEmpty) {
@@ -567,12 +759,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 builder: (context, positions, _) {
                   final headerH = _parayanChromeHeight(context);
                   final screenH = MediaQuery.of(context).size.height;
-                  final stickyFrac =
-                      (headerH + _kParayanStickySpeakerHeight) / screenH;
+                  // Pin when the inline speaker row reaches the bottom of the
+                  // top chrome / persistent speaker bar.
+                  final stickyFrac = headerH / screenH;
                   final speaker = _parayanStickySpeaker(
                     shlokas: provider.shlokas,
                     positions: positions,
                     stickyFrac: stickyFrac,
+                    screenHeight: screenH,
                   );
 
                   if (speaker == null || speaker.isEmpty) {
@@ -581,19 +775,27 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
                   return Positioned(
                     left: MediaQuery.of(context).padding.left,
-                    // Extend toward the verse column; leave room for the glass.
                     right: ChapterSeekRail.glassRadius + 12,
-                    top: headerH,
-                    height: _kParayanStickySpeakerHeight,
+                    top: 0,
+                    height: headerH,
                     child: _StickySpeakerBar(
                       speaker: speaker,
                       script: settingsProvider.script,
                       fontSize: settingsProvider.fontSize,
+                      leadingInset: _kParayanSpeakerBackClearance,
                     ),
                   );
                 },
               );
             },
+          ),
+          // Back button on top of sticky speaker so taps always hit it
+          Positioned(
+            left: MediaQuery.of(context).padding.left,
+            top: 0,
+            right: _kParayanRailInset,
+            height: _parayanChromeHeight(context),
+            child: const _ParayanChrome(),
           ),
           // Cursor only after a card is selected and scrolled into place
           if (_selectedIndex != null)
@@ -675,7 +877,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
               );
             },
           ),
-          // Font size — dedicated control at the bottom
+          // Font size — left wall dock; tucks in while scrolling
           Consumer<AudioProvider>(
             builder: (context, audio, _) {
               final miniPlayerVisible =
@@ -683,13 +885,15 @@ class _ParayanScreenState extends State<ParayanScreen> {
                   audio.currentPlayingShlokaId != null;
               final bottomSafe = MediaQuery.of(context).padding.bottom;
               return Positioned(
-                left: 0,
-                right: _kParayanRailInset,
+                left: MediaQuery.of(context).padding.left,
                 bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
-                child: Center(
-                  child: _ParayanFontSizeDock(
-                    settingsProvider: settingsProvider,
-                  ),
+                child: _ParayanFontSizeDock(
+                  settingsProvider: settingsProvider,
+                  expanded: _fontDockExpanded,
+                  onPeekTap: _revealFontDockNow,
+                  onSizeChanged: _onFontSizeChanged,
+                  listBodyMode: _listBodyMode,
+                  onToggleListContent: _onToggleListContent,
                 ),
               );
             },
@@ -789,11 +993,24 @@ class _ParayanChrome extends StatelessWidget {
   }
 }
 
-/// Bottom font-size dock for Parayan reading.
+/// Bottom-left font-size dock — speaker-bar style; tucks into the left wall
+/// while scrolling and slides back out after idle.
 class _ParayanFontSizeDock extends StatelessWidget {
   final SettingsProvider settingsProvider;
+  final bool expanded;
+  final VoidCallback? onPeekTap;
+  final ValueChanged<double> onSizeChanged;
+  final ContinuousListBody listBodyMode;
+  final VoidCallback onToggleListContent;
 
-  const _ParayanFontSizeDock({required this.settingsProvider});
+  const _ParayanFontSizeDock({
+    required this.settingsProvider,
+    required this.expanded,
+    required this.onSizeChanged,
+    required this.listBodyMode,
+    required this.onToggleListContent,
+    this.onPeekTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -801,21 +1018,125 @@ class _ParayanFontSizeDock extends StatelessWidget {
     final iconColor =
         Theme.of(context).iconTheme.color ??
         (isLight ? Colors.black87 : Colors.white);
+    final accent = Theme.of(context).colorScheme.secondary;
 
-    return Material(
-      elevation: 2,
-      shadowColor: Colors.black26,
-      color: isLight
-          ? Colors.white.withValues(alpha: 0.72)
-          : Colors.black.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(22),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: FontSizeControl(
-          currentSize: settingsProvider.fontSize,
-          onSizeChanged: settingsProvider.setFontSize,
-          color: iconColor,
+    final (Widget modeGlyph, String label, String tooltip, bool emphasize) =
+        switch (listBodyMode) {
+      ContinuousListBody.shloka => (
+          Icon(Icons.menu_book_rounded, size: 20, color: iconColor),
+          'Shloka',
+          'Shloka · tap for anvay',
+          false,
         ),
+      ContinuousListBody.anvay => (
+          Icon(Icons.format_quote_rounded, size: 20, color: accent),
+          'Anvay',
+          'Anvay · tap for translation',
+          true,
+        ),
+      ContinuousListBody.translation => (
+          Text(
+            'अ',
+            style: TextStyle(
+              fontFamily: 'NotoSerif',
+              fontSize: 18,
+              height: 1.0,
+              fontWeight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
+          'Tika',
+          'Translation · tap for shloka',
+          true,
+        ),
+    };
+    final modeColor = emphasize ? accent : iconColor;
+
+    final dock = ClipRRect(
+      borderRadius: const BorderRadius.horizontal(
+        right: Radius.circular(22),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: isLight
+                ? Colors.white.withValues(alpha: 0.55)
+                : Colors.black.withValues(alpha: 0.55),
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(22),
+            ),
+            border: Border.all(
+              color: isLight
+                  ? Colors.black.withValues(alpha: 0.06)
+                  : Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FontSizeControl(
+                  currentSize: settingsProvider.fontSize,
+                  onSizeChanged: onSizeChanged,
+                  color: iconColor,
+                ),
+                Container(
+                  width: 1,
+                  height: 22,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: iconColor.withValues(alpha: 0.25),
+                ),
+                Tooltip(
+                  message: tooltip,
+                  child: InkWell(
+                    onTap: onToggleListContent,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            child: Center(child: modeGlyph),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 9,
+                              height: 1.0,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                              color: modeColor.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 320),
+      curve: expanded ? Curves.easeOutCubic : Curves.easeInCubic,
+      // Mostly off-screen left; leave a small peek of the rounded end.
+      offset: expanded ? Offset.zero : const Offset(-0.78, 0),
+      child: GestureDetector(
+        onTap: expanded ? null : onPeekTap,
+        behavior: HitTestBehavior.opaque,
+        child: dock,
       ),
     );
   }
@@ -899,11 +1220,13 @@ class _StickySpeakerBar extends StatelessWidget {
   final String speaker;
   final String script;
   final double fontSize;
+  final double leadingInset;
 
   const _StickySpeakerBar({
     required this.speaker,
     required this.script,
     required this.fontSize,
+    this.leadingInset = 16,
   });
 
   @override
@@ -916,62 +1239,70 @@ class _StickySpeakerBar extends StatelessWidget {
     final emblemSize = (fontSize * 1.1).clamp(18.0, 28.0);
     final labelSize = (fontSize * 0.72).clamp(13.0, 22.0);
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.horizontal(
-        right: Radius.circular(22),
-      ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: isLight
-                ? Colors.white.withValues(alpha: 0.55)
-                : Colors.black.withValues(alpha: 0.55),
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(22),
-            ),
-            border: Border.all(
-              color: isLight
-                  ? Colors.black.withValues(alpha: 0.06)
-                  : Colors.white.withValues(alpha: 0.08),
-            ),
+    return SafeArea(
+      bottom: false,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.horizontal(
+            right: Radius.circular(22),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: Row(
-                key: ValueKey(localized),
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (emblemPath != null) ...[
-                    Image.asset(emblemPath, height: emblemSize),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    localized,
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontFamily: 'NotoSerif',
-                      fontSize: labelSize,
-                      color: accent,
-                      fontWeight: FontWeight.w600,
-                      fontStyle: FontStyle.italic,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      height: 12,
-                      child: CustomPaint(
-                        painter: _SpeakerFlourishPainter(color: lineColor),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isLight
+                    ? Colors.white.withValues(alpha: 0.55)
+                    : Colors.black.withValues(alpha: 0.55),
+                borderRadius: const BorderRadius.horizontal(
+                  right: Radius.circular(22),
+                ),
+                border: Border.all(
+                  color: isLight
+                      ? Colors.black.withValues(alpha: 0.06)
+                      : Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: SizedBox(
+                height: _kParayanChromeExtra - 4,
+                child: Padding(
+                  // Clear the overlaid back button for emblem + name.
+                  padding: EdgeInsets.fromLTRB(leadingInset, 0, 16, 0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (emblemPath != null) ...[
+                        Image.asset(emblemPath, height: emblemSize),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          localized,
+                          textAlign: TextAlign.left,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'NotoSerif',
+                            fontSize: labelSize,
+                            color: accent,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.italic,
+                            height: 1.1,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 12,
+                          child: CustomPaint(
+                            painter: _SpeakerFlourishPainter(color: lineColor),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1002,8 +1333,13 @@ class _SpeakerHeader extends StatelessWidget {
     final emblemSize = (fontSize * 1.35).clamp(22.0, 40.0);
 
     return Padding(
-      // Space before/after speaker; right inset clears seek-rail glass lane.
-      padding: const EdgeInsets.fromLTRB(16, 18, 56, 14),
+      // Match sticky bar: clear back button, align emblem/name under persistent.
+      padding: const EdgeInsets.fromLTRB(
+        _kParayanSpeakerBackClearance,
+        _kParayanInlineSpeakerPadTopPx,
+        56,
+        14,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
