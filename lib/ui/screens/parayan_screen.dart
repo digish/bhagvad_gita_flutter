@@ -21,6 +21,7 @@ import 'dart:ui';
 
 import '../../providers/parayan_provider.dart';
 import '../widgets/chapter_seek_rail.dart';
+import '../widgets/parayan_action_island.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
@@ -39,6 +40,9 @@ const double _kParayanCollapsedExtra = 108.0;
 
 /// Right inset reserved for [ChapterSeekRail].
 const double _kParayanRailInset = 28.0;
+
+/// Viewport fraction for the reading focus line (action island target).
+const double _kParayanFocusLine = 0.33;
 
 double _parayanExpandedHeaderHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanExpandedExtra;
@@ -73,6 +77,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- NEW: State to track the currently playing shloka ID ---
   String? _currentlyPlayingId;
 
+  /// Shloka under the ~1/3 viewport focus line (drives action island).
+  int _focusedIndex = 0;
+
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
@@ -81,6 +88,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     super.initState();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
+    _itemPositionsListener.itemPositions.addListener(_updateFocusedIndex);
   }
 
   @override
@@ -133,9 +141,37 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   @override
   void dispose() {
+    _itemPositionsListener.itemPositions.removeListener(_updateFocusedIndex);
     _currentPositionLabelNotifier.dispose(); // ✨ Add this line
     _audioProvider?.removeListener(_handleAudioChange);
     super.dispose();
+  }
+
+  void _updateFocusedIndex() {
+    if (!mounted) return;
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return;
+
+    const focusLine = _kParayanFocusLine;
+    ItemPosition? containing;
+    for (final p in positions) {
+      if (p.itemLeadingEdge <= focusLine && p.itemTrailingEdge >= focusLine) {
+        containing = p;
+        break;
+      }
+    }
+
+    final focused =
+        containing ??
+        positions.reduce((a, b) {
+          final aDist = (a.itemLeadingEdge - focusLine).abs();
+          final bDist = (b.itemLeadingEdge - focusLine).abs();
+          return aDist <= bDist ? a : b;
+        });
+
+    if (focused.index != _focusedIndex) {
+      setState(() => _focusedIndex = focused.index);
+    }
   }
 
   // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
@@ -204,6 +240,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showAnvay: false,
                     showBhavarth: false,
                     showSeparator: false,
+                    showActions: false,
                   );
                   break;
                 case ParayanDisplayMode.shlokAndAnvay:
@@ -212,6 +249,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showAnvay: true,
                     showBhavarth: false,
                     showSeparator: true,
+                    showActions: false,
                   );
                   break;
                 case ParayanDisplayMode.all:
@@ -220,11 +258,19 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showAnvay: true,
                     showBhavarth: true,
                     showSeparator: true,
+                    showActions: false,
                   );
                   break;
               }
 
               final shlokas = provider.shlokas;
+              final safeFocusedIndex = shlokas.isEmpty
+                  ? 0
+                  : _focusedIndex.clamp(0, shlokas.length - 1);
+              final audio = Provider.of<AudioProvider>(context);
+              final miniPlayerVisible =
+                  audio.playbackState != PlaybackState.stopped &&
+                  audio.currentPlayingShlokaId != null;
 
               // ✨ FIX: Revert to ScrollablePositionedList
               return ResponsiveWrapper(
@@ -246,7 +292,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     right:
                         MediaQuery.of(context).padding.right +
                         _kParayanRailInset,
-                    bottom: 8.0,
+                    bottom: miniPlayerVisible ? 180.0 : 88.0,
                   ),
                   itemBuilder: (context, index) {
                     final shloka = shlokas[index];
@@ -280,11 +326,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
                         FullShlokaCard(
                           shloka: shloka,
                           currentlyPlayingId: _currentlyPlayingId,
+                          isFocused: index == safeFocusedIndex,
                           onPlayPause: () {
                             _audioProvider?.playChapter(
                               shlokas: shlokas,
                               initialIndex: index,
-                              // playbackMode: used from provider state
                             );
                           },
                           config: cardConfig.copyWith(
@@ -293,14 +339,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             showEmblem: false,
                             showShlokIndex: true,
                             spacingCompact: true,
+                            showActions: false,
                             isLightTheme:
                                 Theme.of(context).brightness ==
                                 Brightness.light,
                           ),
-                          // ✨ Pass script to FullShlokaCard if needed for internal localization
-                          // (though speaker is hidden here, shloka index is shown. Index handles its own localization?)
-                          // FullShlokaCard should handle its own localization via SettingsProvider or params.
-                          // Check FullShlokaCard next.
                         ),
                         if (isChapterEnd)
                           _ChapterEndFooter(
@@ -367,6 +410,42 @@ class _ParayanScreenState extends State<ParayanScreen> {
               settingsProvider: settingsProvider,
             ),
           ),
+          // Exclusive focus-line pointer (triangle + short hairline at ~1/3)
+          const _ParayanFocusPointer(focusLine: _kParayanFocusLine),
+          // Shared focus-line action island (bottom-center)
+          Consumer2<ParayanProvider, AudioProvider>(
+            builder: (context, provider, audioProvider, _) {
+              if (provider.isLoading || provider.shlokas.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              final focusedIndex = _focusedIndex.clamp(
+                0,
+                provider.shlokas.length - 1,
+              );
+              final focusedShloka = provider.shlokas[focusedIndex];
+              final miniPlayerVisible =
+                  audioProvider.playbackState != PlaybackState.stopped &&
+                  audioProvider.currentPlayingShlokaId != null;
+              final bottomOffset = MediaQuery.of(context).padding.bottom +
+                  (miniPlayerVisible ? 100.0 : 12.0);
+
+              return Positioned(
+                left: 0,
+                right: _kParayanRailInset,
+                bottom: bottomOffset,
+                child: ParayanActionIsland(
+                  shloka: focusedShloka,
+                  currentlyPlayingId: _currentlyPlayingId,
+                  onPlayPause: () {
+                    _audioProvider?.playChapter(
+                      shlokas: provider.shlokas,
+                      initialIndex: focusedIndex,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -410,6 +489,92 @@ class _ParayanScreenState extends State<ParayanScreen> {
       constraints: const BoxConstraints(),
     );
   }
+}
+
+/// Fixed triangle + hairline showing the Parayan reading focus line (~1/3 height).
+class _ParayanFocusPointer extends StatelessWidget {
+  final double focusLine;
+
+  const _ParayanFocusPointer({required this.focusLine});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent =
+        Theme.of(context).extension<AppColors>()?.gitaBlue ??
+        const Color(0xFF047BC0);
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final top = screenHeight * focusLine;
+
+    return Positioned(
+      left: MediaQuery.of(context).padding.left,
+      top: top - 12,
+      child: IgnorePointer(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Triangle pointing right into the content
+            CustomPaint(
+              size: const Size(14, 24),
+              painter: _FocusTrianglePainter(
+                color: accent,
+                shadowColor: accent.withValues(alpha: 0.45),
+              ),
+            ),
+            // Short hairline into the reading column
+            Container(
+              width: 28,
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    accent,
+                    accent.withValues(alpha: isLight ? 0.15 : 0.25),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(1),
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FocusTrianglePainter extends CustomPainter {
+  final Color color;
+  final Color shadowColor;
+
+  _FocusTrianglePainter({required this.color, required this.shadowColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawShadow(path, shadowColor, 4, true);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FocusTrianglePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.shadowColor != shadowColor;
 }
 
 // ✨ NEW: A dedicated StatefulWidget for the animating header.

@@ -32,6 +32,7 @@ import 'share_options_sheet.dart';
 import 'commentary_sheet.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
+import '../theme/app_colors.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
 const bool _enableDynamicFontSizing = false;
@@ -41,6 +42,7 @@ class FullShlokaCard extends StatelessWidget {
   final FullShlokaCardConfig config;
   final String? currentlyPlayingId; // The reliable ID from the parent screen
   final VoidCallback? onPlayPause; // Callback for when play/pause is pressed
+  final bool isFocused;
 
   const FullShlokaCard({
     super.key,
@@ -48,6 +50,7 @@ class FullShlokaCard extends StatelessWidget {
     this.config = const FullShlokaCardConfig(),
     this.currentlyPlayingId,
     this.onPlayPause,
+    this.isFocused = false,
   });
 
   // This is your existing text formatting logic, it remains unchanged.
@@ -323,93 +326,131 @@ class FullShlokaCard extends StatelessWidget {
     final Color innerCardBorderColor = isLightTheme
         ? Colors.black.withOpacity(0.1)
         : Colors.white.withOpacity(0.2);
+    final focusAccent =
+        Theme.of(context).extension<AppColors>()?.gitaBlue ??
+        const Color(0xFF047BC0);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20.0),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardBackgroundColor,
-            borderRadius: BorderRadius.circular(20.0),
-            // --- MODIFICATION: Border highlighting for playing shloka ---
-            border: Border.all(
-              color:
-                  isPlayingThisShloka && playbackState == PlaybackState.playing
-                  ? theme.colorScheme.primary
-                  : mainBorderColor,
-              width:
-                  isPlayingThisShloka && playbackState == PlaybackState.playing
-                  ? 2.0
-                  : 1.5,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      margin: EdgeInsets.symmetric(
+        horizontal: isFocused ? 4 : 8,
+        vertical: isFocused ? 6 : 4,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22.0),
+        boxShadow: isFocused
+            ? [
+                BoxShadow(
+                  color: focusAccent.withOpacity(0.45),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: focusAccent.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20.0),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardBackgroundColor,
+              borderRadius: BorderRadius.circular(20.0),
+              // --- MODIFICATION: Border highlighting for playing / focused ---
+              border: Border.all(
+                color:
+                    isPlayingThisShloka &&
+                        playbackState == PlaybackState.playing
+                    ? theme.colorScheme.primary
+                    : isFocused
+                    ? focusAccent
+                    : mainBorderColor,
+                width:
+                    isPlayingThisShloka &&
+                        playbackState == PlaybackState.playing
+                    ? 2.5
+                    : isFocused
+                    ? 3.0
+                    : 1.5,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Container(
-                      padding: config.spacingCompact
-                          ? const EdgeInsets.all(1)
-                          : const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: config.showColoredCard
-                            ? speakerColor
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
+            child: Padding(
+              padding: const EdgeInsets.all(5.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Container(
+                        padding: config.spacingCompact
+                            ? const EdgeInsets.all(1)
+                            : const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
                           color: config.showColoredCard
-                              ? innerCardBorderColor
+                              ? speakerColor
                               : Colors.transparent,
-                          width: config.showColoredCard ? 1 : 0,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: config.showColoredCard
+                                ? innerCardBorderColor
+                                : Colors.transparent,
+                            width: config.showColoredCard ? 1 : 0,
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // 1. Speaker Name (Left)
-                              if (config.showSpeaker &&
-                                  shloka.speaker != null &&
-                                  shloka.speaker!.isNotEmpty)
-                                Expanded(
-                                  child: Text(
-                                    // Localize speaker
-                                    '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: primaryTextColor.withOpacity(0.9),
-                                      letterSpacing: 0.5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // 1. Speaker Name (Left)
+                                if (config.showSpeaker &&
+                                    shloka.speaker != null &&
+                                    shloka.speaker!.isNotEmpty)
+                                  Expanded(
+                                    child: Text(
+                                      // Localize speaker
+                                      '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryTextColor.withOpacity(
+                                              0.9,
+                                            ),
+                                            letterSpacing: 0.5,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                              const SizedBox(width: 8),
-                              // 2. Chapter & Shloka Index (Right)
-                              if (config.showShlokIndex)
-                                Builder(
-                                  builder: (context) {
-                                    final script =
-                                        Provider.of<SettingsProvider>(
-                                          context,
-                                        ).script;
-                                    final chapLabel =
-                                        StaticData.getChapterLabel(script);
-                                    // Localize numbers
-                                    final chapNum = StaticData.localizeNumber(
-                                      int.tryParse(shloka.chapterNo) ?? 0,
-                                      script,
-                                    );
-                                    final shlokNum = StaticData.localizeNumber(
-                                      int.tryParse(shloka.shlokNo) ?? 0,
-                                      script,
-                                    );
+                                const SizedBox(width: 8),
+                                // 2. Chapter & Shloka Index (Right)
+                                if (config.showShlokIndex)
+                                  Builder(
+                                    builder: (context) {
+                                      final script =
+                                          Provider.of<SettingsProvider>(
+                                            context,
+                                          ).script;
+                                      final chapLabel =
+                                          StaticData.getChapterLabel(script);
+                                      // Localize numbers
+                                      final chapNum = StaticData.localizeNumber(
+                                        int.tryParse(shloka.chapterNo) ?? 0,
+                                        script,
+                                      );
+                                      final shlokNum =
+                                          StaticData.localizeNumber(
+                                            int.tryParse(shloka.shlokNo) ?? 0,
+                                            script,
+                                          );
 
                                     // Shloka label
                                     String vsLabel = 'Vs';
@@ -501,129 +542,128 @@ class FullShlokaCard extends StatelessWidget {
                           const SizedBox(height: 16),
 
                           // 4. Action Row (Bottom)
-                          // 4. Action Row (Bottom)
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 6,
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isLightTheme
-                                    ? Colors.grey.withOpacity(0.1)
-                                    : Colors.white.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Row(
-                                      mainAxisSize:
-                                          MainAxisSize.min, // ✨ Compact width
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        // Play Audio
-                                        _buildAudioActionButton(
-                                          context: context,
-                                          shloka: shloka,
-                                          isPlayingThis: isPlayingThisShloka,
-                                          playbackState: playbackState,
-                                          downloadStatus: downloadStatus,
-                                          audioProvider: audioProvider,
-                                        ),
-                                        const SizedBox(width: 16), // ✨ Gap
-                                        // Commentary
-                                        if (shloka.commentaries == null ||
-                                            shloka
-                                                .commentaries!
-                                                .isNotEmpty) ...[
-                                          _ActionButton(
-                                            icon: Icons.menu_book_rounded,
-                                            onPressed: () {
-                                              showModalBottomSheet(
-                                                context: context,
-                                                isScrollControlled: true,
-                                                useRootNavigator:
-                                                    true, // ✨ Ensure it overlays the rail
-                                                backgroundColor:
-                                                    Colors.transparent,
-                                                builder: (context) =>
-                                                    CommentarySheet(
-                                                      commentaries:
-                                                          shloka.commentaries ??
-                                                          [],
-                                                      chapterNo:
-                                                          shloka.chapterNo,
-                                                      shlokNo: shloka.shlokNo,
-                                                    ),
-                                              );
-                                            },
+                          if (config.showActions)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isLightTheme
+                                      ? Colors.grey.withOpacity(0.1)
+                                      : Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // Play Audio
+                                          _buildAudioActionButton(
+                                            context: context,
+                                            shloka: shloka,
+                                            isPlayingThis: isPlayingThisShloka,
+                                            playbackState: playbackState,
+                                            downloadStatus: downloadStatus,
+                                            audioProvider: audioProvider,
                                           ),
-                                          const SizedBox(width: 16), // ✨ Gap
-                                        ],
-
-                                        // Bookmark
-                                        Consumer<BookmarkProvider>(
-                                          builder: (context, bookmarkProvider, _) {
-                                            final isBookmarked =
-                                                bookmarkProvider.isBookmarked(
-                                                  shloka.chapterNo,
-                                                  shloka.shlokNo,
-                                                );
-                                            return _ActionButton(
-                                              icon: isBookmarked
-                                                  ? Icons.bookmark
-                                                  : Icons.bookmark_outline,
+                                          const SizedBox(width: 16),
+                                          // Commentary
+                                          if (shloka.commentaries == null ||
+                                              shloka
+                                                  .commentaries!
+                                                  .isNotEmpty) ...[
+                                            _ActionButton(
+                                              icon: Icons.menu_book_rounded,
                                               onPressed: () {
                                                 showModalBottomSheet(
                                                   context: context,
-                                                  useRootNavigator:
-                                                      true, // ✨ Ensure it overlays the rail
+                                                  isScrollControlled: true,
+                                                  useRootNavigator: true,
                                                   backgroundColor:
                                                       Colors.transparent,
-                                                  isScrollControlled: true,
-                                                  shape: const RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.vertical(
-                                                          top: Radius.circular(
-                                                            16,
-                                                          ),
-                                                        ),
-                                                  ),
                                                   builder: (context) =>
-                                                      AddToListSheet(
+                                                      CommentarySheet(
+                                                        commentaries:
+                                                            shloka.commentaries ??
+                                                            [],
                                                         chapterNo:
                                                             shloka.chapterNo,
                                                         shlokNo: shloka.shlokNo,
                                                       ),
                                                 );
                                               },
-                                              color: isBookmarked
-                                                  ? theme.colorScheme.primary
-                                                  : null,
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(width: 16), // ✨ Gap
-                                        // Share
-                                        Builder(
-                                          builder: (btnContext) {
-                                            return _ActionButton(
-                                              icon: Icons.share_outlined,
-                                              onPressed: () =>
-                                                  _shareShloka(btnContext),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                            ),
+                                            const SizedBox(width: 16),
+                                          ],
+
+                                          // Bookmark
+                                          Consumer<BookmarkProvider>(
+                                            builder: (context, bookmarkProvider, _) {
+                                              final isBookmarked =
+                                                  bookmarkProvider.isBookmarked(
+                                                    shloka.chapterNo,
+                                                    shloka.shlokNo,
+                                                  );
+                                              return _ActionButton(
+                                                icon: isBookmarked
+                                                    ? Icons.bookmark
+                                                    : Icons.bookmark_outline,
+                                                onPressed: () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    useRootNavigator: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    isScrollControlled: true,
+                                                    shape: const RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  16,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                    builder: (context) =>
+                                                        AddToListSheet(
+                                                          chapterNo: shloka
+                                                              .chapterNo,
+                                                          shlokNo:
+                                                              shloka.shlokNo,
+                                                        ),
+                                                  );
+                                                },
+                                                color: isBookmarked
+                                                    ? theme.colorScheme.primary
+                                                    : null,
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(width: 16),
+                                          // Share
+                                          Builder(
+                                            builder: (btnContext) {
+                                              return _ActionButton(
+                                                icon: Icons.share_outlined,
+                                                onPressed: () =>
+                                                    _shareShloka(btnContext),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     );
@@ -732,6 +772,7 @@ class FullShlokaCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -899,6 +940,7 @@ class FullShlokaCardConfig {
   final bool spacingCompact;
   final bool isLightTheme;
   final double baseFontSize;
+  final bool showActions;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -911,6 +953,7 @@ class FullShlokaCardConfig {
     this.spacingCompact = false,
     this.isLightTheme = false,
     this.baseFontSize = 20.0,
+    this.showActions = true,
   });
 
   static const minimal = FullShlokaCardConfig(
@@ -955,6 +998,7 @@ class FullShlokaCardConfig {
     bool? spacingCompact,
     bool? isLightTheme,
     double? baseFontSize,
+    bool? showActions,
   }) {
     return FullShlokaCardConfig(
       showSpeaker: showSpeaker ?? this.showSpeaker,
@@ -967,6 +1011,7 @@ class FullShlokaCardConfig {
       spacingCompact: spacingCompact ?? this.spacingCompact,
       isLightTheme: isLightTheme ?? this.isLightTheme,
       baseFontSize: baseFontSize ?? this.baseFontSize,
+      showActions: showActions ?? this.showActions,
     );
   }
 }
