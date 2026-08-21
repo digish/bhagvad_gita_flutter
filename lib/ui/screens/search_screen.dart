@@ -83,6 +83,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   late AnimationController _pulseController;
   late AnimationController
   _lotusController; // 🌸 Continuous rotation controller
+  final ScrollController _homeScrollController = ScrollController();
+  /// How far the top lotuses have been pushed up with home scroll.
+  /// Clamped to >= 0 so they never settle below their resting position.
+  final ValueNotifier<double> _lotusLift = ValueNotifier(0.0);
   Offset _revealCenter = Offset.zero;
   final GlobalKey _themeToggleKey = GlobalKey();
   bool? _isBackgroundRequested;
@@ -127,6 +131,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         _isSearchFocused = _searchFocusNode.hasFocus;
       });
     });
+
+    // Top lotuses scroll up with home content, but never below their rest position.
+    _homeScrollController.addListener(_onHomeScroll);
+  }
+
+  void _onHomeScroll() {
+    if (!_homeScrollController.hasClients) return;
+    // Negative overscroll (pull down) keeps lift at 0 — lotuses stay at rest.
+    final lift = _homeScrollController.offset.clamp(0.0, double.infinity);
+    if (lift != _lotusLift.value) {
+      _lotusLift.value = lift;
+    }
   }
 
   @override
@@ -222,6 +238,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   @override
   void dispose() {
+    _homeScrollController.removeListener(_onHomeScroll);
+    _homeScrollController.dispose();
+    _lotusLift.dispose();
     _revealController.dispose();
     _pulseController.dispose();
     _lotusController.dispose();
@@ -569,6 +588,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                   right: 16.0,
                                 ),
                                 child: SingleChildScrollView(
+                                  controller: _homeScrollController,
                                   clipBehavior: Clip
                                       .none, // ✨ Allow overflow during animation
                                   child: ResponsiveWrapper(
@@ -616,7 +636,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           Align(
                                             alignment: Alignment.centerRight,
                                             child: Padding(
-                                              padding: const EdgeInsets.only(right: 32.0),
+                                              padding: const EdgeInsets.only(
+                                                right: 32.0,
+                                              ),
                                               child: _OnboardingBubble(
                                                 onTap: () {
                                                   // 1. Mark as used
@@ -627,12 +649,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                     _isAiMode = true;
                                                   });
                                                   final creditProvider =
-                                                      Provider.of<CreditProvider>(
-                                                        context,
-                                                        listen: false,
-                                                      );
-                                                  if (!creditProvider.isLoading &&
-                                                      creditProvider.balance <= 0) {
+                                                      Provider.of<
+                                                        CreditProvider
+                                                      >(context, listen: false);
+                                                  if (!creditProvider
+                                                          .isLoading &&
+                                                      creditProvider.balance <=
+                                                          0) {
                                                     // Ad loading handled by CreditProvider.
                                                   }
                                                 },
@@ -657,7 +680,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                             SacredSutraPromoCard(
                                               isSimpleLight:
                                                   !settings.showBackground &&
-                                                  Theme.of(context).brightness ==
+                                                  Theme.of(context)
+                                                          .brightness ==
                                                       Brightness.light,
                                               languageCode: settings.language,
                                             ),
@@ -668,7 +692,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               settings,
                                             ),
                                         ],
-                                        const SizedBox(height: 100), // Dummy space to clear floating buttons
+                                        const SizedBox(
+                                          height: 100,
+                                        ), // Dummy space to clear floating buttons
                                       ],
                                     ),
                                   ),
@@ -823,63 +849,75 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                         ),
                       ),
 
-                      // Decoration Layer (Buttons) - ON TOP of content
-                      // Base Layer Decoration
-                      // Decoration Layer (Buttons) - ON TOP of content
-                      // Base Layer Decoration
-                      // ✨ Only show on PHONES.
-                      if (_revealController.isAnimating && !isTablet)
-                        _buildDecorationOnly(
-                          showBackground: !_isBackgroundRequested!,
-                          isKeyboardOpen: isKeyboardOpen,
-                          shouldShowResults: shouldShowResults,
-                          scaleAnimation: CurvedAnimation(
-                            parent: ReverseAnimation(_revealController),
-                            curve: _isBackgroundRequested!
-                                ? const Interval(
-                                    0.0,
-                                    0.6,
-                                    curve: Curves.easeInOut,
-                                  )
-                                : const Interval(
-                                    0.0,
-                                    1.0,
-                                    curve: Curves.easeInOut,
-                                  ),
-                          ),
-                        ),
+                      // Decorations Layer (Buttons) - ON TOP of content
+                      // Scrolls up with home content; clamped so it never drops below rest.
+                      ValueListenableBuilder<double>(
+                        valueListenable: _lotusLift,
+                        builder: (context, lift, child) {
+                          return Transform.translate(
+                            offset: Offset(0, -lift),
+                            child: child,
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            // Base Layer Decorations
+                            // Only show on PHONES during reveal animation.
+                            if (_revealController.isAnimating && !isTablet)
+                              _buildDecorationOnly(
+                                showBackground: !_isBackgroundRequested!,
+                                isKeyboardOpen: isKeyboardOpen,
+                                shouldShowResults: shouldShowResults,
+                                scaleAnimation: CurvedAnimation(
+                                  parent: ReverseAnimation(_revealController),
+                                  curve: _isBackgroundRequested!
+                                      ? const Interval(
+                                          0.0,
+                                          0.6,
+                                          curve: Curves.easeInOut,
+                                        )
+                                      : const Interval(
+                                          0.0,
+                                          1.0,
+                                          curve: Curves.easeInOut,
+                                        ),
+                                ),
+                              ),
 
-                      // Top Layer Decoration - Revealing
-                      // ✨ WRAPPED IN LiquidReveal again.
-                      // This is the correct way to handle masking and prevent white flash.
-                      if (isTablet)
-                        _buildDecorationOnly(
-                          showBackground: _isBackgroundRequested!,
-                          isKeyboardOpen: isKeyboardOpen,
-                          shouldShowResults: shouldShowResults,
-                          scaleAnimation:
-                              null, // No scale on tablet (Snapshot handles it)
-                        )
-                      else
-                        LiquidReveal(
-                          progress: revealProgress,
-                          center: _revealCenter,
-                          child: _buildDecorationOnly(
-                            showBackground: _isBackgroundRequested!,
-                            isKeyboardOpen: isKeyboardOpen,
-                            shouldShowResults: shouldShowResults,
-                            scaleAnimation: _revealController.isAnimating
-                                ? CurvedAnimation(
-                                    parent: _revealController,
-                                    curve: const Interval(
-                                      0.6,
-                                      1.0,
-                                      curve: Curves.easeOutBack,
-                                    ),
-                                  )
-                                : null, // ✨ Fix: Default to 1.0 when not animating
-                          ),
+                            // Top Layer Decorations - Revealing
+                            // WRAPPED IN LiquidReveal again.
+                            // This is the correct way to handle masking and prevent white flash.
+                            if (isTablet)
+                              _buildDecorationOnly(
+                                showBackground: _isBackgroundRequested!,
+                                isKeyboardOpen: isKeyboardOpen,
+                                shouldShowResults: shouldShowResults,
+                                scaleAnimation:
+                                    null, // No scale on tablet (Snapshot handles it)
+                              )
+                            else
+                              LiquidReveal(
+                                progress: revealProgress,
+                                center: _revealCenter,
+                                child: _buildDecorationOnly(
+                                  showBackground: _isBackgroundRequested!,
+                                  isKeyboardOpen: isKeyboardOpen,
+                                  shouldShowResults: shouldShowResults,
+                                  scaleAnimation: _revealController.isAnimating
+                                      ? CurvedAnimation(
+                                          parent: _revealController,
+                                          curve: const Interval(
+                                            0.6,
+                                            1.0,
+                                            curve: Curves.easeOutBack,
+                                          ),
+                                        )
+                                      : null, // Default to 1.0 when not animating
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
                     ],
                   );
                 },
