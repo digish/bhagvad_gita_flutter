@@ -114,28 +114,32 @@ class _ParayanScreenState extends State<ParayanScreen> {
   // --- UPDATED: Listener to handle audio state changes ---
   void _handleAudioChange() {
     final audioProvider = _audioProvider;
-    if (audioProvider == null) return;
+    if (audioProvider == null || !mounted) return;
 
-    // Update local playing ID state
-    if (mounted &&
-        _currentlyPlayingId != audioProvider.currentPlayingShlokaId) {
-      setState(() {
-        _currentlyPlayingId = audioProvider.currentPlayingShlokaId;
-      });
+    final newId = audioProvider.currentPlayingShlokaId;
+    if (_currentlyPlayingId == newId) return;
 
-      // Auto-scroll when ID changes (triggered by playlist auto-advance)
-      if (_currentlyPlayingId != null) {
-        final parayanProvider = Provider.of<ParayanProvider>(
-          context,
-          listen: false,
-        );
-        final index = parayanProvider.shlokas.indexWhere(
-          (s) => '${s.chapterNo}.${s.shlokNo}' == _currentlyPlayingId,
-        );
+    setState(() {
+      _currentlyPlayingId = newId;
+    });
 
-        if (index != -1) {
-          _scrollToIndex(index);
-        }
+    // Auto-scroll + move selection/island with the playing shloka
+    if (newId != null) {
+      final parayanProvider = Provider.of<ParayanProvider>(
+        context,
+        listen: false,
+      );
+      final index = parayanProvider.shlokas.indexWhere(
+        (s) =>
+            '${s.chapterNo}.${s.shlokNo}' == newId || s.id == newId,
+      );
+
+      if (index != -1) {
+        setState(() {
+          _selectedIndex = index;
+          _actionsVisible = true;
+        });
+        _scrollCardCenterToFocusLine(index);
       }
     }
   }
@@ -494,14 +498,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 valueListenable: _itemPositionsListener.itemPositions,
                 builder: (context, positions, _) {
                   final screenHeight = MediaQuery.of(context).size.height;
-                  final minTop = _parayanCollapsedHeaderHeight(context) + 4;
                   const islandHeight = 56.0;
                   const gapAboveCard = 6.0;
 
-                  double top = screenHeight * _kParayanFocusLine - 90;
+                  double? top;
                   for (final p in positions) {
                     if (p.index == targetIndex) {
-                      // Sit just above the selected card's top edge
+                      // Travel with the card — sit just above its top edge,
+                      // even if that means going off-screen.
                       top =
                           screenHeight * p.itemLeadingEdge -
                           islandHeight -
@@ -509,7 +513,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       break;
                     }
                   }
-                  top = top.clamp(minTop, screenHeight - islandHeight - 24);
+                  // Card not in viewport yet — keep island hidden off-screen
+                  top ??= -islandHeight * 2;
 
                   return Positioned(
                     left: 0,

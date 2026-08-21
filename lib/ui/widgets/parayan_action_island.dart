@@ -68,13 +68,21 @@ class ParayanActionIsland extends StatelessWidget {
 
     Widget buildButtons(AudioProvider audioProvider) {
       final current = shloka;
-      final isPlayingThis =
+      final playingId = audioProvider.currentPlayingShlokaId;
+      final thisId = current == null
+          ? null
+          : '${current.chapterNo}.${current.shlokNo}';
+      final isThisTrack =
           current != null &&
-          currentlyPlayingId == current.id &&
+          (playingId == thisId ||
+              playingId == current.id ||
+              currentlyPlayingId == thisId ||
+              currentlyPlayingId == current.id);
+      final isPlayingThis =
+          isThisTrack &&
           audioProvider.playbackState == PlaybackState.playing;
       final isPausedThis =
-          current != null &&
-          currentlyPlayingId == current.id &&
+          isThisTrack &&
           audioProvider.playbackState == PlaybackState.paused;
 
       final children = <Widget>[

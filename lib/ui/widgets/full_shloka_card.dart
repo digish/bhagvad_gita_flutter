@@ -61,21 +61,11 @@ class FullShlokaCard extends StatelessWidget {
     TextStyle baseStyle,
     double maxWidth,
   ) {
-    String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
-    final isFourLine = processed.contains('<C>');
-    final couplets = processed.split('*');
+    final isFourLine = rawText.contains('<C>');
+    final allLines = KaraokeTextDisplay.displayLinesFromRaw(rawText);
 
     // --- ✨ NEW LOGIC: Step 1 - Find the single smallest font size needed for the whole block ---
     double uniformFontSize = baseStyle.fontSize ?? 20;
-    final allLines = <String>[];
-
-    for (var couplet in couplets) {
-      final parts = couplet.split('<C>');
-      for (int i = 0; i < parts.length; i++) {
-        String line = parts[i].trim();
-        allLines.add(line);
-      }
-    }
 
     // --- MODIFIED: Use the configurable variable to control the logic ---
     if (_enableDynamicFontSizing) {
