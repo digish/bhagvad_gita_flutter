@@ -145,14 +145,4 @@ class SoulStatus {
     }
     return current;
   }
-
-  static String getDropMessage(int prevStreak) {
-    if (prevStreak >= 30) {
-      return 'You missed a day, so your streak reset. Your past progress still counts—start again whenever you\'re ready.';
-    } else if (prevStreak >= 7) {
-      return 'You missed a day and your streak reset. Come back tomorrow and build it up again.';
-    } else {
-      return 'Your streak reset after a missed day. No worries—you can start fresh today.';
-    }
-  }
 }

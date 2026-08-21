@@ -92,7 +92,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   bool? _isBackgroundRequested;
   Set<int>? _lastKnownSources; // Cache for change detection
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
-  String? _lastProcessedMayaMessage; // 🛡️ Prevent duplicate dialogs
   String? _todaysQuestion;
 
   Future<void> _loadTodaysQuestion() async {
@@ -233,66 +232,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         }
       });
     }
-
-    // --- NEW: Check for Soul Status Message ---
-    // Check this every time dependencies change (e.g. settings rebuild)
-    if (settings.lastSoulStatusMessage != null &&
-        settings.streakSystemEnabled) {
-      final message = settings.lastSoulStatusMessage!;
-      // Only show if we haven't already processed this exact message
-      if (message != _lastProcessedMayaMessage) {
-        _lastProcessedMayaMessage = message;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _showMayaDialog(context, message, settings);
-          }
-        });
-      }
-    } else {
-      // Clear tracking if no message is present
-      _lastProcessedMayaMessage = null;
-    }
-  }
-
-  void _showMayaDialog(
-    BuildContext context,
-    String message,
-    SettingsProvider settings,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Colors.amberAccent, width: 1),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.sync_problem, color: Colors.amberAccent),
-            SizedBox(width: 12),
-            Text('Streak update', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white70, fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              settings.clearSoulStatusMessage();
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Got it',
-              style: TextStyle(color: Colors.amberAccent),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

@@ -43,9 +43,6 @@ class SettingsProvider extends ChangeNotifier {
   int _dailyStreak = 0;
   int get dailyStreak => _dailyStreak;
 
-  String? _lastSoulStatusMessage;
-  String? get lastSoulStatusMessage => _lastSoulStatusMessage;
-
   bool _streakSystemEnabled = true;
   bool get streakSystemEnabled => _streakSystemEnabled;
 
@@ -373,7 +370,8 @@ class SettingsProvider extends ChangeNotifier {
     _customAiApiKey = prefs.getString('custom_ai_api_key');
     _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
     _hasUsedExploreMore = prefs.getBool('has_used_explore_more') ?? false;
-    _lastSoulStatusMessage = prefs.getString('last_soul_status_message');
+    // Streak alerts are silent — clear any legacy queued dialog messages.
+    await prefs.remove('last_soul_status_message');
     _streakSystemEnabled = prefs.getBool('streak_system_enabled') ?? true;
 
     // Load Reminder Settings
@@ -460,22 +458,8 @@ class SettingsProvider extends ChangeNotifier {
         await DailyMessageService.advanceDay(); // User returned, progress message
 
         await prefs.setInt('available_lifelines', _availableLifelines);
-
-        _lastSoulStatusMessage =
-            '🛡️ Lifeline used! Your streak is protected. $_availableLifelines ${_availableLifelines == 1 ? 'lifeline' : 'lifelines'} remaining.';
-        await prefs.setString(
-          'last_soul_status_message',
-          _lastSoulStatusMessage!,
-        );
       } else {
-        // No lifelines - streak breaks
-        if (currentStreak >= 3) {
-          _lastSoulStatusMessage = SoulStatus.getDropMessage(currentStreak);
-          await prefs.setString(
-            'last_soul_status_message',
-            _lastSoulStatusMessage!,
-          );
-        }
+        // No lifelines - streak breaks silently
         _dailyStreak = 1;
         _lastMilestoneThreshold = 0;
         await prefs.setInt('last_milestone_threshold', 0);
@@ -520,14 +504,6 @@ class SettingsProvider extends ChangeNotifier {
 
       await prefs.setInt('available_lifelines', _availableLifelines);
       await prefs.setInt('last_milestone_threshold', _lastMilestoneThreshold);
-
-      // Set celebration message
-      _lastSoulStatusMessage =
-          'You reached ${currentStatus.title}! You now have 2 lifelines to protect your streak.';
-      await prefs.setString(
-        'last_soul_status_message',
-        _lastSoulStatusMessage!,
-      );
     }
   }
 
@@ -566,22 +542,8 @@ class SettingsProvider extends ChangeNotifier {
         // Use a lifeline - preserve streak
         _availableLifelines--;
         await prefs.setInt('available_lifelines', _availableLifelines);
-
-        _lastSoulStatusMessage =
-            '🛡️ Lifeline used! Your streak is protected. $_availableLifelines ${_availableLifelines == 1 ? 'lifeline' : 'lifelines'} remaining.';
-        await prefs.setString(
-          'last_soul_status_message',
-          _lastSoulStatusMessage!,
-        );
       } else {
-        // No lifelines - streak breaks
-        if (_dailyStreak >= 3) {
-          _lastSoulStatusMessage = SoulStatus.getDropMessage(_dailyStreak);
-          await prefs.setString(
-            'last_soul_status_message',
-            _lastSoulStatusMessage!,
-          );
-        }
+        // No lifelines - streak breaks silently
         _dailyStreak = 1;
         _lastMilestoneThreshold = 0;
         await prefs.setInt('daily_streak', _dailyStreak);
@@ -591,13 +553,6 @@ class SettingsProvider extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
-
-  Future<void> clearSoulStatusMessage() async {
-    _lastSoulStatusMessage = null;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('last_soul_status_message');
   }
 
   Future<void> setShowRandomShloka(bool value) async {
