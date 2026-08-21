@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -1374,14 +1373,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         !settings.showBackground &&
         Theme.of(context).brightness == Brightness.light;
     final textColor = isSimpleLight ? Colors.brown.shade900 : Colors.white;
-    final mutedColor = isSimpleLight
-        ? Colors.brown.shade600
-        : Colors.white70;
     final bool usesImage = status.imageAssetName != null;
-    // Match DecorativeForeground lotus size (phone 100 / tablet 150).
+    // Slightly larger than the lotus markers (phone 100 / tablet 150).
     final bool isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
-    final double emblemSize = isTablet ? 150.0 : 100.0;
-    final double innerSize = emblemSize * 0.62;
+    final double innerSize = isTablet ? 120.0 : 80.0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18, right: 4),
@@ -1393,52 +1388,29 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: emblemSize,
-                height: emblemSize,
-                child: Center(
-                  child: usesImage
-                      ? Image.asset(
-                          'assets/soul_evolution/${status.imageAssetName}',
-                          width: innerSize,
-                          height: innerSize,
-                          fit: BoxFit.contain,
-                        )
-                      : Icon(
-                          status.icon,
-                          color: SoulStatus.sparkGold,
-                          size: innerSize,
-                        ),
-                ),
-              ),
-              const SizedBox(height: 4),
+              usesImage
+                  ? Image.asset(
+                      'assets/soul_evolution/${status.imageAssetName}',
+                      width: innerSize,
+                      height: innerSize,
+                      fit: BoxFit.contain,
+                    )
+                  : Icon(
+                      status.icon,
+                      color: SoulStatus.sparkGold,
+                      size: innerSize,
+                    ),
+              const SizedBox(height: 6),
               Text(
-                status.title,
+                '${displayStreak}d - ${status.title}',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: textColor,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  height: 1.1,
+                  height: 1.0,
                 ),
               ),
-              Text(
-                '${displayStreak}d',
-                style: TextStyle(
-                  color: mutedColor,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
-                ),
-              ),
-              if (kDebugMode && _debugStreakOverride != null)
-                const Text(
-                  'DEBUG',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 7,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
             ],
           ),
         ),
@@ -1453,6 +1425,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         builder: (context, setDialogState) {
           final int displayStreak =
               _debugStreakOverride ?? settings.dailyStreak;
+          final currentStatus = SoulStatus.getStatus(displayStreak);
+          final metaParts = <String>[];
+          if (settings.availableLifelines > 0) {
+            metaParts.add(
+              '♥ ${settings.availableLifelines} '
+              '${settings.availableLifelines == 1 ? 'lifeline' : 'lifelines'}',
+            );
+          }
+          if (settings.peakStreakCount > 0) {
+            metaParts.add('Best ${settings.peakStreakCount}d');
+          }
+
           return Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(
@@ -1463,26 +1447,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1A1A),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.amberAccent.withOpacity(0.2)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 20,
-                    spreadRadius: 5,
-                  ),
-                ],
+                border: Border.all(color: Colors.amberAccent.withOpacity(0.15)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header
                   Padding(
-                    padding: const EdgeInsets.only(
-                      left: 24,
-                      right: 16,
-                      top: 24,
-                      bottom: 20,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(24, 16, 8, 8),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1491,255 +1463,143 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  const Icon(
-                                    Icons.auto_awesome,
-                                    color: Colors.amberAccent,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'AURA ASCENT',
-                                    style: TextStyle(
-                                      color: Colors.amberAccent.withOpacity(
-                                        0.8,
-                                      ),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 3,
-                                    ),
-                                  ),
-                                  if (kDebugMode) ...[
-                                    // Change to kDebugMode to re-enable debug badge
-                                    const SizedBox(width: 12),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.redAccent.withOpacity(
-                                          0.2,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'DEBUG',
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.baseline,
-                                          textBaseline: TextBaseline.alphabetic,
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text.rich(
+                                        TextSpan(
                                           children: [
-                                            Flexible(
-                                              child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text(
-                                                  '$displayStreak',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 48,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'Orbitron',
-                                                  ),
-                                                ),
+                                            TextSpan(
+                                              text: '$displayStreak',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 40,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Orbitron',
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              'DAY STREAK',
+                                            TextSpan(
+                                              text: '  ·  ${currentStatus.title}',
                                               style: TextStyle(
                                                 color: Colors.white.withOpacity(
-                                                  0.5,
+                                                  0.75,
                                                 ),
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 1,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          SoulStatus.getStatus(
-                                            displayStreak,
-                                          ).title,
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(
-                                              0.35,
-                                            ),
-                                            fontSize: 12,
-                                            fontStyle: FontStyle.italic,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        // Lifeline display
-                                        if (settings.availableLifelines >
-                                            0) ...[
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.favorite,
-                                                color: Colors.pink,
-                                                size: 14,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                '${settings.availableLifelines} ${settings.availableLifelines == 1 ? 'Lifeline' : 'Lifelines'}',
-                                                style: const TextStyle(
-                                                  color: Colors.pink,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
+                                      ),
                                     ),
                                   ),
-                                  // Big last achieved emblem
-                                  Builder(
-                                    builder: (context) {
-                                      final status = SoulStatus.getStatus(
-                                        displayStreak,
-                                      );
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 12,
+                                  const SizedBox(width: 12),
+                                  currentStatus.imageAssetName != null
+                                      ? Image.asset(
+                                          'assets/soul_evolution/${currentStatus.imageAssetName}',
+                                          width: 56,
+                                          height: 56,
+                                          fit: BoxFit.contain,
+                                        )
+                                      : Icon(
+                                          currentStatus.icon,
+                                          size: 44,
+                                          color: SoulStatus.sparkGold,
                                         ),
-                                        child: status.imageAssetName != null
-                                            ? Image.asset(
-                                                'assets/soul_evolution/${status.imageAssetName}',
-                                                width: 72,
-                                                height: 72,
-                                                fit: BoxFit.contain,
-                                              )
-                                            : Icon(
-                                                status.icon,
-                                                size: 50,
-                                                color: Colors.amberAccent
-                                                    .withOpacity(0.8),
-                                              ),
-                                      );
-                                    },
-                                  ),
                                 ],
                               ),
-                              if (kDebugMode)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: SliderTheme(
-                                    data: SliderThemeData(
-                                      trackHeight: 2,
-                                      thumbColor: Colors.redAccent,
-                                      activeTrackColor: Colors.redAccent
-                                          .withOpacity(0.5),
-                                      inactiveTrackColor: Colors.white10,
-                                      overlayColor: Colors.redAccent
-                                          .withOpacity(0.1),
-                                    ),
-                                    child: Slider(
-                                      value: displayStreak.toDouble(),
-                                      min: 0,
-                                      max: 365,
-                                      divisions: 365,
-                                      label: '$displayStreak Days',
-                                      onChanged: (val) {
-                                        setDialogState(() {
-                                          _debugStreakOverride = val.toInt();
-                                        });
-                                        // 🧪 Also update parent screen
-                                        setState(() {});
-                                      },
-                                    ),
+                              if (metaParts.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  metaParts.join('  ·  '),
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.45),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              // Debug action buttons
-                              if (kDebugMode)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () async {
-                                            await settings.debugAdvanceDay();
-                                            setDialogState(() {});
-                                            setState(() {});
-                                          },
-                                          icon: const Icon(
-                                            Icons.add_circle_outline,
-                                            size: 14,
-                                          ),
-                                          label: const Text(
-                                            '+1 Day',
-                                            style: TextStyle(fontSize: 11),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.greenAccent,
-                                            side: BorderSide(
-                                              color: Colors.greenAccent
-                                                  .withOpacity(0.5),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () async {
-                                            await settings.debugMissDays(1);
-                                            setDialogState(() {});
-                                            setState(() {});
-                                          },
-                                          icon: const Icon(
-                                            Icons.remove_circle_outline,
-                                            size: 14,
-                                          ),
-                                          label: const Text(
-                                            'Miss a Day',
-                                            style: TextStyle(fontSize: 11),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor:
-                                                Colors.orangeAccent,
-                                            side: BorderSide(
-                                              color: Colors.orangeAccent
-                                                  .withOpacity(0.5),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                              ],
+                              if (kDebugMode) ...[
+                                const SizedBox(height: 8),
+                                SliderTheme(
+                                  data: SliderThemeData(
+                                    trackHeight: 2,
+                                    thumbColor: Colors.redAccent,
+                                    activeTrackColor:
+                                        Colors.redAccent.withOpacity(0.5),
+                                    inactiveTrackColor: Colors.white10,
+                                    overlayColor:
+                                        Colors.redAccent.withOpacity(0.1),
+                                  ),
+                                  child: Slider(
+                                    value: displayStreak.toDouble(),
+                                    min: 0,
+                                    max: 365,
+                                    divisions: 365,
+                                    label: '$displayStreak Days',
+                                    onChanged: (val) {
+                                      setDialogState(() {
+                                        _debugStreakOverride = val.toInt();
+                                      });
+                                      setState(() {});
+                                    },
                                   ),
                                 ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () async {
+                                          await settings.debugAdvanceDay();
+                                          setDialogState(() {});
+                                          setState(() {});
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.greenAccent,
+                                          side: BorderSide(
+                                            color: Colors.greenAccent
+                                                .withOpacity(0.4),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          '+1 Day',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () async {
+                                          await settings.debugMissDays(1);
+                                          setDialogState(() {});
+                                          setState(() {});
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.orangeAccent,
+                                          side: BorderSide(
+                                            color: Colors.orangeAccent
+                                                .withOpacity(0.4),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Miss a Day',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -1755,98 +1615,27 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                     ),
                   ),
 
-                  // Peak Achievement Card
-                  if (settings.peakStreakCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.amber.withOpacity(0.2),
-                              Colors.orange.withOpacity(0.1),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.amber.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.emoji_events,
-                              color: Colors.amber,
-                              size: 28,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Peak Achievement',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[400],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${settings.peakMilestone.title} • Achieved ${settings.peakAchievementCount} ${settings.peakAchievementCount == 1 ? 'time' : 'times'}',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.amber,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Max Streak: ${settings.peakStreakCount} Days',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.amber.withOpacity(0.7),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // Roadmap List
+                  // Roadmap
                   Flexible(
                     child: Builder(
                       builder: (context) {
-                        // Calculate current milestone index for auto-scroll
-                        final currentStatus = SoulStatus.getStatus(
-                          displayStreak,
-                        );
                         final currentIndex = SoulStatus.allMilestones
                             .indexWhere((m) => m.title == currentStatus.title);
 
                         return ScrollablePositionedList.builder(
                           itemCount: SoulStatus.allMilestones.length,
-                          initialScrollIndex: currentIndex >= 0
-                              ? currentIndex
-                              : 0,
-                          initialAlignment:
-                              0.3, // Position current item at 30% from top
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          initialScrollIndex:
+                              currentIndex >= 0 ? currentIndex : 0,
+                          initialAlignment: 0.25,
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                           itemBuilder: (context, index) {
                             final milestone = SoulStatus.allMilestones[index];
                             final isReached =
                                 displayStreak >= milestone.threshold;
                             final isCurrent =
                                 currentStatus.title == milestone.title;
-                            final isLast =
-                                index == SoulStatus.allMilestones.length - 1;
+                            final isLast = index ==
+                                SoulStatus.allMilestones.length - 1;
 
                             return _RoadmapItem(
                               milestone: milestone,
@@ -1861,46 +1650,35 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                     ),
                   ),
 
-                  // Footer Actions
+                  // Share
                   Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Builder(
-                            builder: (btnContext) {
-                              return ElevatedButton.icon(
-                                onPressed: () {
-                                  final status = SoulStatus.getStatus(
-                                    displayStreak,
-                                  );
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ImageCreatorScreen(
-                                        streak: displayStreak,
-                                        achievementStatus: status,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.share),
-                                label: const Text('Share Progress'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.amberAccent,
-                                  foregroundColor: Colors.black,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                ),
-                              );
-                            },
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ImageCreatorScreen(
+                                streak: displayStreak,
+                                achievementStatus: currentStatus,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.share, size: 18),
+                        label: const Text('Share progress'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amberAccent,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -3033,284 +2811,131 @@ class _RoadmapItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reached stages: Big Golden Trophy + Sudarshan Chakra
-    // Future stages: Big Icon
-    final double outerCircleSize = 96.0;
-    // final double iconSize = 24.0; // This variable was unused, removed for linting.
+    final titleColor = isCurrent
+        ? Colors.white
+        : (isReached ? Colors.white70 : Colors.white38);
+    // Smaller than the old 76–96 framed emblems; no outer ring.
+    const double emblemSize = 52.0;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Vertical Line & Dot
-          Column(
-            children: [
-              SizedBox(
-                width: outerCircleSize,
-                height: outerCircleSize,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (isCurrent)
-                      _SudarshanChakra(
-                        size: 96,
-                        color: Colors.amber,
-                        isSpinning: true,
-                      ),
-                    Container(
-                      width: 76,
-                      height: 76,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: Colors
-                            .transparent, // Background removed as requested
-                        shape: BoxShape.circle,
-                        border: isCurrent
-                            ? Border.all(
-                                color: Colors.white.withOpacity(0.5),
-                                width: 1,
-                              )
-                            : null,
-                        boxShadow: isReached
-                            ? [
-                                BoxShadow(
-                                  color: milestone.color.withOpacity(0.4),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: milestone.imageAssetName != null
-                            ? ColorFiltered(
-                                colorFilter: isReached
-                                    ? const ColorFilter.mode(
-                                        Colors.transparent,
-                                        BlendMode.dst,
-                                      )
-                                    : const ColorFilter.matrix([
-                                        0.2126,
-                                        0.7152,
-                                        0.0722,
-                                        0,
-                                        0,
-                                        0.2126,
-                                        0.7152,
-                                        0.0722,
-                                        0,
-                                        0,
-                                        0.2126,
-                                        0.7152,
-                                        0.0722,
-                                        0,
-                                        0,
-                                        0,
-                                        0,
-                                        0,
-                                        1,
-                                        0,
-                                      ]),
-                                child: Image.asset(
-                                  'assets/soul_evolution/${milestone.imageAssetName}',
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Icon(
-                                        isReached
-                                            ? Icons.emoji_events
-                                            : milestone.icon,
-                                        size: 40,
-                                        color: isReached
-                                            ? Colors.amberAccent
-                                            : Colors.white24,
-                                      ),
-                                ),
-                              )
-                            : Icon(
-                                isReached ? Icons.emoji_events : milestone.icon,
-                                size: 40,
-                                color: isReached
-                                    ? Colors.amberAccent
-                                    : Colors.white24,
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: SizedBox(
-                    width: outerCircleSize,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 6,
-                          color: isReached
-                              ? milestone.color.withOpacity(0.5)
-                              : Colors.grey[800],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+    Widget emblem;
+    if (milestone.imageAssetName != null) {
+      emblem = Image.asset(
+        'assets/soul_evolution/${milestone.imageAssetName}',
+        width: emblemSize,
+        height: emblemSize,
+        fit: BoxFit.contain,
+      );
+    } else {
+      emblem = Icon(
+        milestone.icon,
+        size: emblemSize * 0.72,
+        color: isReached || isCurrent
+            ? SoulStatus.sparkGold
+            : Colors.white24,
+      );
+    }
 
-          const SizedBox(width: 32),
+    if (!isReached && !isCurrent && milestone.imageAssetName != null) {
+      emblem = ColorFiltered(
+        colorFilter: const ColorFilter.matrix([
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0, 0, 0, 1, 0,
+        ]),
+        child: Opacity(opacity: 0.45, child: emblem),
+      );
+    }
 
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 48.0, top: 12),
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 8 : 10),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: emblemSize,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    milestone.title,
-                    style: TextStyle(
-                      color: isReached ? Colors.white : Colors.white38,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                  SizedBox(
+                    width: emblemSize,
+                    height: emblemSize,
+                    child: Center(child: emblem),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    milestone.description,
-                    style: TextStyle(
-                      color: isReached ? Colors.white70 : Colors.white24,
-                      fontSize: 13,
-                      fontStyle: isReached ? FontStyle.italic : null,
-                    ),
-                  ),
-                  if (!isReached) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '${milestone.threshold - streak} days to go',
-                      style: const TextStyle(
-                        color: Colors.amberAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: 1.5,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        color: isReached
+                            ? Colors.amberAccent.withOpacity(0.35)
+                            : Colors.white12,
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      milestone.title,
+                      style: TextStyle(
+                        color: titleColor,
+                        fontWeight:
+                            isCurrent ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: isCurrent ? 16 : 14,
+                      ),
+                    ),
+                    if (isCurrent) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        milestone.description,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.55),
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final idx = SoulStatus.allMilestones.indexWhere(
+                            (m) => m.title == milestone.title,
+                          );
+                          if (idx < 0 ||
+                              idx >= SoulStatus.allMilestones.length - 1) {
+                            return const SizedBox.shrink();
+                          }
+                          final next = SoulStatus.allMilestones[idx + 1];
+                          final daysToNext = next.threshold - streak;
+                          if (daysToNext <= 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '$daysToNext days to ${next.title}',
+                              style: TextStyle(
+                                color: SoulStatus.sparkGold.withOpacity(0.9),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-class _SudarshanChakra extends StatefulWidget {
-  final double size;
-  final Color color;
-  final bool isSpinning;
-
-  const _SudarshanChakra({
-    required this.size,
-    required this.color,
-    this.isSpinning = true,
-  });
-
-  @override
-  State<_SudarshanChakra> createState() => _SudarshanChakraState();
-}
-
-class _SudarshanChakraState extends State<_SudarshanChakra>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 4),
-      vsync: this,
-    );
-    if (widget.isSpinning) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(_SudarshanChakra oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isSpinning != oldWidget.isSpinning) {
-      if (widget.isSpinning) {
-        _controller.repeat();
-      } else {
-        _controller.stop();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.rotate(
-          angle: _controller.value * 2.0 * math.pi,
-          child: CustomPaint(
-            size: Size(widget.size, widget.size),
-            painter: _ChakraPainter(color: widget.color),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ChakraPainter extends CustomPainter {
-  final Color color;
-  _ChakraPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-    final paint = Paint()
-      ..color = color.withOpacity(0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    // Outer circle
-    canvas.drawCircle(center, radius, paint);
-
-    // Spokes/Blades
-    final int blades = 12;
-    for (int i = 0; i < blades; i++) {
-      final double angle = (i * 2 * math.pi) / blades;
-      final Offset p1 = Offset(
-        center.dx + (radius - 4) * math.cos(angle),
-        center.dy + (radius - 4) * math.sin(angle),
-      );
-      final Offset p2 = Offset(
-        center.dx + radius * math.cos(angle + 0.1),
-        center.dy + radius * math.sin(angle + 0.1),
-      );
-      canvas.drawLine(p1, p2, paint);
-    }
-
-    // Inner glowing ring
-    canvas.drawCircle(
-      center,
-      radius - 8,
-      paint..color = color.withOpacity(0.3),
-    );
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
