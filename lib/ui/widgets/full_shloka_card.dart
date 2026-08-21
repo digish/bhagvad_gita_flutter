@@ -12,7 +12,6 @@
 **/
 
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // Import the share_plus package
 import 'package:go_router/go_router.dart';
@@ -110,6 +109,87 @@ class FullShlokaCard extends StatelessWidget {
     }
 
     return spans;
+  }
+
+  /// Split an overflowing verse line near the **middle** (balanced couplet look),
+  /// not greedy end-orphans. Continuations are indented by the caller.
+  static List<String> wrapVerseLine(
+    String line,
+    TextStyle style,
+    double maxWidth,
+  ) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) return [line];
+    if (_lineFits(trimmed, style, maxWidth)) return [trimmed];
+
+    final breakAt = _balancedBreakIndex(trimmed);
+    if (breakAt <= 0 || breakAt >= trimmed.length) {
+      return _hardWrapVerseLine(trimmed, style, maxWidth);
+    }
+
+    final first = trimmed.substring(0, breakAt).trimRight();
+    final second = trimmed.substring(breakAt).trimLeft();
+    if (first.isEmpty) return wrapVerseLine(second, style, maxWidth);
+    if (second.isEmpty) return wrapVerseLine(first, style, maxWidth);
+
+    // Recurse if a half is still too wide (very large fonts).
+    return [
+      ...wrapVerseLine(first, style, maxWidth),
+      ...wrapVerseLine(second, style, maxWidth),
+    ];
+  }
+
+  /// Prefer a whitespace nearest the midpoint; else the midpoint itself.
+  static int _balancedBreakIndex(String text) {
+    if (text.length < 2) return -1;
+    final mid = text.length ~/ 2;
+
+    // Search outward from midpoint for a space / Devanagari danda pause.
+    final breakChars = RegExp(r'[\s।|]');
+    var best = -1;
+    var bestDist = 1 << 30;
+    for (var i = 0; i < text.length; i++) {
+      if (!breakChars.hasMatch(text[i])) continue;
+      // Don't break at leading/trailing edge.
+      if (i == 0 || i >= text.length - 1) continue;
+      final dist = (i - mid).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i + 1; // break after the separator
+      }
+    }
+    if (best > 0 && best < text.length) return best;
+    return mid;
+  }
+
+  static bool _lineFits(String text, TextStyle style, double maxWidth) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: double.infinity);
+    return painter.width <= maxWidth + 0.5;
+  }
+
+  static List<String> _hardWrapVerseLine(
+    String line,
+    TextStyle style,
+    double maxWidth,
+  ) {
+    // Balanced hard wrap: keep splitting near midpoint until each piece fits.
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) return [line];
+    if (_lineFits(trimmed, style, maxWidth)) return [trimmed];
+    if (trimmed.length < 4) return [trimmed];
+
+    final mid = trimmed.length ~/ 2;
+    final first = trimmed.substring(0, mid).trimRight();
+    final second = trimmed.substring(mid).trimLeft();
+    if (first.isEmpty || second.isEmpty) return [trimmed];
+    return [
+      ..._hardWrapVerseLine(first, style, maxWidth),
+      ..._hardWrapVerseLine(second, style, maxWidth),
+    ];
   }
 
   // Your existing color logic, unchanged.
@@ -312,6 +392,7 @@ class FullShlokaCard extends StatelessWidget {
         ? const Color(0xFFD84315)
         : const Color(0xFFFFD700);
     final bool continuous = config.continuousReading;
+    // Continuous: layout stays identical when focused — only the border paints.
     final bool showAsCard = !continuous || isFocused;
     final Color cardBackgroundColor = continuous
         ? (isLightTheme
@@ -326,15 +407,17 @@ class FullShlokaCard extends StatelessWidget {
     final Color innerCardBorderColor = isLightTheme
         ? Colors.black.withOpacity(0.1)
         : Colors.white.withOpacity(0.2);
-    final focusAccent =
-        Theme.of(context).extension<AppColors>()?.gitaBlue ??
-        const Color(0xFF047BC0);
+    // Continuous Parayan: bright gold selection (matches app highlight gold).
+    final focusAccent = continuous
+        ? const Color(0xFFFFD700)
+        : (Theme.of(context).extension<AppColors>()?.gitaBlue ??
+              const Color(0xFF047BC0));
 
     final cardBody = Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: continuous ? (showAsCard ? 14.0 : 16.0) : 5.0,
-        // Extra top room so the floating number sits cleanly between verses.
-        vertical: continuous ? (showAsCard ? 12.0 : 10.0) : 5.0,
+        // Fixed insets in continuous mode so focus never reflows the verse.
+        horizontal: continuous ? 16.0 : 5.0,
+        vertical: continuous ? 4.0 : 5.0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -487,7 +570,6 @@ class FullShlokaCard extends StatelessWidget {
                                 config: config,
                                 primaryTextColor: primaryTextColor,
                                 constraints: constraints,
-                                formatItalicText: formatItalicText,
                               )
                             else
                               KaraokeTextDisplay(
@@ -517,7 +599,8 @@ class FullShlokaCard extends StatelessWidget {
                                 ),
                               ),
 
-                          SizedBox(height: continuous ? 18 : 16),
+                          if (config.showActions)
+                            SizedBox(height: continuous ? 10 : 16),
 
                           // 4. Action Row (Bottom)
                           if (config.showActions)
@@ -754,16 +837,18 @@ class FullShlokaCard extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       margin: EdgeInsets.symmetric(
+        // Continuous: fixed margin — focus must not change wrap width.
         horizontal: continuous
-            ? (showAsCard ? 8 : 12)
+            ? 12
             : (isFocused ? 4 : 8),
         vertical: continuous
-            ? (showAsCard ? 4 : 0)
+            ? 0
             : (isFocused ? 6 : 4),
       ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(continuous ? 16.0 : 22.0),
-        boxShadow: showAsCard && isFocused
+        // Continuous Parayan: border-only selection — no fill/glow over the gradient.
+        boxShadow: showAsCard && isFocused && !continuous
             ? [
                 BoxShadow(
                   color: focusAccent.withOpacity(0.45),
@@ -779,22 +864,27 @@ class FullShlokaCard extends StatelessWidget {
               ]
             : null,
       ),
-      child: showAsCard
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(continuous ? 14.0 : 20.0),
-              // Let continuous Orbitron numbers paint into the inter-verse gap.
-              clipBehavior: continuous ? Clip.none : Clip.antiAlias,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: continuous ? 12.0 : 6.0,
-                  sigmaY: continuous ? 12.0 : 6.0,
+      child: continuous
+          // Always the same box metrics; transparent border when idle so
+          // selecting never reflows the verse lines.
+          ? Container(
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(14.0),
+                border: Border.all(
+                  color: isFocused
+                      ? focusAccent.withOpacity(0.85)
+                      : Colors.transparent,
+                  width: 2.0,
                 ),
-                child: Container(
+              ),
+              child: cardBody,
+            )
+          : (showAsCard
+              ? Container(
                   decoration: BoxDecoration(
                     color: cardBackgroundColor,
-                    borderRadius: BorderRadius.circular(
-                      continuous ? 14.0 : 20.0,
-                    ),
+                    borderRadius: BorderRadius.circular(20.0),
                     border: Border.all(
                       color: isFocused
                           ? focusAccent
@@ -811,10 +901,8 @@ class FullShlokaCard extends StatelessWidget {
                     ),
                   ),
                   child: cardBody,
-                ),
-              ),
-            )
-          : cardBody,
+                )
+              : cardBody),
     );
   }
 
@@ -927,7 +1015,7 @@ class FullShlokaCard extends StatelessWidget {
           children: [
             Padding(
               padding: config.continuousReading
-                  ? const EdgeInsets.fromLTRB(8, 10, 8, 4)
+                  ? const EdgeInsets.fromLTRB(8, 4, 8, 2)
                   : const EdgeInsets.fromLTRB(16, 8, 16, 32),
               // Pass the audio state down to the content builder
               child: GestureDetector(
@@ -981,60 +1069,112 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
   final FullShlokaCardConfig config;
   final Color primaryTextColor;
   final BoxConstraints constraints;
-  final List<TextSpan> Function(
-    String,
-    TextStyle,
-    double, {
-    bool shrinkToFit,
-  })
-  formatItalicText;
 
   const _ContinuousVerseWithNumber({
     required this.shloka,
     required this.config,
     required this.primaryTextColor,
     required this.constraints,
-    required this.formatItalicText,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Optical center: leave the seek-rail column on the right so verses
-    // center in the remaining reading band (not the full screen).
-    const leftInset = 20.0;
-    final rightInset = ChapterSeekRail.width - 4;
+    // Left-aligned reading band; leave room on the right for Orbitron #.
+    const leftInset = 16.0;
+    const rightInset = 56.0;
     final verseMaxWidth =
         (constraints.maxWidth - leftInset - rightInset).clamp(120.0, 1200.0);
 
-    // At large user font sizes, tighten line height slightly so blocks stay calm.
     final base = config.baseFontSize;
     final lineHeight = base >= 24 ? 1.55 : (base >= 20 ? 1.65 : 1.75);
     final letterSpacing = base >= 24 ? 0.15 : 0.35;
+    final isFourLine = shloka.shlok.contains('<C>');
+    final indent = (base * 1.35).clamp(18.0, 36.0);
+
+    // Strong hue split so 2-line vs 4-line reads instantly on lavender:
+    // ink charcoal vs deep plum (karaoke uses a matching gold below).
+    final verseColor = isFourLine
+        ? (config.isLightTheme
+              ? const Color(0xFF6B21A8) // purple-800
+              : const Color(0xFFD8B4FE)) // purple-300
+        : (config.isLightTheme
+              ? const Color(0xFF1C1917) // warm near-black
+              : primaryTextColor);
+    final karaokeHighlight = isFourLine
+        ? const Color(0xFFFACC15) // yellow-400 — pops on plum
+        : const Color(0xFFCA8A04); // yellow-600 — readable on ink
 
     final verseStyle = TextStyle(
       fontSize: base,
-      fontStyle: FontStyle.normal,
-      color: primaryTextColor,
+      fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
+      color: verseColor,
       fontFamily: 'NotoSerif',
       height: lineHeight,
       letterSpacing: letterSpacing,
+      fontWeight: isFourLine ? FontWeight.w500 : FontWeight.w400,
+      // Soft lift off the lavender gradient — keep subtle so Devanagari stays crisp.
+      shadows: config.isLightTheme
+          ? const [
+              Shadow(
+                color: Color(0x66FFFFFF),
+                blurRadius: 10,
+                offset: Offset(0, 0),
+              ),
+              Shadow(
+                color: Color(0x1A000000),
+                blurRadius: 4,
+                offset: Offset(0, 1.5),
+              ),
+            ]
+          : const [
+              Shadow(
+                color: Color(0x66000000),
+                blurRadius: 8,
+                offset: Offset(0, 1.5),
+              ),
+            ],
     );
 
+    final logicalLines = KaraokeTextDisplay.displayLinesFromRaw(shloka.shlok);
+    final lineWidgets = <Widget>[];
+    for (final logical in logicalLines) {
+      final parts = FullShlokaCard.wrapVerseLine(
+        logical,
+        verseStyle,
+        verseMaxWidth,
+      );
+      for (var i = 0; i < parts.length; i++) {
+        lineWidgets.add(
+          Padding(
+            // Continuations indent — natural manuscript-style wrap.
+            padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
+            child: Text(
+              parts[i],
+              textAlign: TextAlign.left,
+              softWrap: false,
+              style: verseStyle,
+            ),
+          ),
+        );
+      }
+    }
+
     final verse = Padding(
-      padding: EdgeInsets.only(left: leftInset, right: rightInset),
+      padding: const EdgeInsets.only(left: leftInset, right: rightInset),
       child: KaraokeTextDisplay(
         shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
         originalText: shloka.shlok,
         style: verseStyle,
-        child: RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            children: formatItalicText(
-              shloka.shlok,
-              verseStyle,
-              verseMaxWidth,
-              shrinkToFit: true,
-            ),
+        textAlign: TextAlign.left,
+        highlightColor: karaokeHighlight,
+        wrapMaxWidth: verseMaxWidth,
+        continuationIndent: indent,
+        wrapLine: FullShlokaCard.wrapVerseLine,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: lineWidgets,
           ),
         ),
       ),
@@ -1042,14 +1182,21 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
 
     if (!config.showShlokIndex) return verse;
 
-    // Sit just left of the floating seek rail / glass.
-    final numberRight =
-        ChapterSeekRail.width - ChapterSeekRail.glassRadius - 6;
+    // Align with the circular glass column (rail overlays the right 72px).
+    // Content is inset from the screen edge, so a small/negative [right]
+    // pulls the # into the glass lane — clear of the track (~10px inset).
+    const trackClearance = 8.0; // gap so digits don't touch the seek line
+    final numberRight = -(
+      ChapterSeekRail.glassRadius - trackClearance
+    ); // ≈ -18 → sits on glass x, left of track
 
     // Fixed size — formerly the 40% focus peak (no proximity scaling).
     final fontSize = (config.baseFontSize * 2.2).clamp(24.0, 34.0);
-    const opacity = 0.12;
-    final lift = fontSize * 0.72 + 4;
+    // Light: whisper on lavender. Dark: higher alpha so white digits stay faint but readable.
+    final numberColor = config.isLightTheme
+        ? primaryTextColor.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.32);
+    final lift = fontSize * 0.5 + 2;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -1060,13 +1207,15 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
           child: IgnorePointer(
             child: Text(
               shloka.shlokNo,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.center,
+              softWrap: false,
+              maxLines: 1,
               style: TextStyle(
                 fontFamily: 'Orbitron',
                 fontWeight: FontWeight.w600,
                 fontSize: fontSize,
                 height: 1.0,
-                color: primaryTextColor.withValues(alpha: opacity),
+                color: numberColor,
               ),
             ),
           ),

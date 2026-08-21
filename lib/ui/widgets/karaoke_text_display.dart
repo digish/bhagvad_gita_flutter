@@ -4,12 +4,25 @@ import '../../providers/audio_provider.dart';
 import '../../services/timing_service.dart';
 import '../../models/timing_model.dart';
 
+typedef VerseLineWrapper = List<String> Function(
+  String line,
+  TextStyle style,
+  double maxWidth,
+);
+
 class KaraokeTextDisplay extends StatelessWidget {
   final String shlokaId;
   final String originalText;
   final TextStyle? style;
   final TextAlign textAlign;
+  final Color? highlightColor;
   final Widget? child; // The static widget to show when not playing
+
+  /// When set with [wrapLine], playback uses the same wrap + indent Column
+  /// as the static continuous verse (avoids reflow on play).
+  final double? wrapMaxWidth;
+  final double? continuationIndent;
+  final VerseLineWrapper? wrapLine;
 
   const KaraokeTextDisplay({
     super.key,
@@ -17,7 +30,11 @@ class KaraokeTextDisplay extends StatelessWidget {
     required this.originalText,
     this.style,
     this.textAlign = TextAlign.center,
+    this.highlightColor,
     this.child,
+    this.wrapMaxWidth,
+    this.continuationIndent,
+    this.wrapLine,
   });
 
   /// Same preprocessing as [FullShlokaCard.formatItalicText]:
@@ -56,6 +73,17 @@ class KaraokeTextDisplay extends StatelessWidget {
               position,
             );
 
+            final useContinuousWrap =
+                wrapMaxWidth != null && wrapLine != null;
+
+            if (useContinuousWrap) {
+              return _buildWrappedKaraoke(
+                context,
+                timings,
+                currentWordTiming,
+              );
+            }
+
             return RichText(
               textAlign: textAlign,
               text: TextSpan(
@@ -66,6 +94,81 @@ class KaraokeTextDisplay extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  /// Same visual lines as the static continuous Column — word color only changes.
+  Widget _buildWrappedKaraoke(
+    BuildContext context,
+    List<WordTiming> timings,
+    WordTiming? current,
+  ) {
+    final baseStyle = (style ?? DefaultTextStyle.of(context).style);
+    final defaultColor = baseStyle.color ?? Colors.black;
+    final Color activeHighlight = highlightColor ?? const Color(0xFFCA8A04);
+    final maxWidth = wrapMaxWidth!;
+    final indent = continuationIndent ?? 0.0;
+    final wrapper = wrapLine!;
+
+    final logicalLines = displayLinesFromRaw(originalText);
+    final lineWidgets = <Widget>[];
+    var timingIndex = 0;
+
+    for (final logical in logicalLines) {
+      final parts = wrapper(logical, baseStyle, maxWidth);
+      for (var i = 0; i < parts.length; i++) {
+        final part = parts[i];
+        final words =
+            part.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+        final spans = <InlineSpan>[];
+
+        for (var w = 0; w < words.length; w++) {
+          final word = words[w];
+          final isPunctuation =
+              RegExp(r'^[\s\d\|।*॥\.\-]+$').hasMatch(word);
+
+          var isHighlighted = false;
+          if (!isPunctuation && timingIndex < timings.length) {
+            if (current == timings[timingIndex]) {
+              isHighlighted = true;
+            }
+            timingIndex++;
+          }
+
+          spans.add(
+            TextSpan(
+              text: word,
+              style: baseStyle.copyWith(
+                color: isHighlighted ? activeHighlight : defaultColor,
+                fontWeight:
+                    isHighlighted ? FontWeight.w700 : baseStyle.fontWeight,
+              ),
+            ),
+          );
+          if (w < words.length - 1) {
+            spans.add(TextSpan(text: ' ', style: baseStyle));
+          }
+        }
+
+        lineWidgets.add(
+          Padding(
+            padding: EdgeInsets.only(left: i == 0 ? 0.0 : indent),
+            child: RichText(
+              textAlign: TextAlign.left,
+              softWrap: false,
+              text: TextSpan(style: baseStyle, children: spans),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: lineWidgets,
+      ),
     );
   }
 
@@ -83,8 +186,9 @@ class KaraokeTextDisplay extends StatelessWidget {
       fontStyle: isFourLine ? FontStyle.italic : FontStyle.normal,
     );
     final defaultColor = baseStyle.color ?? Colors.black;
-    // Dark sky blue — clear against black Devanagari
-    const highlightColor = Color(0xFF0277BD);
+    // Default gold; continuous Parayan passes hue-matched yellows per verse type.
+    final Color activeHighlight =
+        highlightColor ?? const Color(0xFFCA8A04);
 
     final spans = <InlineSpan>[];
     var timingIndex = 0;
@@ -110,7 +214,7 @@ class KaraokeTextDisplay extends StatelessWidget {
           TextSpan(
             text: word,
             style: baseStyle.copyWith(
-              color: isHighlighted ? highlightColor : defaultColor,
+              color: isHighlighted ? activeHighlight : defaultColor,
               fontWeight: isHighlighted ? FontWeight.w700 : baseStyle.fontWeight,
             ),
           ),

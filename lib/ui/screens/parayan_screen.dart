@@ -515,9 +515,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 provider.shlokas.length - 1,
               );
               final targetShloka = provider.shlokas[targetIndex];
-              final accent =
-                  Theme.of(context).extension<AppColors>()?.gitaBlue ??
-                  const Color(0xFF047BC0);
+              // Match continuous card selection accent (bright gold).
+              const accent = Color(0xFFFFD700);
 
               return ValueListenableBuilder<Iterable<ItemPosition>>(
                 valueListenable: _itemPositionsListener.itemPositions,
@@ -627,9 +626,7 @@ class _ParayanFocusPointer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent =
-        Theme.of(context).extension<AppColors>()?.gitaBlue ??
-        const Color(0xFF047BC0);
+    const accent = Color(0xFFFFD700);
     final screenHeight = MediaQuery.of(context).size.height;
     final top = screenHeight * focusLine;
 
