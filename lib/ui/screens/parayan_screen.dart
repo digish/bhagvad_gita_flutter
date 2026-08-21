@@ -38,8 +38,9 @@ const double _kParayanExpandedExtra = 120.0;
 /// Collapsed header band below the status bar.
 const double _kParayanCollapsedExtra = 108.0;
 
-/// Right inset reserved for [ChapterSeekRail].
-const double _kParayanRailInset = 28.0;
+/// Right inset used where chrome must clear the floating [ChapterSeekRail]
+/// (header / action island). The shloka list itself stays full-width.
+const double _kParayanRailInset = 72.0;
 
 /// Viewport fraction for the reading focus line (cursor / card center target).
 const double _kParayanFocusLine = 0.40;
@@ -242,17 +243,17 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
   void _scrollToIndex(int index) {
-    // ✨ FIX: Use the itemScrollController which is designed for this.
-    _itemScrollController.scrollTo(
-      index: index,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOutCubic,
-      alignment: 0.12, // Keep chapter start near top so seek-rail chapter matches
-    );
+    // Align the target shloka to the same 40% focus line the glass tracks.
+    _scrollCardCenterToFocusLine(index);
   }
 
+  /// Instant seek used while dragging the glass — keep center on the focus line
+  /// so the label and the verse under the cursor stay in sync.
   void _jumpToIndex(int index) {
-    _itemScrollController.jumpTo(index: index, alignment: 0.15);
+    if (!_itemScrollController.isAttached) return;
+    final alignment = _alignmentForCardCenter(index) ??
+        (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
+    _itemScrollController.jumpTo(index: index, alignment: alignment);
   }
 
   // REMOVED: _cyclePlaybackMode
@@ -285,6 +286,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
         children: [
           if (settingsProvider.showBackground)
             SimpleGradientBackground(
+              showMandala: false,
+              showLeaves: true,
               startColor:
                   Theme.of(
                     context,
@@ -307,6 +310,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showBhavarth: false,
                     showSeparator: false,
                     showActions: false,
+                    showSpeaker: false,
+                    showColoredCard: false,
+                    showEmblem: false,
+                    showShlokIndex: true,
+                    spacingCompact: true,
+                    continuousReading: true,
                   );
                   break;
                 case ParayanDisplayMode.shlokAndAnvay:
@@ -316,6 +325,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showBhavarth: false,
                     showSeparator: true,
                     showActions: false,
+                    showSpeaker: false,
+                    showColoredCard: false,
+                    showEmblem: false,
+                    showShlokIndex: true,
+                    spacingCompact: true,
+                    continuousReading: true,
                   );
                   break;
                 case ParayanDisplayMode.all:
@@ -325,6 +340,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     showBhavarth: true,
                     showSeparator: true,
                     showActions: false,
+                    showSpeaker: false,
+                    showColoredCard: false,
+                    showEmblem: false,
+                    showShlokIndex: true,
+                    spacingCompact: true,
+                    continuousReading: true,
                   );
                   break;
               }
@@ -352,9 +373,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     left: MediaQuery.of(
                       context,
                     ).padding.left, // Respect injected padding
-                    right:
-                        MediaQuery.of(context).padding.right +
-                        _kParayanRailInset,
+                    // Full-width cards — seek rail floats on top, does not inset the list.
+                    right: MediaQuery.of(context).padding.right,
                     bottom: miniPlayerVisible ? 100.0 : 16.0,
                   ),
                   itemBuilder: (context, index) {
@@ -404,6 +424,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             showShlokIndex: true,
                             spacingCompact: true,
                             showActions: false,
+                            continuousReading: true,
                             isLightTheme:
                                 Theme.of(context).brightness ==
                                 Brightness.light,
@@ -452,6 +473,10 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       itemPositionsListener: _itemPositionsListener,
                       itemCount: provider.shlokas.length,
                       chapterMarkers: provider.chapterStartIndices,
+                      focusLine: _kParayanFocusLine,
+                      chapterForIndex: (index) {
+                        return provider.shlokas[index].chapterNo;
+                      },
                       onChapterTap: (chapterIndex) {
                         final shlokaIndex =
                             provider.chapterStartIndices[chapterIndex];
@@ -499,7 +524,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 builder: (context, positions, _) {
                   final screenHeight = MediaQuery.of(context).size.height;
                   const islandHeight = 56.0;
-                  const gapAboveCard = 6.0;
+                  const gapAboveCard = 20.0;
 
                   double? top;
                   for (final p in positions) {
@@ -1024,13 +1049,14 @@ class _ChapterStartHeader extends StatelessWidget {
     final chapterName = StaticData.getChapterName(safeChapterNum, script);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(
         '$chapterLabel $localNum $chapterName',
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
           color: const Color.fromARGB(255, 4, 123, 192),
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -1076,24 +1102,25 @@ class _SpeakerHeader extends StatelessWidget {
     // So we just use that.
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (emblemPath != null) ...[
             Image.asset(
               emblemPath,
-              height: 50,
+              height: 36,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
           ],
           Flexible(
             child: Text(
               localizedSpeaker,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.secondary,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
               ),
             ),
           ),
@@ -1137,13 +1164,14 @@ class _ChapterEndFooter extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
       child: Text(
         colophonText,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: Theme.of(context).colorScheme.primary,
           fontStyle: FontStyle.italic,
+          height: 1.5,
         ),
       ),
     );

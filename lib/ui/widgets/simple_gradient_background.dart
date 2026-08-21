@@ -21,11 +21,14 @@ import './glowing_lotus.dart';
 class SimpleGradientBackground extends StatefulWidget {
   final Color? startColor;
   final bool? showMandala;
+  /// Bottom lotus leaves. Defaults to [showMandala] / settings when null.
+  final bool? showLeaves;
 
   const SimpleGradientBackground({
     super.key,
     this.startColor,
     this.showMandala,
+    this.showLeaves,
   });
 
   @override
@@ -54,41 +57,18 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
 
   @override
   Widget build(BuildContext context) {
-    // Watch the SettingsProvider only if showMandala is not explicitly provided
     final settings = Provider.of<SettingsProvider>(context);
     final bool effectiveShowMandala =
         widget.showMandala ?? settings.showBackground;
+    final bool effectiveShowLeaves =
+        widget.showLeaves ?? effectiveShowMandala;
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Use the provided start color for the gradient, or default to white if null.
         final gradientStartColor = widget.startColor ?? Colors.white;
         final appColors = Theme.of(context).extension<AppColors>();
-
-        if (!effectiveShowMandala) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: Theme.of(context).brightness == Brightness.dark
-                    ? [
-                        gradientStartColor == Colors.white
-                            ? Colors.black
-                            : gradientStartColor,
-                        appColors?.defaultGradientEnd ??
-                            const Color(0xFF1E1E1E),
-                      ]
-                    : [
-                        gradientStartColor,
-                        appColors?.defaultGradientEnd ??
-                            const Color(0xFFFCE4EC),
-                      ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          );
-        }
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Stack(
           fit: StackFit.expand,
@@ -96,69 +76,90 @@ class _SimpleGradientBackgroundState extends State<SimpleGradientBackground>
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: Theme.of(context).brightness == Brightness.dark
-                      ? [
-                          (gradientStartColor == Colors.white
-                                  ? Colors.black
-                                  : gradientStartColor)
-                              .withOpacity(1.0),
-                          Colors.black,
-                        ]
-                      : [gradientStartColor.withOpacity(1.0), Colors.white],
+                  colors: effectiveShowMandala
+                      ? (isDark
+                            ? [
+                                (gradientStartColor == Colors.white
+                                        ? Colors.black
+                                        : gradientStartColor)
+                                    .withOpacity(1.0),
+                                Colors.black,
+                              ]
+                            : [
+                                gradientStartColor.withOpacity(1.0),
+                                Colors.white,
+                              ])
+                      : (isDark
+                            ? [
+                                gradientStartColor == Colors.white
+                                    ? Colors.black
+                                    : gradientStartColor,
+                                appColors?.defaultGradientEnd ??
+                                    const Color(0xFF1E1E1E),
+                              ]
+                            : [
+                                gradientStartColor,
+                                appColors?.defaultGradientEnd ??
+                                    const Color(0xFFFCE4EC),
+                              ]),
                   begin: Alignment.topCenter,
-                  end: Alignment
-                      .center, // Fades to white (or black) by the center
+                  end: effectiveShowMandala
+                      ? Alignment.center
+                      : Alignment.bottomCenter,
                 ),
               ),
             ),
-            // Use the reusable GlowingLotus widget
-            const GlowingLotus(width: 300, height: 300, sigma: 5.0),
-            // The bottom leaves image
-            Positioned(
-              bottom: -2,
-              left: 0,
-              right: 0,
-              child: Stack(
-                children: [
-                  // Golden glow layer
-                  Opacity(
-                    opacity: 0.5,
-                    child: ColorFiltered(
-                      colorFilter: ColorFilter.mode(
-                        Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white.withOpacity(
-                                0.1,
-                              ) // Subtle light glow in dark mode
-                            : const Color.fromARGB(
-                                255,
-                                0,
-                                0,
-                                0,
-                              ), // Dark shadow in light mode
-                        BlendMode.srcATop,
+            if (effectiveShowMandala)
+              const GlowingLotus(width: 300, height: 300, sigma: 5.0),
+            if (effectiveShowLeaves)
+              Positioned(
+                bottom: -2,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Opacity(
+                    // Soften so scrolling text stays readable over the leaves.
+                    opacity: effectiveShowMandala ? 1.0 : 0.45,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: effectiveShowMandala ? 0.0 : 10.0,
+                        sigmaY: effectiveShowMandala ? 0.0 : 10.0,
                       ),
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(
-                          sigmaX: 12.0,
-                          sigmaY: 12.0,
-                        ),
-                        child: Image.asset(
-                          'assets/images/leaf.png',
-                          fit: BoxFit.fitWidth,
-                          alignment: Alignment.bottomCenter,
-                        ),
+                      child: Stack(
+                        children: [
+                          Opacity(
+                            opacity: 0.5,
+                            child: ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : const Color.fromARGB(255, 0, 0, 0),
+                                BlendMode.srcATop,
+                              ),
+                              child: ImageFiltered(
+                                imageFilter: ImageFilter.blur(
+                                  sigmaX: 12.0,
+                                  sigmaY: 12.0,
+                                ),
+                                child: Image.asset(
+                                  'assets/images/leaf.png',
+                                  fit: BoxFit.fitWidth,
+                                  alignment: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Image.asset(
+                            'assets/images/leaf.png',
+                            fit: BoxFit.fitWidth,
+                            alignment: Alignment.bottomCenter,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  // Crisp leaves image
-                  Image.asset(
-                    'assets/images/leaf.png',
-                    fit: BoxFit.fitWidth,
-                    alignment: Alignment.bottomCenter,
-                  ),
-                ],
+                ),
               ),
-            ),
           ],
         );
       },

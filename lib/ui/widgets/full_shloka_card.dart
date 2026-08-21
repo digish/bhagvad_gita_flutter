@@ -30,6 +30,7 @@ import 'karaoke_text_display.dart';
 import 'add_to_list_sheet.dart';
 import 'share_options_sheet.dart';
 import 'commentary_sheet.dart';
+import 'chapter_seek_rail.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
@@ -59,8 +60,9 @@ class FullShlokaCard extends StatelessWidget {
   List<TextSpan> formatItalicText(
     String rawText,
     TextStyle baseStyle,
-    double maxWidth,
-  ) {
+    double maxWidth, {
+    bool shrinkToFit = false,
+  }) {
     final isFourLine = rawText.contains('<C>');
     final allLines = KaraokeTextDisplay.displayLinesFromRaw(rawText);
 
@@ -68,7 +70,7 @@ class FullShlokaCard extends StatelessWidget {
     double uniformFontSize = baseStyle.fontSize ?? 20;
 
     // --- MODIFIED: Use the configurable variable to control the logic ---
-    if (_enableDynamicFontSizing) {
+    if (_enableDynamicFontSizing || shrinkToFit) {
       for (final line in allLines) {
         if (uniformFontSize <= 12) break; // Don't shrink further
 
@@ -309,9 +311,15 @@ class FullShlokaCard extends StatelessWidget {
     final Color accentColor = isLightTheme
         ? const Color(0xFFD84315)
         : const Color(0xFFFFD700);
-    final Color cardBackgroundColor = isLightTheme
-        ? Colors.white.withOpacity(0.6)
-        : Colors.white.withOpacity(0.07);
+    final bool continuous = config.continuousReading;
+    final bool showAsCard = !continuous || isFocused;
+    final Color cardBackgroundColor = continuous
+        ? (isLightTheme
+              ? Colors.white.withOpacity(0.45)
+              : Colors.white.withOpacity(0.10))
+        : (isLightTheme
+              ? Colors.white.withOpacity(0.6)
+              : Colors.white.withOpacity(0.07));
     final Color mainBorderColor = isLightTheme
         ? Colors.grey.shade400
         : const Color(0xFFFFD700);
@@ -322,68 +330,23 @@ class FullShlokaCard extends StatelessWidget {
         Theme.of(context).extension<AppColors>()?.gitaBlue ??
         const Color(0xFF047BC0);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      margin: EdgeInsets.symmetric(
-        horizontal: isFocused ? 4 : 8,
-        vertical: isFocused ? 6 : 4,
+    final cardBody = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: continuous ? (showAsCard ? 14.0 : 16.0) : 5.0,
+        // Extra top room so the floating number sits cleanly between verses.
+        vertical: continuous ? (showAsCard ? 12.0 : 10.0) : 5.0,
       ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.0),
-        boxShadow: isFocused
-            ? [
-                BoxShadow(
-                  color: focusAccent.withOpacity(0.45),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: focusAccent.withOpacity(0.2),
-                  blurRadius: 8,
-                  spreadRadius: 0,
-                ),
-              ]
-            : null,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20.0),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardBackgroundColor,
-              borderRadius: BorderRadius.circular(20.0),
-              // --- MODIFICATION: Border highlighting for playing / focused ---
-              border: Border.all(
-                color:
-                    isPlayingThisShloka &&
-                        playbackState == PlaybackState.playing
-                    ? theme.colorScheme.primary
-                    : isFocused
-                    ? focusAccent
-                    : mainBorderColor,
-                width:
-                    isPlayingThisShloka &&
-                        playbackState == PlaybackState.playing
-                    ? 2.5
-                    : isFocused
-                    ? 3.0
-                    : 1.5,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(5.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
                   LayoutBuilder(
                     builder: (context, constraints) {
                       return Container(
-                        padding: config.spacingCompact
-                            ? const EdgeInsets.all(1)
-                            : const EdgeInsets.all(4),
+                        padding: continuous
+                            ? EdgeInsets.zero
+                            : (config.spacingCompact
+                                  ? const EdgeInsets.all(1)
+                                  : const EdgeInsets.all(4)),
                         decoration: BoxDecoration(
                           color: config.showColoredCard
                               ? speakerColor
@@ -399,139 +362,162 @@ class FullShlokaCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // 1. Speaker Name (Left)
-                                if (config.showSpeaker &&
-                                    shloka.speaker != null &&
-                                    shloka.speaker!.isNotEmpty)
-                                  Expanded(
-                                    child: Text(
-                                      // Localize speaker
-                                      '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
-                                      style: theme.textTheme.labelLarge
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: primaryTextColor.withOpacity(
-                                              0.9,
+                            if (!continuous || config.showSpeaker)
+                              Row(
+                                mainAxisAlignment: continuous
+                                    ? MainAxisAlignment.center
+                                    : MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // 1. Speaker Name (Left)
+                                  if (config.showSpeaker &&
+                                      shloka.speaker != null &&
+                                      shloka.speaker!.isNotEmpty)
+                                    Expanded(
+                                      child: Text(
+                                        // Localize speaker
+                                        '${StaticData.localizeSpeaker(shloka.speaker, Provider.of<SettingsProvider>(context).script)}:',
+                                        style: theme.textTheme.labelLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: primaryTextColor
+                                                  .withOpacity(0.9),
+                                              letterSpacing: 0.5,
                                             ),
-                                            letterSpacing: 0.5,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  if (!continuous) const SizedBox(width: 8),
+                                  // 2. Chapter & Shloka Index (non-continuous cards)
+                                  if (!continuous && config.showShlokIndex)
+                                    Builder(
+                                      builder: (context) {
+                                        final script =
+                                            Provider.of<SettingsProvider>(
+                                              context,
+                                            ).script;
+                                        final chapLabel =
+                                            StaticData.getChapterLabel(script);
+                                        // Localize numbers
+                                        final chapNum =
+                                            StaticData.localizeNumber(
+                                              int.tryParse(shloka.chapterNo) ??
+                                                  0,
+                                              script,
+                                            );
+                                        final shlokNum =
+                                            StaticData.localizeNumber(
+                                              int.tryParse(shloka.shlokNo) ?? 0,
+                                              script,
+                                            );
+
+                                        // Shloka label
+                                        String vsLabel = 'Vs';
+                                        if (script == 'dev' ||
+                                            script == 'hi' ||
+                                            script == 'mr') {
+                                          vsLabel = 'श्लोक';
+                                        } else if (script == 'gu') {
+                                          vsLabel = 'શ્લોક';
+                                        } else if (script == 'bn') {
+                                          vsLabel = 'শ্লোক';
+                                        } else if (script == 'te') {
+                                          vsLabel = 'శ్లోక';
+                                        }
+
+                                        final text = config.spacingCompact
+                                            ? '$chapNum:$shlokNum'
+                                            : '$chapLabel $chapNum, $vsLabel $shlokNum';
+
+                                        return Flexible(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: accentColor.withOpacity(
+                                                0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: accentColor.withOpacity(
+                                                  0.3,
+                                                ),
+                                              ),
+                                            ),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                text,
+                                                style: theme
+                                                    .textTheme
+                                                    .labelMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: accentColor,
+                                                      letterSpacing: 0.6,
+                                                    ),
+                                              ),
+                                            ),
                                           ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+
+                            if ((!continuous &&
+                                    (config.showSpeaker ||
+                                        config.showShlokIndex)) ||
+                                (continuous && config.showSpeaker))
+                              SizedBox(
+                                height: continuous
+                                    ? 4
+                                    : (config.spacingCompact ? 8 : 16),
+                              ),
+
+                            // 3. Sanskrit Text — continuous: full-width verse;
+                            // faint Orbitron # behind text, scaled near focus line.
+                            if (continuous)
+                              _ContinuousVerseWithNumber(
+                                shloka: shloka,
+                                config: config,
+                                primaryTextColor: primaryTextColor,
+                                constraints: constraints,
+                                formatItalicText: formatItalicText,
+                              )
+                            else
+                              KaraokeTextDisplay(
+                                shlokaId:
+                                    '${shloka.chapterNo}.${shloka.shlokNo}',
+                                originalText: shloka.shlok,
+                                style: TextStyle(
+                                  fontSize: config.baseFontSize,
+                                  fontStyle: FontStyle.normal,
+                                  color: primaryTextColor,
+                                  fontFamily: 'NotoSerif',
+                                ),
+                                child: RichText(
+                                  textAlign: TextAlign.center,
+                                  text: TextSpan(
+                                    children: formatItalicText(
+                                      shloka.shlok,
+                                      TextStyle(
+                                        fontSize: config.baseFontSize,
+                                        fontStyle: FontStyle.normal,
+                                        color: primaryTextColor,
+                                        fontFamily: 'NotoSerif',
+                                      ),
+                                      constraints.maxWidth - 32,
                                     ),
                                   ),
-                                const SizedBox(width: 8),
-                                // 2. Chapter & Shloka Index (Right)
-                                if (config.showShlokIndex)
-                                  Builder(
-                                    builder: (context) {
-                                      final script =
-                                          Provider.of<SettingsProvider>(
-                                            context,
-                                          ).script;
-                                      final chapLabel =
-                                          StaticData.getChapterLabel(script);
-                                      // Localize numbers
-                                      final chapNum = StaticData.localizeNumber(
-                                        int.tryParse(shloka.chapterNo) ?? 0,
-                                        script,
-                                      );
-                                      final shlokNum =
-                                          StaticData.localizeNumber(
-                                            int.tryParse(shloka.shlokNo) ?? 0,
-                                            script,
-                                          );
-
-                                    // Shloka label
-                                    String vsLabel = 'Vs';
-                                    if (script == 'dev' ||
-                                        script == 'hi' ||
-                                        script == 'mr')
-                                      vsLabel = 'श्लोक';
-                                    else if (script == 'gu')
-                                      vsLabel = 'શ્લોક';
-                                    else if (script == 'bn')
-                                      vsLabel = 'শ্লোক';
-                                    else if (script == 'te')
-                                      vsLabel = 'శ్లోక';
-
-                                    String text;
-                                    if (config.spacingCompact) {
-                                      text = '$chapNum:$shlokNum';
-                                    } else {
-                                      text =
-                                          '$chapLabel $chapNum, $vsLabel $shlokNum';
-                                    }
-
-                                    return Flexible(
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: accentColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: accentColor.withOpacity(0.3),
-                                          ),
-                                        ),
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(
-                                            text,
-                                            style: theme.textTheme.labelMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: accentColor,
-                                                  letterSpacing: 0.6,
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-
-                          if (config.showSpeaker || config.showShlokIndex)
-                            config.spacingCompact
-                                ? const SizedBox(height: 8)
-                                : const SizedBox(height: 16),
-
-                          // 3. Sanskrit Text (Middle)
-                          KaraokeTextDisplay(
-                            shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
-                            originalText: shloka.shlok,
-                            style: TextStyle(
-                              fontSize: config.baseFontSize,
-                              fontStyle: FontStyle.normal,
-                              color: primaryTextColor,
-                              fontFamily: 'NotoSerif',
-                            ),
-                            child: RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(
-                                children: formatItalicText(
-                                  shloka.shlok,
-                                  TextStyle(
-                                    fontSize: config.baseFontSize,
-                                    fontStyle: FontStyle.normal,
-                                    color: primaryTextColor,
-                                    fontFamily: 'NotoSerif',
-                                  ),
-                                  constraints.maxWidth - 32,
                                 ),
                               ),
-                            ),
-                          ),
 
-                          const SizedBox(height: 16),
+                          SizedBox(height: continuous ? 18 : 16),
 
                           // 4. Action Row (Bottom)
                           if (config.showActions)
@@ -760,12 +746,75 @@ class FullShlokaCard extends StatelessWidget {
                     ),
                   ),
                 ],
-              ],
-            ),
-          ),
-        ),
+        ],
       ),
+    );
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      margin: EdgeInsets.symmetric(
+        horizontal: continuous
+            ? (showAsCard ? 8 : 12)
+            : (isFocused ? 4 : 8),
+        vertical: continuous
+            ? (showAsCard ? 4 : 0)
+            : (isFocused ? 6 : 4),
       ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(continuous ? 16.0 : 22.0),
+        boxShadow: showAsCard && isFocused
+            ? [
+                BoxShadow(
+                  color: focusAccent.withOpacity(0.45),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: focusAccent.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
+      ),
+      child: showAsCard
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(continuous ? 14.0 : 20.0),
+              // Let continuous Orbitron numbers paint into the inter-verse gap.
+              clipBehavior: continuous ? Clip.none : Clip.antiAlias,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: continuous ? 12.0 : 6.0,
+                  sigmaY: continuous ? 12.0 : 6.0,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cardBackgroundColor,
+                    borderRadius: BorderRadius.circular(
+                      continuous ? 14.0 : 20.0,
+                    ),
+                    border: Border.all(
+                      color: isFocused
+                          ? focusAccent
+                          : (isPlayingThisShloka &&
+                                playbackState == PlaybackState.playing)
+                          ? theme.colorScheme.primary
+                          : mainBorderColor,
+                      width: isFocused
+                          ? 3.0
+                          : (isPlayingThisShloka &&
+                                playbackState == PlaybackState.playing)
+                          ? 2.5
+                          : 1.5,
+                    ),
+                  ),
+                  child: cardBody,
+                ),
+              ),
+            )
+          : cardBody,
     );
   }
 
@@ -877,7 +926,9 @@ class FullShlokaCard extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: config.continuousReading
+                  ? const EdgeInsets.fromLTRB(8, 10, 8, 4)
+                  : const EdgeInsets.fromLTRB(16, 8, 16, 32),
               // Pass the audio state down to the content builder
               child: GestureDetector(
                 onTap: onTap,
@@ -924,6 +975,108 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+/// Continuous Parayan verse + Orbitron shloka watermark in the inter-verse gap.
+class _ContinuousVerseWithNumber extends StatelessWidget {
+  final ShlokaResult shloka;
+  final FullShlokaCardConfig config;
+  final Color primaryTextColor;
+  final BoxConstraints constraints;
+  final List<TextSpan> Function(
+    String,
+    TextStyle,
+    double, {
+    bool shrinkToFit,
+  })
+  formatItalicText;
+
+  const _ContinuousVerseWithNumber({
+    required this.shloka,
+    required this.config,
+    required this.primaryTextColor,
+    required this.constraints,
+    required this.formatItalicText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Optical center: leave the seek-rail column on the right so verses
+    // center in the remaining reading band (not the full screen).
+    const leftInset = 20.0;
+    final rightInset = ChapterSeekRail.width - 4;
+    final verseMaxWidth =
+        (constraints.maxWidth - leftInset - rightInset).clamp(120.0, 1200.0);
+
+    // At large user font sizes, tighten line height slightly so blocks stay calm.
+    final base = config.baseFontSize;
+    final lineHeight = base >= 24 ? 1.55 : (base >= 20 ? 1.65 : 1.75);
+    final letterSpacing = base >= 24 ? 0.15 : 0.35;
+
+    final verseStyle = TextStyle(
+      fontSize: base,
+      fontStyle: FontStyle.normal,
+      color: primaryTextColor,
+      fontFamily: 'NotoSerif',
+      height: lineHeight,
+      letterSpacing: letterSpacing,
+    );
+
+    final verse = Padding(
+      padding: EdgeInsets.only(left: leftInset, right: rightInset),
+      child: KaraokeTextDisplay(
+        shlokaId: '${shloka.chapterNo}.${shloka.shlokNo}',
+        originalText: shloka.shlok,
+        style: verseStyle,
+        child: RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: formatItalicText(
+              shloka.shlok,
+              verseStyle,
+              verseMaxWidth,
+              shrinkToFit: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (!config.showShlokIndex) return verse;
+
+    // Sit just left of the floating seek rail / glass.
+    final numberRight =
+        ChapterSeekRail.width - ChapterSeekRail.glassRadius - 6;
+
+    // Fixed size — formerly the 40% focus peak (no proximity scaling).
+    final fontSize = (config.baseFontSize * 2.2).clamp(24.0, 34.0);
+    const opacity = 0.12;
+    final lift = fontSize * 0.72 + 4;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: -lift,
+          right: numberRight,
+          child: IgnorePointer(
+            child: Text(
+              shloka.shlokNo,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontFamily: 'Orbitron',
+                fontWeight: FontWeight.w600,
+                fontSize: fontSize,
+                height: 1.0,
+                color: primaryTextColor.withValues(alpha: opacity),
+              ),
+            ),
+          ),
+        ),
+        verse,
+      ],
+    );
+  }
+}
+
 // Your existing config class, unchanged.
 class FullShlokaCardConfig {
   final bool showSpeaker;
@@ -937,6 +1090,8 @@ class FullShlokaCardConfig {
   final bool isLightTheme;
   final double baseFontSize;
   final bool showActions;
+  /// Parayan continuous reading: no card chrome unless focused.
+  final bool continuousReading;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -950,6 +1105,7 @@ class FullShlokaCardConfig {
     this.isLightTheme = false,
     this.baseFontSize = 20.0,
     this.showActions = true,
+    this.continuousReading = false,
   });
 
   static const minimal = FullShlokaCardConfig(
@@ -995,6 +1151,7 @@ class FullShlokaCardConfig {
     bool? isLightTheme,
     double? baseFontSize,
     bool? showActions,
+    bool? continuousReading,
   }) {
     return FullShlokaCardConfig(
       showSpeaker: showSpeaker ?? this.showSpeaker,
@@ -1008,6 +1165,7 @@ class FullShlokaCardConfig {
       isLightTheme: isLightTheme ?? this.isLightTheme,
       baseFontSize: baseFontSize ?? this.baseFontSize,
       showActions: showActions ?? this.showActions,
+      continuousReading: continuousReading ?? this.continuousReading,
     );
   }
 }

@@ -11,6 +11,7 @@
 *
 */
 
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -19,15 +20,21 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../theme/app_colors.dart';
 
-/// Slim vertical chapter seek control: track, chapter dots, and a draggable thumb.
+/// Slim vertical chapter seek control: magnet-bent track, chapter dots,
+/// and a movable circular glass showing chapter:shloka in Orbitron.
 class ChapterSeekRail extends StatefulWidget {
-  static const double width = 28.0;
+  static const double width = 72.0;
+  static const double glassRadius = 26.0;
 
   final int itemCount;
   final List<int> chapterMarkers;
   final ItemPositionsListener itemPositionsListener;
   final ValueChanged<int> onChapterTap;
   final ValueChanged<int> onSeekToIndex;
+  /// Chapter shown inside the glass (Orbitron).
+  final String Function(int index) chapterForIndex;
+  /// Viewport fraction (from top) that the glass tracks — Parayan focus line.
+  final double focusLine;
 
   const ChapterSeekRail({
     super.key,
@@ -36,6 +43,8 @@ class ChapterSeekRail extends StatefulWidget {
     required this.itemPositionsListener,
     required this.onChapterTap,
     required this.onSeekToIndex,
+    required this.chapterForIndex,
+    this.focusLine = 0.40,
   });
 
   @override
@@ -43,13 +52,21 @@ class ChapterSeekRail extends StatefulWidget {
 }
 
 class _ChapterSeekRailState extends State<ChapterSeekRail> {
-  static const double _verticalPadding = 12.0;
-  static const double _thumbRadius = 8.0;
+  static const double _verticalPadding = 20.0;
   static const double _dotRadius = 3.5;
   static const double _activeDotRadius = 5.0;
+  static const double _trackInsetRight = 10.0;
+  static const double _magnetPull = 14.0;
+  static const double _bendExtent = 28.0;
 
   double _scrollRatio = 0.0;
+  int _focusIndex = 0;
   bool _isDragging = false;
+  /// Finger covers the glass — show chapter above it while interacting.
+  bool _showChapterPopup = false;
+  Timer? _popupHideTimer;
+  /// After a glass seek / chapter tap, hold this index until list focus catches up.
+  int? _pendingFocusIndex;
   int? _dragChapterIndex;
   int? _pendingChapterIndex;
   int _lastHapticChapter = -1;
@@ -72,8 +89,28 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
 
   @override
   void dispose() {
+    _popupHideTimer?.cancel();
     widget.itemPositionsListener.itemPositions.removeListener(_onScroll);
     super.dispose();
+  }
+
+  void _hideChapterPopupSoon() {
+    _popupHideTimer?.cancel();
+    _popupHideTimer = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted || _isDragging) return;
+      setState(() => _showChapterPopup = false);
+    });
+  }
+
+  /// Shloka whose vertical center is closest to [focusLine] (40% from top).
+  ItemPosition? _itemAtFocusLine(Iterable<ItemPosition> positions) {
+    if (positions.isEmpty) return null;
+    final focusLine = widget.focusLine;
+    return positions.reduce((a, b) {
+      final aCenter = (a.itemLeadingEdge + a.itemTrailingEdge) / 2;
+      final bCenter = (b.itemLeadingEdge + b.itemTrailingEdge) / 2;
+      return (aCenter - focusLine).abs() <= (bCenter - focusLine).abs() ? a : b;
+    });
   }
 
   void _onScroll() {
@@ -81,28 +118,37 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
     final positions = widget.itemPositionsListener.itemPositions.value;
     if (positions.isEmpty || widget.itemCount <= 1) return;
 
-    // Prefer the deepest item in the upper reading band. Using the absolute
-    // topmost index leaves the filled chapter dot one behind after jumps
-    // (previous chapter footer/title still sits above the new chapter).
-    const upperBand = 0.42;
-    final inBand = positions.where(
-      (p) => p.itemLeadingEdge <= upperBand && p.itemTrailingEdge > 0.02,
-    );
-    final focusItem = inBand.isNotEmpty
-        ? inBand.reduce((a, b) => a.index >= b.index ? a : b)
-        : positions.reduce((a, b) {
-            const focusLine = 0.22;
-            final aDist = (a.itemLeadingEdge - focusLine).abs();
-            final bDist = (b.itemLeadingEdge - focusLine).abs();
-            return aDist <= bDist ? a : b;
+    final focusItem = _itemAtFocusLine(positions);
+    if (focusItem == null) return;
+
+    // While a seek is settling, keep glass on the requested shloka until
+    // that item actually becomes the focus-line verse.
+    if (_pendingFocusIndex != null) {
+      final pending = _pendingFocusIndex!;
+      if (focusItem.index == pending) {
+        _pendingFocusIndex = null;
+      } else {
+        final pendingVisible = positions.any((p) => p.index == pending);
+        if (pendingVisible) {
+          setState(() {
+            _focusIndex = pending;
+            _scrollRatio = widget.itemCount <= 1
+                ? 0.0
+                : (pending / (widget.itemCount - 1)).clamp(0.0, 1.0);
           });
+          return;
+        }
+        // Pending target left the viewport — resume normal tracking.
+        _pendingFocusIndex = null;
+      }
+    }
 
     final ratio = focusItem.index / (widget.itemCount - 1);
     final chapter = _currentChapterForIndex(focusItem.index);
 
     setState(() {
+      _focusIndex = focusItem.index;
       _scrollRatio = ratio.clamp(0.0, 1.0);
-      // Hold the tapped chapter until scroll actually reaches it (or past it).
       if (_pendingChapterIndex != null && chapter >= _pendingChapterIndex!) {
         _pendingChapterIndex = null;
       }
@@ -112,8 +158,7 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
   int get _currentChapterIndex {
     if (_pendingChapterIndex != null) return _pendingChapterIndex!;
     if (widget.chapterMarkers.isEmpty) return 0;
-    final itemIndex = (_scrollRatio * (widget.itemCount - 1)).round();
-    return _currentChapterForIndex(itemIndex);
+    return _currentChapterForIndex(_focusIndex);
   }
 
   double _yForRatio(double ratio, double height) {
@@ -138,8 +183,7 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
   int? _chapterAtY(double y, double height) {
     if (widget.chapterMarkers.isEmpty || widget.itemCount <= 1) return null;
     for (var i = 0; i < widget.chapterMarkers.length; i++) {
-      final markerRatio =
-          widget.chapterMarkers[i] / (widget.itemCount - 1);
+      final markerRatio = widget.chapterMarkers[i] / (widget.itemCount - 1);
       final dotY = _yForRatio(markerRatio, height);
       if ((y - dotY).abs() <= 14) return i;
     }
@@ -158,14 +202,14 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
 
     setState(() {
       _scrollRatio = ratio;
+      _focusIndex = index;
       _dragChapterIndex = chapter;
+      _pendingFocusIndex = index;
     });
 
-    if (commit) {
-      if (index != _lastSeekIndex) {
-        _lastSeekIndex = index;
-        widget.onSeekToIndex(index);
-      }
+    if (commit && index != _lastSeekIndex) {
+      _lastSeekIndex = index;
+      widget.onSeekToIndex(index);
     }
   }
 
@@ -186,12 +230,11 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
   Widget build(BuildContext context) {
     final appColors = Theme.of(context).extension<AppColors>();
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final accent =
-        appColors?.gitaBlue ?? const Color(0xFF047BC0);
+    final accent = appColors?.gitaBlue ?? const Color(0xFF047BC0);
     final trackColor = isLight
-        ? accent.withValues(alpha: 0.28)
+        ? accent.withValues(alpha: 0.35)
         : (appColors?.highlightColor ?? const Color(0xFFFFD700)).withValues(
-            alpha: 0.35,
+            alpha: 0.4,
           );
     final inactiveDot = isLight
         ? accent.withValues(alpha: 0.45)
@@ -206,9 +249,15 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
         builder: (context, constraints) {
           final height = constraints.maxHeight;
           final thumbY = _yForRatio(_scrollRatio, height);
+          final trackX = ChapterSeekRail.width - _trackInsetRight;
+          final glassCenterX = ChapterSeekRail.glassRadius + 2;
           final activeChapter = _isDragging
               ? (_dragChapterIndex ?? _currentChapterIndex)
               : _currentChapterIndex;
+          final safeIndex = _focusIndex.clamp(0, widget.itemCount - 1);
+          final chapterLabel = widget.itemCount > 0
+              ? widget.chapterForIndex(safeIndex)
+              : '1';
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -222,17 +271,25 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
                     : markerIndex / (widget.itemCount - 1);
                 setState(() {
                   _scrollRatio = ratio.clamp(0.0, 1.0);
+                  _focusIndex = markerIndex;
+                  _pendingFocusIndex = markerIndex;
                   _pendingChapterIndex = chapter;
                   _lastSeekIndex = markerIndex;
+                  _showChapterPopup = true;
                 });
                 widget.onChapterTap(chapter);
+                _hideChapterPopupSoon();
                 return;
               }
+              setState(() => _showChapterPopup = true);
               _applySeek(details.localPosition.dy, height, commit: true);
+              _hideChapterPopupSoon();
             },
             onVerticalDragStart: (details) {
+              _popupHideTimer?.cancel();
               setState(() {
                 _isDragging = true;
+                _showChapterPopup = true;
                 _lastHapticChapter = -1;
               });
               _applySeek(details.localPosition.dy, height, commit: true);
@@ -241,55 +298,75 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
               _applySeek(details.localPosition.dy, height, commit: true);
             },
             onVerticalDragEnd: (_) {
+              // Final settle: ensure list centers the glass's shloka on focus line.
+              final index = _focusIndex;
               setState(() {
                 _isDragging = false;
                 _dragChapterIndex = null;
+                _pendingFocusIndex = index;
+                _showChapterPopup = true;
               });
+              if (index != _lastSeekIndex) {
+                _lastSeekIndex = index;
+                widget.onSeekToIndex(index);
+              } else {
+                // Re-jump so alignment is focus-line accurate after drag.
+                widget.onSeekToIndex(index);
+              }
+              _hideChapterPopupSoon();
             },
             onVerticalDragCancel: () {
               setState(() {
                 _isDragging = false;
                 _dragChapterIndex = null;
               });
+              _hideChapterPopupSoon();
             },
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Track
-                Positioned(
-                  left: ChapterSeekRail.width / 2 - 1,
-                  top: _verticalPadding,
-                  bottom: _verticalPadding,
-                  child: Container(
-                    width: 2,
-                    decoration: BoxDecoration(
+                // Magnet-bent track + connector stem
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _MagnetTrackPainter(
+                      trackX: trackX,
+                      thumbY: thumbY,
+                      glassRightX:
+                          glassCenterX + ChapterSeekRail.glassRadius - 2,
+                      top: _verticalPadding,
+                      bottom: height - _verticalPadding,
+                      pull: _magnetPull,
+                      bendExtent: _bendExtent,
                       color: trackColor,
-                      borderRadius: BorderRadius.circular(1),
+                      accent: activeDot,
                     ),
                   ),
                 ),
-                // Chapter dots
+                // Chapter dots (no numbers — glass carries chapter)
                 if (widget.itemCount > 1)
                   for (var i = 0; i < widget.chapterMarkers.length; i++)
                     Positioned(
-                      left: ChapterSeekRail.width / 2 -
+                      left:
+                          trackX -
                           (i == activeChapter
                               ? _activeDotRadius
                               : _dotRadius),
-                      top: _yForRatio(
-                            widget.chapterMarkers[i] /
-                                (widget.itemCount - 1),
+                      top:
+                          _yForRatio(
+                            widget.chapterMarkers[i] / (widget.itemCount - 1),
                             height,
                           ) -
                           (i == activeChapter
                               ? _activeDotRadius
                               : _dotRadius),
                       child: Container(
-                        width: (i == activeChapter
+                        width:
+                            (i == activeChapter
                                 ? _activeDotRadius
                                 : _dotRadius) *
                             2,
-                        height: (i == activeChapter
+                        height:
+                            (i == activeChapter
                                 ? _activeDotRadius
                                 : _dotRadius) *
                             2,
@@ -307,27 +384,33 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
                         ),
                       ),
                     ),
-                // Thumb
-                Positioned(
-                  left: ChapterSeekRail.width / 2 - _thumbRadius,
-                  top: thumbY - _thumbRadius,
-                  child: _SeekThumb(
-                    radius: _thumbRadius,
-                    accent: activeDot,
-                    isLight: isLight,
-                  ),
-                ),
-                // Chapter label while dragging
-                if (_isDragging && _dragChapterIndex != null)
+                // Chapter popup above glass while finger covers it
+                if (_showChapterPopup)
                   Positioned(
-                    right: ChapterSeekRail.width + 4,
-                    top: thumbY - 14,
-                    child: _ChapterLabelBubble(
-                      chapterNumber: _dragChapterIndex! + 1,
-                      accent: activeDot,
-                      isLight: isLight,
+                    left: 0,
+                    right: 0,
+                    top: thumbY - ChapterSeekRail.glassRadius - 48,
+                    child: Center(
+                      child: _ChapterTouchPopup(
+                        chapter: chapterLabel,
+                        accent: activeDot,
+                        isLight: isLight,
+                      ),
                     ),
                   ),
+                // Movable circular glass
+                Positioned(
+                  left: glassCenterX - ChapterSeekRail.glassRadius,
+                  top: thumbY - ChapterSeekRail.glassRadius,
+                  child: _GlassVerseThumb(
+                    chapter: chapterLabel,
+                    accent: activeDot,
+                    isLight: isLight,
+                    radius: ChapterSeekRail.glassRadius,
+                    isDragging: _isDragging,
+                    showHandle: _showChapterPopup,
+                  ),
+                ),
               ],
             ),
           );
@@ -337,83 +420,262 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
   }
 }
 
-class _SeekThumb extends StatelessWidget {
-  final double radius;
+class _MagnetTrackPainter extends CustomPainter {
+  final double trackX;
+  final double thumbY;
+  final double glassRightX;
+  final double top;
+  final double bottom;
+  final double pull;
+  final double bendExtent;
+  final Color color;
+  final Color accent;
+
+  const _MagnetTrackPainter({
+    required this.trackX,
+    required this.thumbY,
+    required this.glassRightX,
+    required this.top,
+    required this.bottom,
+    required this.pull,
+    required this.bendExtent,
+    required this.color,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final apexX = trackX - pull;
+    final apexY = thumbY.clamp(top + 4, bottom - 4);
+    final bendTop = (apexY - bendExtent).clamp(top, bottom);
+    final bendBottom = (apexY + bendExtent).clamp(top, bottom);
+
+    final trackPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()..moveTo(trackX, top);
+
+    if (bendTop > top + 0.5) {
+      path.lineTo(trackX, bendTop);
+    }
+
+    // Magnet bulge toward the glass (left)
+    path.cubicTo(
+      trackX,
+      bendTop + (apexY - bendTop) * 0.25,
+      apexX,
+      apexY - (apexY - bendTop) * 0.35,
+      apexX,
+      apexY,
+    );
+    path.cubicTo(
+      apexX,
+      apexY + (bendBottom - apexY) * 0.35,
+      trackX,
+      bendBottom - (bendBottom - apexY) * 0.25,
+      trackX,
+      bendBottom,
+    );
+
+    if (bendBottom < bottom - 0.5) {
+      path.lineTo(trackX, bottom);
+    }
+
+    canvas.drawPath(path, trackPaint);
+
+    // Stem from glass edge to bulge apex
+    final stemPaint = Paint()
+      ..color = accent.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(glassRightX, apexY),
+      Offset(apexX, apexY),
+      stemPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MagnetTrackPainter oldDelegate) {
+    return oldDelegate.thumbY != thumbY ||
+        oldDelegate.trackX != trackX ||
+        oldDelegate.glassRightX != glassRightX ||
+        oldDelegate.color != color ||
+        oldDelegate.accent != accent ||
+        oldDelegate.top != top ||
+        oldDelegate.bottom != bottom;
+  }
+}
+
+class _GlassVerseThumb extends StatelessWidget {
+  final String chapter;
   final Color accent;
   final bool isLight;
+  final double radius;
+  final bool isDragging;
+  /// When true (finger covering glass), show drawer-handle lines instead of the number.
+  final bool showHandle;
 
-  const _SeekThumb({
-    required this.radius,
+  const _GlassVerseThumb({
+    required this.chapter,
     required this.accent,
     required this.isLight,
+    required this.radius,
+    required this.isDragging,
+    this.showHandle = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final chapterColor = isLight ? accent : Colors.white;
+    final handleColor = chapterColor.withValues(alpha: 0.9);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
       width: radius * 2,
       height: radius * 2,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isLight
-            ? Colors.white.withValues(alpha: 0.85)
-            : Colors.black.withValues(alpha: 0.65),
-        border: Border.all(color: accent, width: 2),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.35),
-            blurRadius: 8,
+            color: accent.withValues(alpha: isDragging ? 0.45 : 0.28),
+            blurRadius: isDragging ? 14 : 10,
             spreadRadius: 0,
           ),
         ],
       ),
       child: ClipOval(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-          child: const SizedBox.expand(),
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isLight
+                  ? Colors.white.withValues(alpha: 0.55)
+                  : Colors.black.withValues(alpha: 0.4),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.85),
+                width: 2,
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isLight
+                    ? [
+                        Colors.white.withValues(alpha: 0.72),
+                        Colors.white.withValues(alpha: 0.28),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.18),
+                        Colors.black.withValues(alpha: 0.35),
+                      ],
+              ),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: showHandle
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _DrawerHandleLine(color: handleColor),
+                      const SizedBox(height: 5),
+                      _DrawerHandleLine(color: handleColor),
+                    ],
+                  )
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      chapter,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontFamily: 'Orbitron',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                        height: 1.0,
+                        letterSpacing: 0.2,
+                        color: chapterColor,
+                      ),
+                    ),
+                  ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ChapterLabelBubble extends StatelessWidget {
-  final int chapterNumber;
+class _DrawerHandleLine extends StatelessWidget {
+  final Color color;
+
+  const _DrawerHandleLine({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 18,
+      height: 2.5,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
+
+/// Chapter number shown above the glass while the finger covers it.
+class _ChapterTouchPopup extends StatelessWidget {
+  final String chapter;
   final Color accent;
   final bool isLight;
 
-  const _ChapterLabelBubble({
-    required this.chapterNumber,
+  const _ChapterTouchPopup({
+    required this.chapter,
     required this.accent,
     required this.isLight,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
+    final textColor = isLight ? accent : Colors.white;
+
+    return IgnorePointer(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isLight
-              ? Colors.white.withValues(alpha: 0.92)
-              : Colors.black.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: accent.withValues(alpha: 0.5)),
+              ? Colors.white.withValues(alpha: 0.94)
+              : Colors.black.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: accent.withValues(alpha: 0.7), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
+              color: accent.withValues(alpha: 0.28),
+              blurRadius: 10,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Text(
-          '$chapterNumber',
+          chapter,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
           style: TextStyle(
-            color: accent,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontFamily: 'Orbitron',
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            height: 1.0,
+            color: textColor,
           ),
         ),
       ),
