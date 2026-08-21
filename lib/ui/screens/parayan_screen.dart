@@ -400,11 +400,13 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           _ChapterStartHeader(
                             chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
                             script: script,
+                            fontSize: settingsProvider.fontSize,
                           ),
                         if (speakerChanged || isChapterStart)
                           _SpeakerHeader(
                             speaker: shloka.speaker ?? "Uvacha",
                             script: script,
+                            fontSize: settingsProvider.fontSize,
                           ),
                         FullShlokaCard(
                           shloka: shloka,
@@ -438,6 +440,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                               script,
                             ),
                             script: script,
+                            fontSize: settingsProvider.fontSize,
                           ),
                       ],
                     );
@@ -1027,34 +1030,70 @@ class _AnimatingParayanHeaderState extends State<AnimatingParayanHeader>
 class _ChapterStartHeader extends StatelessWidget {
   final int chapterNumber;
   final String script;
+  final double fontSize;
 
   const _ChapterStartHeader({
     required this.chapterNumber,
     required this.script,
+    required this.fontSize,
   });
 
   @override
   Widget build(BuildContext context) {
-    // This could be styled more elaborately later
-    // FIX: The `getChapterTitle` method had a range error for chapter 18.
-    // Using `geetaAdhyay` list directly with correct 0-based indexing is safer
-    // and consistent with other parts of the app (e.g., _ChapterEndFooter).
-    // We clamp the chapter number to be at least 1 to prevent negative indices.
     final safeChapterNum = chapterNumber < 1 ? 1 : chapterNumber;
     final chapterLabel = StaticData.getChapterLabel(script);
     final localNum = StaticData.localizeNumber(safeChapterNum, script);
     final chapterName = StaticData.getChapterName(safeChapterNum, script);
+    const titleColor = Color.fromARGB(255, 4, 123, 192);
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final lineColor = titleColor.withValues(alpha: isLight ? 0.4 : 0.55);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        '$chapterLabel $localNum $chapterName',
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: const Color.fromARGB(255, 4, 123, 192),
-          letterSpacing: 0.4,
-        ),
+      // Match speaker insets; clear seek-rail glass lane on the right.
+      padding: const EdgeInsets.fromLTRB(16, 20, 56, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 14,
+              child: Transform.flip(
+                flipX: true,
+                child: CustomPaint(
+                  painter: _SpeakerFlourishPainter(color: lineColor),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: fontSize * 0.35),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.55,
+              ),
+              child: Text(
+                '$chapterLabel $localNum $chapterName',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'NotoSerif',
+                  fontSize: fontSize + 2,
+                  fontWeight: FontWeight.w700,
+                  color: titleColor,
+                  letterSpacing: 0.4,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SizedBox(
+              height: 14,
+              child: CustomPaint(
+                painter: _SpeakerFlourishPainter(color: lineColor),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1063,7 +1102,13 @@ class _ChapterStartHeader extends StatelessWidget {
 class _SpeakerHeader extends StatelessWidget {
   final String speaker;
   final String script;
-  const _SpeakerHeader({required this.speaker, required this.script});
+  final double fontSize;
+
+  const _SpeakerHeader({
+    required this.speaker,
+    required this.script,
+    required this.fontSize,
+  });
 
   // ✨ Helper function to get the emblem asset path based on the speaker's name
   String? _getSpeakerEmblemPath(String speakerName) {
@@ -1088,36 +1133,44 @@ class _SpeakerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get the path for the emblem, which might be null
     final String? emblemPath = _getSpeakerEmblemPath(speaker);
-    // Localized Speaker Name
     final localizedSpeaker = StaticData.localizeSpeaker(speaker, script);
-    // Determine Uvacha label
-
-    // If "Uvaca" is already in the string (from StaticData), don't append.
-    // StaticData.localizeSpeaker returns map value e.g. "Arjuna Uvaca".
-    // So we just use that.
+    final accent = Theme.of(context).colorScheme.secondary;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final lineColor = accent.withValues(alpha: isLight ? 0.45 : 0.55);
+    final emblemSize = (fontSize * 1.35).clamp(22.0, 40.0);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+      // Space before/after speaker; right inset clears seek-rail glass lane.
+      padding: const EdgeInsets.fromLTRB(16, 18, 56, 14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (emblemPath != null) ...[
             Image.asset(
               emblemPath,
-              height: 36,
+              height: emblemSize,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: fontSize * 0.35),
           ],
-          Flexible(
-            child: Text(
-              localizedSpeaker,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.secondary,
-                fontWeight: FontWeight.w600,
-                fontStyle: FontStyle.italic,
+          Text(
+            localizedSpeaker,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontFamily: 'NotoSerif',
+              fontSize: fontSize * 0.78,
+              color: accent,
+              fontWeight: FontWeight.w600,
+              fontStyle: FontStyle.italic,
+              height: 1.2,
+            ),
+          ),
+          SizedBox(width: fontSize * 0.45),
+          Expanded(
+            child: SizedBox(
+              height: 14,
+              child: CustomPaint(
+                painter: _SpeakerFlourishPainter(color: lineColor),
               ),
             ),
           ),
@@ -1127,45 +1180,94 @@ class _SpeakerHeader extends StatelessWidget {
   }
 }
 
+/// Thin manuscript-style rule with a small diamond tick, filling width after
+/// the speaker name.
+class _SpeakerFlourishPainter extends CustomPainter {
+  final Color color;
+
+  _SpeakerFlourishPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width < 8) return;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final midY = size.height / 2;
+    final midX = size.width * 0.42;
+    const diamond = 3.5;
+
+    // Left rule → diamond → right rule
+    canvas.drawLine(Offset(0, midY), Offset(midX - diamond - 4, midY), paint);
+    canvas.drawLine(
+      Offset(midX + diamond + 4, midY),
+      Offset(size.width, midY),
+      paint,
+    );
+
+    final path = Path()
+      ..moveTo(midX, midY - diamond)
+      ..lineTo(midX + diamond, midY)
+      ..lineTo(midX, midY + diamond)
+      ..lineTo(midX - diamond, midY)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    // Soft hairline dots near the ends for a bit more “line art” presence.
+    final dot = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    if (midX - diamond - 14 > 6) {
+      canvas.drawCircle(Offset(midX - diamond - 10, midY), 1.2, dot);
+    }
+    if (midX + diamond + 14 < size.width - 4) {
+      canvas.drawCircle(Offset(midX + diamond + 10, midY), 1.2, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeakerFlourishPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class _ChapterEndFooter extends StatelessWidget {
   final int chapterNumber;
   final String chapterName;
   final String script;
+  final double fontSize;
+
   const _ChapterEndFooter({
     required this.chapterNumber,
     required this.chapterName,
     required this.script,
+    required this.fontSize,
   });
 
   @override
   Widget build(BuildContext context) {
     final localNum = StaticData.localizeNumber(chapterNumber, script);
 
-    // Construct Colophon dynamically
-    // Keep Sanskrit structure but use localized numeric/names?
-    // User wants "Everything" in respective lipi.
-    // Ideally whole colophon should be transliterated.
-    // For now, I will keep standard Sanskrit but insert Localized Name/Number.
-    // Or simpler: Just "Chapter End: Name" if full Sanskrit is too hard to transliterate dynamically.
-    // I will stick to the existing format but simpler for non-Devanagari
-
     String colophonText;
     if (script == 'dev' || script == 'hi' || script == 'mr') {
       colophonText =
           "ॐ तत्सदिति श्रीमद्भगवद्गीतासूपनिषत्सु\nब्रह्मविद्यायां योगशास्त्रे श्रीकृष्णार्जुनसंवादे\n$chapterName नाम अध्यायः $localNum ॥";
     } else {
-      // Simplified for others until full transliteration available
-      // Or just use English-ish format
       colophonText =
           "${StaticData.getChapterLabel(script)} $localNum: $chapterName\n(End of Chapter)";
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+      padding: const EdgeInsets.fromLTRB(16, 24, 56, 24),
       child: Text(
         colophonText,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        style: TextStyle(
+          fontFamily: 'NotoSerif',
+          fontSize: fontSize * 0.72,
           color: Theme.of(context).colorScheme.primary,
           fontStyle: FontStyle.italic,
           height: 1.5,
