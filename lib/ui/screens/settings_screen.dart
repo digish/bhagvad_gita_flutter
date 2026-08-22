@@ -1237,6 +1237,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 _buildSectionHeader('Support', context),
                                 _buildActionTile(
                                   context,
+                                  title: 'Help',
+                                  subtitle: 'How to use Parayan — simple guide',
+                                  icon: Icons.help_outline,
+                                  onTap: (innerContext) {
+                                    AnalyticsService.instance.logFeatureUsed(
+                                      feature: 'parayan_help_from_settings',
+                                    );
+                                    // Open Parayan with the spotlight guide.
+                                    GoRouter.of(innerContext).go(
+                                      '/parayan?help=1',
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionTile(
+                                  context,
                                   title: 'Send Feedback',
                                   subtitle:
                                       'Have a suggestion or found a bug? Let us know!',

@@ -146,6 +146,7 @@ final GoRouter router = GoRouter(
             final language = settings.language;
             final script = settings.script;
             final shlokaScript = settings.shlokaScript;
+            final showHelp = state.uri.queryParameters['help'] == '1';
             return CustomTransitionPage(
               key: state.pageKey,
               child: ChangeNotifierProvider(
@@ -155,7 +156,7 @@ final GoRouter router = GoRouter(
                   script,
                   shlokaScript: shlokaScript,
                 ),
-                child: const ParayanScreen(),
+                child: ParayanScreen(showHelp: showHelp),
               ),
               transitionDuration: const Duration(milliseconds: 700),
               reverseTransitionDuration: const Duration(milliseconds: 700),

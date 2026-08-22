@@ -35,6 +35,10 @@ class ChapterSeekRail extends StatefulWidget {
   final String Function(int index) chapterForIndex;
   /// Viewport fraction (from top) that the glass tracks — Parayan focus line.
   final double focusLine;
+  /// Live glass circle in global (screen) coordinates — for help spotlights.
+  final ValueChanged<Rect>? onGlassRect;
+  /// Full seek-rail bounds in global coordinates — for help spotlights.
+  final ValueChanged<Rect>? onRailRect;
 
   const ChapterSeekRail({
     super.key,
@@ -45,6 +49,8 @@ class ChapterSeekRail extends StatefulWidget {
     required this.onSeekToIndex,
     required this.chapterForIndex,
     this.focusLine = 0.40,
+    this.onGlassRect,
+    this.onRailRect,
   });
 
   @override
@@ -258,6 +264,29 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
           final chapterLabel = widget.itemCount > 0
               ? widget.chapterForIndex(safeIndex)
               : '1';
+
+          if (widget.onGlassRect != null || widget.onRailRect != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              final box = context.findRenderObject() as RenderBox?;
+              if (box == null || !box.hasSize) return;
+              final origin = box.localToGlobal(Offset.zero);
+              final size = box.size;
+              widget.onRailRect?.call(origin & size);
+              if (widget.onGlassRect != null) {
+                final r = ChapterSeekRail.glassRadius;
+                widget.onGlassRect!(
+                  Rect.fromCircle(
+                    center: Offset(
+                      origin.dx + glassCenterX,
+                      origin.dy + thumbY,
+                    ),
+                    radius: r,
+                  ),
+                );
+              }
+            });
+          }
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,

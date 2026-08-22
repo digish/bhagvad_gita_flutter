@@ -17,7 +17,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
@@ -26,6 +25,7 @@ import '../../providers/parayan_provider.dart';
 import '../../models/shloka_result.dart';
 import '../widgets/chapter_seek_rail.dart';
 import '../widgets/parayan_action_island.dart';
+import '../widgets/parayan_help_guide.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
@@ -52,12 +52,6 @@ const int _kParayanLeadingLotusItems = 1;
 
 /// Must match home [DecorativeForeground] blue lotus Hero.
 const String _kParayanBlueLotusHero = 'blueLotusHero';
-
-/// Once-per-install coach mark: tap a shloka to reveal controls.
-const String _kParayanTapDiscoverKey = 'parayan_tap_discover_done';
-
-/// Once-per-install coach mark: chapter seek rail / glass.
-const String _kParayanSeekDiscoverKey = 'parayan_seek_rail_discover_done';
 
 double _parayanChromeHeight(BuildContext context) =>
     MediaQuery.of(context).padding.top + _kParayanChromeExtra;
@@ -158,7 +152,10 @@ String? _parayanStickySpeaker({
 // PlaybackMode is now imported from audio_provider.dart
 
 class ParayanScreen extends StatefulWidget {
-  const ParayanScreen({super.key});
+  /// When true (e.g. Settings → Help), always open the spotlight guide.
+  final bool showHelp;
+
+  const ParayanScreen({super.key, this.showHelp = false});
 
   @override
   State<ParayanScreen> createState() => _ParayanScreenState();
@@ -199,6 +196,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
   /// Collapsed list body: shloka → anvay → translation.
   ContinuousListBody _listBodyMode = ContinuousListBody.shloka;
 
+  /// How many of shloka / anvay / translation each verse shows.
+  ParayanLayoutCount _layoutCount = ParayanLayoutCount.one;
+
+  /// Pair shown when [_layoutCount] is two.
+  ContinuousListPair _listPairMode = ContinuousListPair.shlokaAnvay;
+
   /// Font-size dock: expanded when idle, tucks into the left wall while scrolling.
   bool _fontDockExpanded = true;
   Timer? _fontDockRevealTimer;
@@ -209,15 +212,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
   bool _suppressFontDockScroll = false;
   DateTime? _fontDockScrollStartedAt;
 
-  /// First-visit coach: tap a shloka for the action island.
-  bool _showTapDiscoverHint = false;
-  Timer? _tapDiscoverShowTimer;
-  Timer? _tapDiscoverHideTimer;
-
-  /// First-visit coach: drag the seek-rail glass.
-  bool _showSeekDiscoverHint = false;
-  Timer? _seekDiscoverShowTimer;
-  Timer? _seekDiscoverHideTimer;
+  /// Spotlight help guide (first visit or Settings → Help).
+  bool _showHelpGuide = false;
+  ParayanHelpTargets _helpTargets = ParayanHelpTargets.empty;
+  Timer? _helpGuideTimer;
+  final GlobalKey _fontDockKey = GlobalKey(debugLabel: 'parayanFontDock');
+  final GlobalKey _fontSizeKey = GlobalKey(debugLabel: 'parayanFontSize');
+  final GlobalKey _fontViewKey = GlobalKey(debugLabel: 'parayanFontView');
+  final GlobalKey _actionIslandKey = GlobalKey(debugLabel: 'parayanActionIsland');
 
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
@@ -228,17 +230,14 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
     _itemPositionsListener.itemPositions.addListener(_onParayanScrollForFontDock);
-    _scheduleDiscoverHints();
+    _scheduleHelpGuide();
   }
 
   @override
   void dispose() {
     _fontDockRevealTimer?.cancel();
     _fontDockTuckTimer?.cancel();
-    _tapDiscoverShowTimer?.cancel();
-    _tapDiscoverHideTimer?.cancel();
-    _seekDiscoverShowTimer?.cancel();
-    _seekDiscoverHideTimer?.cancel();
+    _helpGuideTimer?.cancel();
     _itemPositionsListener.itemPositions.removeListener(
       _onParayanScrollForFontDock,
     );
@@ -247,69 +246,190 @@ class _ParayanScreenState extends State<ParayanScreen> {
     super.dispose();
   }
 
-  Future<void> _scheduleDiscoverHints() async {
-    final prefs = await SharedPreferences.getInstance();
-    final tapDone = prefs.getBool(_kParayanTapDiscoverKey) ?? false;
-    final seekDone = prefs.getBool(_kParayanSeekDiscoverKey) ?? false;
-    if (!mounted) return;
-    if (!tapDone) {
-      // Let the list paint first, then fade the tip in.
-      _tapDiscoverShowTimer = Timer(const Duration(milliseconds: 900), () {
-        if (!mounted) return;
-        setState(() => _showTapDiscoverHint = true);
-        _tapDiscoverHideTimer = Timer(const Duration(seconds: 6), () {
-          _dismissTapDiscoverHint();
-        });
-      });
-    } else if (!seekDone) {
-      _scheduleSeekDiscoverHint(
-        delay: const Duration(milliseconds: 900),
-      );
+  Future<void> _scheduleHelpGuide() async {
+    final force = widget.showHelp;
+    if (!force) {
+      final done = await ParayanHelpGuide.isDone();
+      if (done) return;
     }
-  }
-
-  void _scheduleSeekDiscoverHint({required Duration delay}) {
-    _seekDiscoverShowTimer?.cancel();
-    _seekDiscoverHideTimer?.cancel();
-    _seekDiscoverShowTimer = Timer(delay, () async {
+    if (!mounted) return;
+    // Let the list paint, jump to a mid-book verse, then open the guide.
+    _helpGuideTimer = Timer(const Duration(milliseconds: 800), () async {
       if (!mounted) return;
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool(_kParayanSeekDiscoverKey) ?? false) return;
+      await _prepareHelpGuideDemo();
       if (!mounted) return;
-      setState(() => _showSeekDiscoverHint = true);
-      _seekDiscoverHideTimer = Timer(const Duration(seconds: 6), () {
-        _dismissSeekDiscoverHint();
+      setState(() => _showHelpGuide = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshHelpTargets();
       });
     });
   }
 
-  Future<void> _dismissTapDiscoverHint() async {
-    _tapDiscoverShowTimer?.cancel();
-    _tapDiscoverHideTimer?.cancel();
-    final wasShowing = _showTapDiscoverHint;
-    if (_showTapDiscoverHint && mounted) {
-      setState(() => _showTapDiscoverHint = false);
+  /// Mid-book shloka so the seek glass sits mid-rail and a real verse is on focus.
+  Future<void> _prepareHelpGuideDemo() async {
+    final provider = Provider.of<ParayanProvider>(context, listen: false);
+    for (var i = 0; i < 25 && (provider.isLoading || provider.shlokas.isEmpty); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kParayanTapDiscoverKey, true);
-    final seekDone = prefs.getBool(_kParayanSeekDiscoverKey) ?? false;
-    if (!seekDone) {
-      _scheduleSeekDiscoverHint(
-        delay: wasShowing
-            ? const Duration(milliseconds: 450)
-            : const Duration(milliseconds: 900),
-      );
+    final count = provider.shlokas.length;
+    if (count == 0) return;
+
+    final demoIndex = (count * 0.45).floor().clamp(0, count - 1);
+    if (_itemScrollController.isAttached) {
+      await _scrollCardCenterToFocusLine(demoIndex);
     }
+    if (!mounted) return;
+    setState(() {
+      _selectedIndex = demoIndex;
+      // No selection chrome on overview — select again from seek step onward.
+      _actionsVisible = false;
+    });
+    // Clear highlight so step 1 is purpose-only (no gold verse border).
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+    setState(() => _selectedIndex = null);
   }
 
-  Future<void> _dismissSeekDiscoverHint() async {
-    _seekDiscoverShowTimer?.cancel();
-    _seekDiscoverHideTimer?.cancel();
-    if (_showSeekDiscoverHint && mounted) {
-      setState(() => _showSeekDiscoverHint = false);
+  void _closeHelpGuide() {
+    if (!_showHelpGuide) return;
+    setState(() {
+      _showHelpGuide = false;
+      _helpTargets = ParayanHelpTargets.empty;
+    });
+  }
+
+  void _onHelpGuideStep(int stepIndex) {
+    // seek/tap/controls: mid-book verse selected.
+    // controls (3): action island. font (4): expand bottom dock.
+    final provider = Provider.of<ParayanProvider>(context, listen: false);
+    final count = provider.shlokas.length;
+    final demoIndex =
+        count == 0 ? null : (count * 0.45).floor().clamp(0, count - 1);
+    setState(() {
+      if (stepIndex >= 1 && stepIndex <= 3 && demoIndex != null) {
+        _selectedIndex = demoIndex;
+      } else {
+        _selectedIndex = null;
+      }
+      _actionsVisible = stepIndex == 3;
+      if (stepIndex == 4) {
+        _fontDockExpanded = true;
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshHelpTargets();
+    });
+  }
+
+  void _onSeekGlassRect(Rect rect) {
+    _updateHelpTargets(glass: rect);
+    // Also refresh verse / dock while help is open (layout may have settled).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshHelpTargets();
+    });
+  }
+
+  void _onSeekRailRect(Rect rect) {
+    _updateHelpTargets(seekRail: rect);
+  }
+
+  void _updateHelpTargets({
+    Rect? glass,
+    Rect? seekRail,
+    Rect? verse,
+    Rect? actionIsland,
+    Rect? fontDock,
+    Offset? fontSizeCenter,
+    Offset? fontViewCenter,
+  }) {
+    if (!_showHelpGuide) return;
+    final next = _helpTargets.copyWith(
+      glass: glass,
+      seekRail: seekRail,
+      verse: verse,
+      actionIsland: actionIsland,
+      fontDock: fontDock,
+      fontSizeCenter: fontSizeCenter,
+      fontViewCenter: fontViewCenter,
+    );
+    if (!_helpTargetsChanged(next)) return;
+    setState(() => _helpTargets = next);
+  }
+
+  bool _helpTargetsChanged(ParayanHelpTargets next) {
+    bool rectMoved(Rect? a, Rect? b) {
+      if (identical(a, b)) return false;
+      if (a == null || b == null) return a != b;
+      return (a.center - b.center).distance > 0.5 ||
+          (a.width - b.width).abs() > 0.5 ||
+          (a.height - b.height).abs() > 0.5;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kParayanSeekDiscoverKey, true);
+
+    bool offsetMoved(Offset? a, Offset? b) {
+      if (identical(a, b)) return false;
+      if (a == null || b == null) return a != b;
+      return (a - b).distance > 0.5;
+    }
+
+    return rectMoved(_helpTargets.glass, next.glass) ||
+        rectMoved(_helpTargets.seekRail, next.seekRail) ||
+        rectMoved(_helpTargets.verse, next.verse) ||
+        rectMoved(_helpTargets.actionIsland, next.actionIsland) ||
+        rectMoved(_helpTargets.fontDock, next.fontDock) ||
+        offsetMoved(_helpTargets.fontSizeCenter, next.fontSizeCenter) ||
+        offsetMoved(_helpTargets.fontViewCenter, next.fontViewCenter);
+  }
+
+  Rect? _globalRectOf(GlobalKey key) {
+    final ctx = key.currentContext;
+    if (ctx == null) return null;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Offset? _globalCenterOf(GlobalKey key) {
+    final r = _globalRectOf(key);
+    return r?.center;
+  }
+
+  /// Verse band from the selected list item's live viewport edges.
+  Rect? _measureSelectedVerseGlobal() {
+    final idx = _selectedIndex;
+    if (idx == null) return null;
+    final listIdx = _listIndexForShloka(idx);
+    ItemPosition? match;
+    for (final p in _itemPositionsListener.itemPositions.value) {
+      if (p.index == listIdx) {
+        match = p;
+        break;
+      }
+    }
+    if (match == null) return null;
+
+    final size = MediaQuery.sizeOf(context);
+    final pad = MediaQuery.paddingOf(context);
+    final railLeft = size.width - pad.right - ChapterSeekRail.width;
+    // Item edges are viewport fractions; convert to global screen Y.
+    // Overlay Stack fills the screen, so viewport Y ≈ global Y.
+    return Rect.fromLTRB(
+      pad.left + 4,
+      size.height * match.itemLeadingEdge,
+      railLeft + ChapterSeekRail.glassRadius * 2 + 4,
+      size.height * match.itemTrailingEdge,
+    );
+  }
+
+  void _refreshHelpTargets() {
+    if (!_showHelpGuide || !mounted) return;
+    _updateHelpTargets(
+      verse: _measureSelectedVerseGlobal(),
+      actionIsland: _globalRectOf(_actionIslandKey),
+      fontDock: _globalRectOf(_fontDockKey),
+      fontSizeCenter: _globalCenterOf(_fontSizeKey),
+      fontViewCenter: _globalCenterOf(_fontViewKey),
+    );
   }
 
   void _onParayanScrollForFontDock() {
@@ -404,27 +524,52 @@ class _ParayanScreenState extends State<ParayanScreen> {
   /// Change font without losing the focused shloka or tucking the dock.
   Future<void> _onFontSizeChanged(double newSize) async {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final keepIndex = _selectedIndex ?? _indexNearestFocusLine();
-
-    _suppressFontDockScroll = true;
-    _fontDockRevealTimer?.cancel();
-    _fontDockTuckTimer?.cancel();
-    _fontDockTuckTimer = null;
-    _fontDockScrollStartedAt = null;
-    if (!_fontDockExpanded && mounted) {
-      setState(() => _fontDockExpanded = true);
-    }
-
+    final keepIndex = _beginDockLayoutChange();
     await settings.setFontSize(newSize);
     if (!mounted) {
       _suppressFontDockScroll = false;
       return;
     }
+    await _repinFocusAfterLayoutChange(keepIndex);
+  }
 
+  Future<void> _onToggleLayoutCount() async {
+    final keepIndex = _beginDockLayoutChange();
+    setState(() {
+      _layoutCount = switch (_layoutCount) {
+        ParayanLayoutCount.one => ParayanLayoutCount.two,
+        ParayanLayoutCount.two => ParayanLayoutCount.three,
+        ParayanLayoutCount.three => ParayanLayoutCount.one,
+      };
+    });
     await _repinFocusAfterLayoutChange(keepIndex);
   }
 
   Future<void> _onToggleListContent() async {
+    if (_layoutCount == ParayanLayoutCount.three) return;
+    final keepIndex = _beginDockLayoutChange();
+    setState(() {
+      if (_layoutCount == ParayanLayoutCount.one) {
+        _listBodyMode = switch (_listBodyMode) {
+          ContinuousListBody.shloka => ContinuousListBody.anvay,
+          ContinuousListBody.anvay => ContinuousListBody.translation,
+          ContinuousListBody.translation => ContinuousListBody.shloka,
+        };
+      } else {
+        _listPairMode = switch (_listPairMode) {
+          ContinuousListPair.shlokaAnvay =>
+            ContinuousListPair.shlokaTranslation,
+          ContinuousListPair.shlokaTranslation =>
+            ContinuousListPair.anvayTranslation,
+          ContinuousListPair.anvayTranslation =>
+            ContinuousListPair.shlokaAnvay,
+        };
+      }
+    });
+    await _repinFocusAfterLayoutChange(keepIndex);
+  }
+
+  int _beginDockLayoutChange() {
     final keepIndex = _selectedIndex ?? _indexNearestFocusLine();
     _suppressFontDockScroll = true;
     _fontDockRevealTimer?.cancel();
@@ -434,15 +579,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
     if (!_fontDockExpanded && mounted) {
       setState(() => _fontDockExpanded = true);
     }
-
-    setState(() {
-      _listBodyMode = switch (_listBodyMode) {
-        ContinuousListBody.shloka => ContinuousListBody.anvay,
-        ContinuousListBody.anvay => ContinuousListBody.translation,
-        ContinuousListBody.translation => ContinuousListBody.shloka,
-      };
-    });
-    await _repinFocusAfterLayoutChange(keepIndex);
+    return keepIndex;
   }
 
   Future<void> _repinFocusAfterLayoutChange(int keepIndex) async {
@@ -545,7 +682,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   Future<void> _onCardTap(int index) async {
     if (_isSelectingCard) return;
-    unawaited(_dismissTapDiscoverHint());
 
     // Tap same selected card → dismiss selection + controls
     if (_selectedIndex == index && (_actionsVisible || _selectedIndex != null)) {
@@ -650,7 +786,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   // ✨ NEW: Method to scroll to a specific item using its GlobalKey.
   void _scrollToIndex(int shlokaIndex) {
-    unawaited(_dismissSeekDiscoverHint());
     // Align the target shloka to the same 40% focus line the glass tracks.
     _scrollCardCenterToFocusLine(shlokaIndex);
   }
@@ -658,7 +793,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
   /// Instant seek used while dragging the glass — keep center on the focus line
   /// so the label and the verse under the cursor stay in sync.
   void _jumpToIndex(int shlokaIndex) {
-    unawaited(_dismissSeekDiscoverHint());
     if (!_itemScrollController.isAttached) return;
     final alignment = _alignmentForCardCenter(shlokaIndex) ??
         (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
@@ -822,6 +956,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                             showActions: false,
                             continuousReading: true,
                             listBodyMode: _listBodyMode,
+                            layoutCount: _layoutCount,
+                            listPairMode: _listPairMode,
                             // Meanings follow the remembered expand state.
                             showAnvay:
                                 _selectedIndex == index && _meaningsExpanded,
@@ -886,6 +1022,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                           i + _kParayanLeadingLotusItems,
                       ],
                       focusLine: _kParayanFocusLine,
+                      onGlassRect: _showHelpGuide ? _onSeekGlassRect : null,
+                      onRailRect: _showHelpGuide ? _onSeekRailRect : null,
                       chapterForIndex: (listIndex) {
                         final s = _shlokaIndexForList(listIndex);
                         if (s == null) {
@@ -961,7 +1099,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
           ),
           // Cursor tracks the selected card; resets to the focus line on new tap
           // (selection is cleared during scroll-to-focus, then reappears at home).
-          if (_selectedIndex != null)
+          if (_selectedIndex != null && !_showHelpGuide)
             ValueListenableBuilder<Iterable<ItemPosition>>(
               valueListenable: _itemPositionsListener.itemPositions,
               builder: (context, positions, _) {
@@ -976,15 +1114,6 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 }
                 return _ParayanFocusPointer(focusLine: focusLine);
               },
-            ),
-          if (_showTapDiscoverHint)
-            _ParayanTapDiscoverHint(
-              focusLine: _kParayanFocusLine,
-              onDismiss: _dismissTapDiscoverHint,
-            ),
-          if (_showSeekDiscoverHint)
-            _ParayanSeekDiscoverHint(
-              onDismiss: _dismissSeekDiscoverHint,
             ),
           // Action island — pops in just above the selected card
           Consumer2<ParayanProvider, AudioProvider>(
@@ -1030,7 +1159,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                     right: _kParayanRailInset,
                     top: top,
                     child: IgnorePointer(
-                      ignoring: !_actionsVisible,
+                      ignoring: !_actionsVisible || _showHelpGuide,
                       child: AnimatedScale(
                         scale: _actionsVisible ? 1 : 0.86,
                         duration: const Duration(milliseconds: 280),
@@ -1038,23 +1167,29 @@ class _ParayanScreenState extends State<ParayanScreen> {
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 220),
                           opacity: _actionsVisible ? 1 : 0,
-                          child: ParayanActionIsland(
-                            accentBorder: true,
-                            accentColor: accent,
-                            shloka: targetShloka,
-                            currentlyPlayingId: _currentlyPlayingId,
-                            meaningsExpanded: _meaningsExpanded,
-                            onToggleMeanings: () {
-                              setState(() {
-                                _meaningsExpanded = !_meaningsExpanded;
-                              });
-                            },
-                            onPlayPause: () {
-                              _audioProvider?.playChapter(
-                                shlokas: provider.shlokas,
-                                initialIndex: targetIndex,
-                              );
-                            },
+                          child: KeyedSubtree(
+                            key: _actionIslandKey,
+                            child: ParayanActionIsland(
+                              accentBorder: true,
+                              accentColor: accent,
+                              shloka: targetShloka,
+                              currentlyPlayingId: _currentlyPlayingId,
+                              meaningsExpanded: _meaningsExpanded,
+                              onToggleMeanings:
+                                  _layoutCount == ParayanLayoutCount.three
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _meaningsExpanded = !_meaningsExpanded;
+                                      });
+                                    },
+                              onPlayPause: () {
+                                _audioProvider?.playChapter(
+                                  shlokas: provider.shlokas,
+                                  initialIndex: targetIndex,
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -1074,269 +1209,43 @@ class _ParayanScreenState extends State<ParayanScreen> {
               return Positioned(
                 left: MediaQuery.of(context).padding.left,
                 bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
-                child: _ParayanFontSizeDock(
-                  settingsProvider: settingsProvider,
-                  expanded: _fontDockExpanded,
-                  onPeekTap: _revealFontDockNow,
-                  onSizeChanged: _onFontSizeChanged,
-                  listBodyMode: _listBodyMode,
-                  onToggleListContent: _onToggleListContent,
+                child: IgnorePointer(
+                  ignoring: _showHelpGuide,
+                  child: _ParayanFontSizeDock(
+                    dockKey: _fontDockKey,
+                    sizeClusterKey: _fontSizeKey,
+                    viewClusterKey: _fontViewKey,
+                    settingsProvider: settingsProvider,
+                    expanded: _fontDockExpanded,
+                    onPeekTap: _revealFontDockNow,
+                    onSizeChanged: _onFontSizeChanged,
+                    listBodyMode: _listBodyMode,
+                    layoutCount: _layoutCount,
+                    listPairMode: _listPairMode,
+                    onToggleListContent: _onToggleListContent,
+                    onToggleLayoutCount: _onToggleLayoutCount,
+                  ),
                 ),
               );
             },
           ),
+          // Help on top so spotlight holes reveal verse / island / font dock.
+          if (_showHelpGuide)
+            Positioned.fill(
+              child: ParayanHelpGuideOverlay(
+                chromeHeight: _parayanChromeHeight(context),
+                focusLine: _kParayanFocusLine,
+                targets: _helpTargets,
+                onFinished: _closeHelpGuide,
+                onStepIndex: _onHelpGuideStep,
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-/// Soft first-visit tip near the reading line — tap a shloka for controls.
-class _ParayanTapDiscoverHint extends StatelessWidget {
-  final double focusLine;
-  final VoidCallback onDismiss;
-
-  const _ParayanTapDiscoverHint({
-    required this.focusLine,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final top = (screenHeight * focusLine) - 52;
-
-    return Positioned(
-      left: MediaQuery.of(context).padding.left + 20,
-      right: _kParayanRailInset + 8,
-      top: top.clamp(
-        _parayanChromeHeight(context) + 8,
-        screenHeight - 120,
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutCubic,
-        builder: (context, t, child) {
-          return Opacity(
-            opacity: t,
-            child: Transform.translate(
-              offset: Offset(0, 8 * (1 - t)),
-              child: child,
-            ),
-          );
-        },
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onDismiss,
-            borderRadius: BorderRadius.circular(18),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: isLight
-                        ? Colors.white.withValues(alpha: 0.72)
-                        : Colors.black.withValues(alpha: 0.62),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.55),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFD700).withValues(alpha: 0.18),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.touch_app_rounded,
-                          size: 26,
-                          color: isLight
-                              ? const Color(0xFF8B6914)
-                              : const Color(0xFFFFD700),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Tap a shloka to play, bookmark, share, or expand meaning',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.25,
-                              fontWeight: FontWeight.w500,
-                              color: isLight
-                                  ? Colors.black87
-                                  : Colors.white.withValues(alpha: 0.92),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: onDismiss,
-                          icon: Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: isLight
-                                ? Colors.black45
-                                : Colors.white54,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          tooltip: 'Dismiss',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// First-visit tip for the chapter seek rail — sits beside the circular glass.
-class _ParayanSeekDiscoverHint extends StatelessWidget {
-  final VoidCallback onDismiss;
-
-  const _ParayanSeekDiscoverHint({required this.onDismiss});
-
-  @override
-  Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final media = MediaQuery.of(context);
-    final screenHeight = media.size.height;
-    final railTop = _parayanChromeHeight(context);
-    const railBottom = 8.0;
-    final railHeight = screenHeight - railTop - railBottom;
-    // Glass rests on the reading focus line within the rail track.
-    const trackPad = 20.0;
-    final glassCenterY =
-        railTop +
-        trackPad +
-        _kParayanFocusLine * (railHeight - 2 * trackPad);
-    const tipHeight = 72.0;
-    // Tip ends just left of the glass (glass sits on the inner side of the rail).
-    final tipRight =
-        media.padding.right +
-        ChapterSeekRail.width -
-        (ChapterSeekRail.glassRadius + 2) -
-        6;
-
-    return Positioned(
-      right: tipRight.clamp(8.0, media.size.width * 0.5),
-      width: (media.size.width * 0.58).clamp(200.0, 280.0),
-      top: (glassCenterY - tipHeight / 2).clamp(
-        railTop + 4,
-        screenHeight - tipHeight - 24,
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutCubic,
-        builder: (context, t, child) {
-          return Opacity(
-            opacity: t,
-            child: Transform.translate(
-              offset: Offset(10 * (1 - t), 0),
-              child: child,
-            ),
-          );
-        },
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onDismiss,
-            borderRadius: BorderRadius.circular(18),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: isLight
-                        ? Colors.white.withValues(alpha: 0.72)
-                        : Colors.black.withValues(alpha: 0.62),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: const Color(0xFF047BC0).withValues(alpha: 0.55),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF047BC0).withValues(alpha: 0.16),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Drag the glass or tap chapter dots to jump through the Parayan',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.25,
-                              fontWeight: FontWeight.w500,
-                              color: isLight
-                                  ? Colors.black87
-                                  : Colors.white.withValues(alpha: 0.92),
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_right_alt_rounded,
-                          size: 28,
-                          color: isLight
-                              ? const Color(0xFF047BC0)
-                              : const Color(0xFF7EC8F0),
-                        ),
-                        IconButton(
-                          onPressed: onDismiss,
-                          icon: Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: isLight
-                                ? Colors.black45
-                                : Colors.white54,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          tooltip: 'Dismiss',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Focus triangle on the left — sits on [focusLine] (selected card center while scrolling).
 class _ParayanFocusPointer extends StatelessWidget {
   final double focusLine;
 
@@ -1433,15 +1342,27 @@ class _ParayanFontSizeDock extends StatelessWidget {
   final VoidCallback? onPeekTap;
   final ValueChanged<double> onSizeChanged;
   final ContinuousListBody listBodyMode;
+  final ParayanLayoutCount layoutCount;
+  final ContinuousListPair listPairMode;
   final VoidCallback onToggleListContent;
+  final VoidCallback onToggleLayoutCount;
+  final Key? dockKey;
+  final Key? sizeClusterKey;
+  final Key? viewClusterKey;
 
   const _ParayanFontSizeDock({
     required this.settingsProvider,
     required this.expanded,
     required this.onSizeChanged,
     required this.listBodyMode,
+    required this.layoutCount,
+    required this.listPairMode,
     required this.onToggleListContent,
+    required this.onToggleLayoutCount,
     this.onPeekTap,
+    this.dockKey,
+    this.sizeClusterKey,
+    this.viewClusterKey,
   });
 
   @override
@@ -1453,38 +1374,115 @@ class _ParayanFontSizeDock extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.secondary;
 
     final (Widget modeGlyph, String label, String tooltip, bool emphasize) =
-        switch (listBodyMode) {
-      ContinuousListBody.shloka => (
-          Icon(Icons.menu_book_rounded, size: 20, color: iconColor),
-          'Shloka',
-          'Shloka · tap for anvay',
+        switch (layoutCount) {
+      ParayanLayoutCount.three => (
+          Icon(
+            Icons.layers_outlined,
+            size: 20,
+            color: iconColor.withValues(alpha: 0.4),
+          ),
+          'All',
+          'All three visible',
           false,
         ),
-      ContinuousListBody.anvay => (
-          Icon(Icons.format_quote_rounded, size: 20, color: accent),
-          'Anvay',
-          'Anvay · tap for translation',
-          true,
-        ),
-      ContinuousListBody.translation => (
-          Text(
-            'अ',
-            style: TextStyle(
-              fontFamily: 'NotoSerif',
-              fontSize: 18,
-              height: 1.0,
-              fontWeight: FontWeight.w700,
-              color: accent,
+      ParayanLayoutCount.two => switch (listPairMode) {
+          ContinuousListPair.shlokaAnvay => (
+              _PairGlyph(
+                first: Icon(Icons.menu_book_rounded, size: 13, color: accent),
+                second: Icon(
+                  Icons.format_quote_rounded,
+                  size: 13,
+                  color: accent,
+                ),
+              ),
+              'Sh+An',
+              'Shloka + Anvay · tap for Shloka + Tika',
+              true,
             ),
-          ),
-          'Tika',
-          'Translation · tap for shloka',
-          true,
-        ),
+          ContinuousListPair.shlokaTranslation => (
+              _PairGlyph(
+                first: Icon(Icons.menu_book_rounded, size: 13, color: accent),
+                second: Text(
+                  'अ',
+                  style: TextStyle(
+                    fontFamily: 'NotoSerif',
+                    fontSize: 12,
+                    height: 1.0,
+                    fontWeight: FontWeight.w700,
+                    color: accent,
+                  ),
+                ),
+              ),
+              'Sh+Ti',
+              'Shloka + Tika · tap for Anvay + Tika',
+              true,
+            ),
+          ContinuousListPair.anvayTranslation => (
+              _PairGlyph(
+                first: Icon(
+                  Icons.format_quote_rounded,
+                  size: 13,
+                  color: accent,
+                ),
+                second: Text(
+                  'अ',
+                  style: TextStyle(
+                    fontFamily: 'NotoSerif',
+                    fontSize: 12,
+                    height: 1.0,
+                    fontWeight: FontWeight.w700,
+                    color: accent,
+                  ),
+                ),
+              ),
+              'An+Ti',
+              'Anvay + Tika · tap for Shloka + Anvay',
+              true,
+            ),
+        },
+      ParayanLayoutCount.one => switch (listBodyMode) {
+          ContinuousListBody.shloka => (
+              Icon(Icons.menu_book_rounded, size: 20, color: iconColor),
+              'Shloka',
+              'Shloka · tap for anvay',
+              false,
+            ),
+          ContinuousListBody.anvay => (
+              Icon(Icons.format_quote_rounded, size: 20, color: accent),
+              'Anvay',
+              'Anvay · tap for translation',
+              true,
+            ),
+          ContinuousListBody.translation => (
+              Text(
+                'अ',
+                style: TextStyle(
+                  fontFamily: 'NotoSerif',
+                  fontSize: 18,
+                  height: 1.0,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
+                ),
+              ),
+              'Tika',
+              'Translation · tap for shloka',
+              true,
+            ),
+        },
     };
-    final modeColor = emphasize ? accent : iconColor;
+    final viewEnabled = layoutCount != ParayanLayoutCount.three;
+    final modeColor = viewEnabled
+        ? (emphasize ? accent : iconColor)
+        : iconColor.withValues(alpha: 0.4);
+
+    final (int layoutN, String layoutTip) = switch (layoutCount) {
+      ParayanLayoutCount.one => (1, 'One item · tap for two'),
+      ParayanLayoutCount.two => (2, 'Two items · tap for all three'),
+      ParayanLayoutCount.three => (3, 'All three · tap for one'),
+    };
 
     final dock = ClipRRect(
+      key: dockKey,
       borderRadius: const BorderRadius.horizontal(
         right: Radius.circular(22),
       ),
@@ -1509,10 +1507,13 @@ class _ParayanFontSizeDock extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                FontSizeControl(
-                  currentSize: settingsProvider.fontSize,
-                  onSizeChanged: onSizeChanged,
-                  color: iconColor,
+                KeyedSubtree(
+                  key: sizeClusterKey,
+                  child: FontSizeControl(
+                    currentSize: settingsProvider.fontSize,
+                    onSizeChanged: onSizeChanged,
+                    color: iconColor,
+                  ),
                 ),
                 Container(
                   width: 1,
@@ -1521,9 +1522,9 @@ class _ParayanFontSizeDock extends StatelessWidget {
                   color: iconColor.withValues(alpha: 0.25),
                 ),
                 Tooltip(
-                  message: tooltip,
+                  message: layoutTip,
                   child: InkWell(
-                    onTap: onToggleListContent,
+                    onTap: onToggleLayoutCount,
                     borderRadius: BorderRadius.circular(10),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -1535,20 +1536,61 @@ class _ParayanFontSizeDock extends StatelessWidget {
                         children: [
                           SizedBox(
                             height: 20,
-                            child: Center(child: modeGlyph),
+                            child: Center(
+                              child: _StackedBarsGlyph(
+                                count: layoutN,
+                                color: iconColor,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            label,
+                            '$layoutN',
                             style: TextStyle(
                               fontSize: 9,
                               height: 1.0,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.2,
-                              color: modeColor.withValues(alpha: 0.9),
+                              color: iconColor.withValues(alpha: 0.9),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                ),
+                KeyedSubtree(
+                  key: viewClusterKey,
+                  child: Tooltip(
+                    message: tooltip,
+                    child: InkWell(
+                      onTap: viewEnabled ? onToggleListContent : null,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: 20,
+                              child: Center(child: modeGlyph),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 9,
+                                height: 1.0,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                                color: modeColor.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1564,12 +1606,72 @@ class _ParayanFontSizeDock extends StatelessWidget {
       duration: const Duration(milliseconds: 320),
       curve: expanded ? Curves.easeOutCubic : Curves.easeInCubic,
       // Mostly off-screen left; leave a small peek of the rounded end.
-      offset: expanded ? Offset.zero : const Offset(-0.78, 0),
+      offset: expanded ? Offset.zero : const Offset(-0.84, 0),
       child: GestureDetector(
         onTap: expanded ? null : onPeekTap,
         behavior: HitTestBehavior.opaque,
         child: dock,
       ),
+    );
+  }
+}
+
+class _StackedBarsGlyph extends StatelessWidget {
+  final int count;
+  final Color color;
+
+  const _StackedBarsGlyph({required this.count, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < count; i++) ...[
+            if (i > 0) SizedBox(height: count == 3 ? 2.0 : 2.5),
+            Container(
+              height: count == 1 ? 3.5 : 2.6,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PairGlyph extends StatelessWidget {
+  final Widget first;
+  final Widget second;
+
+  const _PairGlyph({required this.first, required this.second});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        first,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          child: Text(
+            '+',
+            style: TextStyle(
+              fontSize: 9,
+              height: 1.0,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          ),
+        ),
+        second,
+      ],
     );
   }
 }
@@ -1584,18 +1686,20 @@ class _ParayanVerseRule extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 8, 56, 2),
+      padding: const EdgeInsets.fromLTRB(32, 10, 56, 4),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Container(
-          width: 88,
-          height: 1,
+          width: 120,
+          height: 1.5,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(1),
             gradient: LinearGradient(
               colors: [
                 (isLight ? const Color(0xFFB8860B) : const Color(0xFFFFD700))
-                    .withValues(alpha: isLight ? 0.35 : 0.28),
+                    .withValues(alpha: isLight ? 0.58 : 0.5),
+                (isLight ? const Color(0xFFB8860B) : const Color(0xFFFFD700))
+                    .withValues(alpha: isLight ? 0.22 : 0.18),
                 (isLight ? Colors.black : Colors.white)
                     .withValues(alpha: 0.0),
               ],
