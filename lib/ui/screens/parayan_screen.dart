@@ -833,6 +833,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                                 Brightness.light,
                           ),
                         ),
+                        // Subtle left-aligned rule between verses (not before chapter end).
+                        if (!isChapterEnd) const _ParayanVerseRule(),
                         if (isChapterEnd)
                           _ChapterEndFooter(
                             chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
@@ -1573,6 +1575,37 @@ class _ParayanFontSizeDock extends StatelessWidget {
 }
 
 // --- Reusable private widgets for the list items ---
+
+/// Short left-aligned hairline between continuous shlokas.
+class _ParayanVerseRule extends StatelessWidget {
+  const _ParayanVerseRule();
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 8, 56, 2),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: 88,
+          height: 1,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(1),
+            gradient: LinearGradient(
+              colors: [
+                (isLight ? const Color(0xFFB8860B) : const Color(0xFFFFD700))
+                    .withValues(alpha: isLight ? 0.35 : 0.28),
+                (isLight ? Colors.black : Colors.white)
+                    .withValues(alpha: 0.0),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Scrolls away above chapter 1 — gives room for shloka 0 on the focus line.
 /// Hero matches Adhyay: same tag flight as home (rotate + move). Tap → search.
