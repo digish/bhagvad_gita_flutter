@@ -1376,20 +1376,29 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             metaParts.add('Best ${settings.peakStreakCount}d');
           }
 
+          final media = MediaQuery.of(context);
+          final isTablet = media.size.shortestSide >= 600;
+
           return Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 40,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 72 : 20,
+              vertical: isTablet ? 64 : 40,
             ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.amberAccent.withOpacity(0.15)),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isTablet ? 460 : 520,
+                maxHeight: media.size.height * (isTablet ? 0.72 : 0.88),
               ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.amberAccent.withOpacity(0.15),
+                  ),
+                ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header
                   Padding(
@@ -1555,7 +1564,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   ),
 
                   // Roadmap
-                  Flexible(
+                  Expanded(
                     child: Builder(
                       builder: (context) {
                         final currentIndex = SoulStatus.allMilestones
@@ -1622,6 +1631,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

@@ -40,6 +40,15 @@ const double _kParayanChromeExtra = 48.0;
 /// Keep in sync with inline [_SpeakerHeader] padding for vertical alignment.
 const double _kParayanSpeakerBackClearance = 56.0;
 
+/// Phone chrome shows a back button; iPad/rail layouts do not.
+bool _parayanShowsBackButton(BuildContext context) =>
+    MediaQuery.sizeOf(context).width <= 600;
+
+/// Emblem/name inset: clear the back button on phones, sit on the left wall
+/// (same as the font-size dock) when the rail is the left edge.
+double _parayanSpeakerLeadingInset(BuildContext context) =>
+    _parayanShowsBackButton(context) ? _kParayanSpeakerBackClearance : 12.0;
+
 /// Right inset used where chrome must clear the floating [ChapterSeekRail]
 /// (header / action island). The shloka list itself stays full-width.
 const double _kParayanRailInset = 72.0;
@@ -163,7 +172,7 @@ class ParayanScreen extends StatefulWidget {
 
 class _ParayanScreenState extends State<ParayanScreen> {
   // ✨ FIX: Revert to ItemScrollController and ItemPositionsListener for accuracy.
-  final ItemScrollController _itemScrollController = ItemScrollController();
+  ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
 
@@ -201,6 +210,11 @@ class _ParayanScreenState extends State<ParayanScreen> {
 
   /// Pair shown when [_layoutCount] is two.
   ContinuousListPair _listPairMode = ContinuousListPair.shlokaAnvay;
+
+  /// Remount token so height-changing view modes don't correct a stale offset.
+  int _listRebuildToken = 0;
+  int _listInitialIndex = 0;
+  double _listInitialAlignment = _kParayanFocusLine - 0.09;
 
   /// Font-size dock: expanded when idle, tucks into the left wall while scrolling.
   bool _fontDockExpanded = true;
@@ -541,8 +555,9 @@ class _ParayanScreenState extends State<ParayanScreen> {
         ParayanLayoutCount.two => ParayanLayoutCount.three,
         ParayanLayoutCount.three => ParayanLayoutCount.one,
       };
+      _rebuildListPinnedTo(keepIndex);
     });
-    await _repinFocusAfterLayoutChange(keepIndex);
+    await _settleAfterListRemount();
   }
 
   Future<void> _onToggleListContent() async {
@@ -565,8 +580,39 @@ class _ParayanScreenState extends State<ParayanScreen> {
             ContinuousListPair.shlokaAnvay,
         };
       }
+      _rebuildListPinnedTo(keepIndex);
     });
-    await _repinFocusAfterLayoutChange(keepIndex);
+    await _settleAfterListRemount();
+  }
+
+  /// Drop the old list (stale item extents) and open a fresh one on [shlokaIndex].
+  void _rebuildListPinnedTo(int shlokaIndex) {
+    _listRebuildToken++;
+    _listInitialIndex = _listIndexForShloka(shlokaIndex);
+    _listInitialAlignment = (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
+    _itemScrollController = ItemScrollController();
+  }
+
+  Future<void> _settleAfterListRemount() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isNotEmpty) {
+      final top = positions.reduce(
+        (a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b,
+      );
+      _fontDockLastIndex = top.index;
+      _fontDockLastLead = top.itemLeadingEdge;
+    }
+    _suppressFontDockScroll = false;
   }
 
   int _beginDockLayoutChange() {
@@ -588,44 +634,33 @@ class _ParayanScreenState extends State<ParayanScreen> {
       return;
     }
 
-    // Let cards rebuild, then pin the same shloka to the focus line.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        _suppressFontDockScroll = false;
-        return;
-      }
-      if (_itemScrollController.isAttached) {
-        final listIndex = _listIndexForShloka(keepIndex);
-        final alignment = _alignmentForCardCenter(keepIndex) ??
-            (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
-        _itemScrollController.jumpTo(index: listIndex, alignment: alignment);
-      }
-      // Refine once new item heights are known, then reseed dock baseline.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (_itemScrollController.isAttached) {
-          final refined = _alignmentForCardCenter(
-            keepIndex,
-            requireVisible: true,
-          );
-          if (refined != null) {
-            _itemScrollController.jumpTo(
-              index: _listIndexForShloka(keepIndex),
-              alignment: refined,
-            );
-          }
-        }
-        final positions = _itemPositionsListener.itemPositions.value;
-        if (positions.isNotEmpty) {
-          final top = positions.reduce(
-            (a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b,
-          );
-          _fontDockLastIndex = top.index;
-          _fontDockLastLead = top.itemLeadingEdge;
-        }
-        _suppressFontDockScroll = false;
-      });
-    });
+    // Two frames so new item heights exist; one jump (no refine) avoids
+    // UnboundedViewport layout-cycle crashes on large lists.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      _suppressFontDockScroll = false;
+      return;
+    }
+    if (_itemScrollController.isAttached) {
+      final listIndex = _listIndexForShloka(keepIndex);
+      final alignment = _alignmentForCardCenter(keepIndex, requireVisible: true) ??
+          (_kParayanFocusLine - 0.09).clamp(0.0, 1.0);
+      _itemScrollController.jumpTo(index: listIndex, alignment: alignment);
+    }
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isNotEmpty) {
+      final top = positions.reduce(
+        (a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b,
+      );
+      _fontDockLastIndex = top.index;
+      _fontDockLastLead = top.itemLeadingEdge;
+    }
+    _suppressFontDockScroll = false;
   }
 
   @override
@@ -879,12 +914,15 @@ class _ParayanScreenState extends State<ParayanScreen> {
                 child: Stack(
                   children: [
                     ScrollablePositionedList.builder(
-                  key: const PageStorageKey(
-                    'parayan_list',
-                  ), // ✨ FIX: Persist scroll state
+                  key: ValueKey('parayan_list_$_listRebuildToken'),
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
                   itemCount: listItemCount,
+                  initialScrollIndex: _listInitialIndex.clamp(
+                    0,
+                    listItemCount > 0 ? listItemCount - 1 : 0,
+                  ),
+                  initialAlignment: _listInitialAlignment,
                   // ✨ FIX: Apply the initial padding here. This is the correct way to offset the list
                   // without interfering with the item position listener.
                   padding: EdgeInsets.only(
@@ -1082,7 +1120,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       speaker: speaker,
                       script: settingsProvider.script,
                       fontSize: settingsProvider.fontSize,
-                      leadingInset: _kParayanSpeakerBackClearance,
+                      leadingInset: _parayanSpeakerLeadingInset(context),
                     ),
                   );
                 },
@@ -1313,6 +1351,7 @@ class _ParayanChrome extends StatelessWidget {
         (isLight ? Colors.black87 : Colors.white);
 
     return SafeArea(
+      left: false,
       bottom: false,
       child: Align(
         alignment: Alignment.centerLeft,
@@ -1863,6 +1902,7 @@ class _StickySpeakerBar extends StatelessWidget {
     final labelSize = (fontSize * 0.72).clamp(13.0, 22.0);
 
     return SafeArea(
+      left: false,
       bottom: false,
       child: Align(
         alignment: Alignment.centerLeft,
@@ -1956,9 +1996,10 @@ class _SpeakerHeader extends StatelessWidget {
     final emblemSize = (fontSize * 1.35).clamp(22.0, 40.0);
 
     return Padding(
-      // Match sticky bar: clear back button, align emblem/name under persistent.
-      padding: const EdgeInsets.fromLTRB(
-        _kParayanSpeakerBackClearance,
+      // Match sticky bar: clear back button on phones; flush to the left
+      // wall beside the rail on iPad (same as the font-size dock).
+      padding: EdgeInsets.fromLTRB(
+        _parayanSpeakerLeadingInset(context),
         _kParayanInlineSpeakerPadTopPx,
         56,
         14,
