@@ -109,9 +109,11 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: AppRoutes.search,
           pageBuilder: (context, state) {
+            final showSearchHints = state.extra is Map &&
+                (state.extra as Map)['searchHints'] == true;
             return CustomTransitionPage(
-              key: state.pageKey,
-              child: const SearchScreen(),
+              key: ValueKey('search-hints-$showSearchHints'),
+              child: SearchScreen(showSearchHints: showSearchHints),
               transitionDuration: const Duration(milliseconds: 700),
               reverseTransitionDuration: const Duration(milliseconds: 700),
               transitionsBuilder:
@@ -146,9 +148,11 @@ final GoRouter router = GoRouter(
             final language = settings.language;
             final script = settings.script;
             final shlokaScript = settings.shlokaScript;
-            final showHelp = state.uri.queryParameters['help'] == '1';
+            final showHelp = state.uri.queryParameters['help'] == '1' ||
+                (state.extra is Map &&
+                    (state.extra as Map)['help'] == true);
             return CustomTransitionPage(
-              key: state.pageKey,
+              key: ValueKey('parayan-help-$showHelp'),
               child: ChangeNotifierProvider(
                 create: (_) => ParayanProvider(
                   dbHelper,
@@ -172,15 +176,27 @@ final GoRouter router = GoRouter(
           name: 'shloka-list',
           pageBuilder: (context, state) {
             final query = state.pathParameters['query']!;
-            final initialShloka = state.extra as int?; // Cast the extra to int
+            final extra = state.extra;
+            int? initialShloka;
+            var showHelp = state.uri.queryParameters['help'] == '1';
+            if (extra is int) {
+              initialShloka = extra;
+            } else if (extra is Map) {
+              final mapped = extra['initialShloka'];
+              if (mapped is int) initialShloka = mapped;
+              showHelp = showHelp || extra['help'] == true;
+            }
             debugPrint(
               'AppRouter shlokaList: query=$query, initialShloka=$initialShloka',
             );
             return CustomTransitionPage(
-              key: state.pageKey,
+              key: ValueKey(
+                'shloka-list-$query-help-$showHelp-${initialShloka ?? ''}',
+              ),
               child: ShlokaListScreen(
                 searchQuery: query,
                 initialShlokaNo: initialShloka, // Pass it down
+                showHelp: showHelp,
               ),
               transitionDuration: const Duration(milliseconds: 700),
               transitionsBuilder:

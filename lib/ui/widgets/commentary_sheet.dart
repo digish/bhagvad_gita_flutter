@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,13 +10,47 @@ class CommentarySheet extends StatefulWidget {
   final List<Commentary> commentaries;
   final String chapterNo;
   final String shlokNo;
+  final double topSafeInset;
+  final double bottomSafeInset;
 
   const CommentarySheet({
     super.key,
     required this.commentaries,
     required this.chapterNo,
     required this.shlokNo,
+    required this.topSafeInset,
+    required this.bottomSafeInset,
   });
+
+  static double _deviceTopInset(BuildContext context) {
+    return MediaQueryData.fromView(View.of(context)).viewPadding.top;
+  }
+
+  static double _deviceBottomInset(BuildContext context) {
+    return MediaQueryData.fromView(View.of(context)).viewPadding.bottom;
+  }
+
+  static Future<void> show(
+    BuildContext context, {
+    required List<Commentary>? commentaries,
+    required String chapterNo,
+    required String shlokNo,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: false,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => CommentarySheet(
+        commentaries: commentaries ?? [],
+        chapterNo: chapterNo,
+        shlokNo: shlokNo,
+        topSafeInset: _deviceTopInset(context),
+        bottomSafeInset: _deviceBottomInset(context),
+      ),
+    );
+  }
 
   @override
   State<CommentarySheet> createState() => _CommentarySheetState();
@@ -33,6 +68,76 @@ class _CommentarySheetState extends State<CommentarySheet> {
     if (_effectiveCommentaries.isEmpty) {
       _fetchCommentaries();
     }
+  }
+
+  /// Clears Dynamic Island / notch with extra breathing room.
+  static const double _minTopClearance = 64;
+  static const double _topBuffer = 28;
+
+  double _topGap(BuildContext context) {
+    final inset = [
+      widget.topSafeInset,
+      MediaQuery.viewPaddingOf(context).top,
+      MediaQueryData.fromView(View.of(context)).viewPadding.top,
+    ].reduce(math.max);
+    return math.max(inset, _minTopClearance) + _topBuffer;
+  }
+
+  double _sheetHeight(BuildContext context) {
+    return MediaQuery.sizeOf(context).height - _topGap(context);
+  }
+
+  Widget _buildSheetFrame(
+    BuildContext context, {
+    required Widget child,
+    double? height,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final sheetHeight = height ?? _sheetHeight(context);
+
+    return Padding(
+      padding: EdgeInsets.only(top: _topGap(context)),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: SizedBox(
+          height: sheetHeight,
+          width: double.infinity,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.85)
+                          : Colors.white.withOpacity(0.95),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.black.withOpacity(0.05),
+                        ),
+                      ),
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchCommentaries() async {
@@ -64,12 +169,9 @@ class _CommentarySheetState extends State<CommentarySheet> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Container(
+      return _buildSheetFrame(
+        context,
         height: 300,
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
         child: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -154,27 +256,24 @@ class _CommentarySheetState extends State<CommentarySheet> {
     });
 
     if (displayCommentaries.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(32),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.menu_book_rounded, size: 48, color: theme.disabledColor),
-            const SizedBox(height: 16),
-            Text(
-              "No commentaries available for this shloka.",
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.disabledColor,
+      return _buildSheetFrame(
+        context,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.menu_book_rounded, size: 48, color: theme.disabledColor),
+              const SizedBox(height: 16),
+              Text(
+                "No commentaries available for this shloka.",
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.disabledColor,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -186,45 +285,11 @@ class _CommentarySheetState extends State<CommentarySheet> {
 
     final selectedCommentary = displayCommentaries[_selectedIndex];
 
-    // Helper to handle rail width manually for overlays
-    // We only apply this if we are SURE the rail is showing and overlapping.
-    // However, on iPhones, the rail might be hidden. SafeArea is safer.
-    // If the sheet is width constrained, we don't want to squeeze content.
-    // ✨ FIX: Widen layout for iPad (900px) and center it
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.black.withOpacity(0.85)
-                    : Colors.white.withOpacity(0.95),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                border: Border(
-                  top: BorderSide(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.black.withOpacity(0.05),
-                  ),
-                ),
-              ),
-              child: SafeArea(
-                left: false, // Prevent system rail padding issues
-                top: false,
-                right: false,
-                bottom: true,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+    return _buildSheetFrame(
+      context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
                     // Handle bar
                     Center(
                       child: Container(
@@ -337,10 +402,15 @@ class _CommentarySheetState extends State<CommentarySheet> {
 
                     const Divider(height: 1),
 
-                    // Content Area
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
+          // Content Area
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                24 + math.max(widget.bottomSafeInset, 16),
+              ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -439,17 +509,11 @@ class _CommentarySheetState extends State<CommentarySheet> {
                                       ?.withOpacity(0.9),
                                 ),
                               ),
-                            const SizedBox(height: 48), // Bottom padding
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }

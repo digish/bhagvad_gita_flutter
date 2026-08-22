@@ -89,6 +89,8 @@ class CreditsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showBackButton = MediaQuery.of(context).size.width <= 600;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Theme aware
       body: Stack(
@@ -110,25 +112,34 @@ class CreditsScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                BackButton(
-                                  color: Theme.of(context).iconTheme.color,
-                                ),
-                                Hero(
-                                  tag: 'creditsLotusHero',
-                                  child: Image.asset(
-                                    'assets/images/lotus_gold.png',
-                                    height: 80,
-                                    fit: BoxFit.contain,
+                            if (showBackButton)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  BackButton(
+                                    color: Theme.of(context).iconTheme.color,
                                   ),
+                                  Hero(
+                                    tag: 'creditsLotusHero',
+                                    child: Image.asset(
+                                      'assets/images/lotus_gold.png',
+                                      height: 80,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 48),
+                                ],
+                              )
+                            else
+                              Hero(
+                                tag: 'creditsLotusHero',
+                                child: Image.asset(
+                                  'assets/images/lotus_gold.png',
+                                  height: 80,
+                                  fit: BoxFit.contain,
                                 ),
-                                const SizedBox(
-                                  width: 48,
-                                ), // Balance for back button
-                              ],
-                            ),
+                              ),
                             const SizedBox(height: 24),
                             Text(
                               'Divine Acknowledgements',

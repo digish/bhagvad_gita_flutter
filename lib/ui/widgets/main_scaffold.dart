@@ -10,6 +10,34 @@ import 'glass_navigation_rail.dart';
 import 'liquid_reveal.dart';
 import 'global_mini_player.dart';
 
+/// Live rail widget keys (reserved for future coach marks).
+class HelpRailAnchors extends InheritedWidget {
+  final GlobalKey railKey;
+  final GlobalKey settingsKey;
+  final GlobalKey themeKey;
+  final ValueNotifier<Widget?> coachOverlay;
+
+  const HelpRailAnchors({
+    super.key,
+    required this.railKey,
+    required this.settingsKey,
+    required this.themeKey,
+    required this.coachOverlay,
+    required super.child,
+  });
+
+  static HelpRailAnchors? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<HelpRailAnchors>();
+  }
+
+  @override
+  bool updateShouldNotify(HelpRailAnchors oldWidget) =>
+      railKey != oldWidget.railKey ||
+      settingsKey != oldWidget.settingsKey ||
+      themeKey != oldWidget.themeKey ||
+      coachOverlay != oldWidget.coachOverlay;
+}
+
 class MainScaffold extends StatefulWidget {
   final Widget child;
 
@@ -24,9 +52,13 @@ class _MainScaffoldState extends State<MainScaffold>
   late AnimationController _revealController;
   Offset _revealCenter = Offset.zero;
   final GlobalKey _railThemeToggleKey = GlobalKey();
+  final GlobalKey _railHelpKey = GlobalKey(debugLabel: 'navRailHelp');
+  final GlobalKey _settingsRailHelpKey =
+      GlobalKey(debugLabel: 'navRailSettingsHelp');
 
   ui.Image? _snapshotImage;
   final GlobalKey _repaintBoundaryKey = GlobalKey();
+  final ValueNotifier<Widget?> _coachOverlay = ValueNotifier(null);
 
   @override
   void initState() {
@@ -39,6 +71,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   void dispose() {
+    _coachOverlay.dispose();
     _revealController.dispose();
     super.dispose();
   }
@@ -129,38 +162,51 @@ class _MainScaffoldState extends State<MainScaffold>
     }
 
     if (!showRail) {
-      return Stack(children: [widget.child, const GlobalMiniPlayer()]);
+      return HelpRailAnchors(
+        railKey: _railHelpKey,
+        settingsKey: _settingsRailHelpKey,
+        themeKey: _railThemeToggleKey,
+        coachOverlay: _coachOverlay,
+        child: Stack(children: [widget.child, const GlobalMiniPlayer()]),
+      );
     }
 
-    return Scaffold(
-      body: AnimatedBuilder(
-        animation: _revealController,
-        builder: (context, child) {
-          return Stack(
-            children: [
-              // BOTTOM LAYER: The "Old" State (Snapshot)
-              if (_revealController.isAnimating && _snapshotImage != null)
-                Positioned.fill(
-                  child: RawImage(image: _snapshotImage, fit: BoxFit.cover),
+    return HelpRailAnchors(
+      railKey: _railHelpKey,
+      settingsKey: _settingsRailHelpKey,
+      themeKey: _railThemeToggleKey,
+      coachOverlay: _coachOverlay,
+      child: Scaffold(
+        body: AnimatedBuilder(
+          animation: _revealController,
+          builder: (context, child) {
+            return Stack(
+              children: [
+                if (_revealController.isAnimating && _snapshotImage != null)
+                  Positioned.fill(
+                    child: RawImage(image: _snapshotImage, fit: BoxFit.cover),
+                  ),
+                LiquidReveal(
+                  progress:
+                      (_revealController.isAnimating && _snapshotImage != null)
+                      ? _revealController.value
+                      : 1.0,
+                  center: _revealCenter,
+                  child: RepaintBoundary(
+                    key: _repaintBoundaryKey,
+                    child: _buildScaffoldLayout(
+                      context,
+                      isTablet,
+                      isLandscape,
+                      _coachOverlay,
+                    ),
+                  ),
                 ),
-
-              // TOP LAYER: The "New" State (Live Widget Tree)
-              LiquidReveal(
-                progress:
-                    (_revealController.isAnimating && _snapshotImage != null)
-                    ? _revealController.value
-                    : 1.0,
-                center: _revealCenter,
-                child: RepaintBoundary(
-                  key: _repaintBoundaryKey,
-                  child: _buildScaffoldLayout(context, isTablet, isLandscape),
-                ),
-              ),
-              // MODIFICATION: Add GlobalMiniPlayer here, outside the LiquidReveal/RepaintBoundary
-              const GlobalMiniPlayer(),
-            ],
-          );
-        },
+                const GlobalMiniPlayer(),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -169,10 +215,12 @@ class _MainScaffoldState extends State<MainScaffold>
     BuildContext context,
     bool isTablet,
     bool isLandscape,
+    ValueNotifier<Widget?> coachOverlay,
   ) {
     final double railWidth = isLandscape ? 220.0 : 100.0;
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         // Content Layer
         Positioned.fill(
@@ -190,6 +238,7 @@ class _MainScaffoldState extends State<MainScaffold>
           bottom: 0,
           width: railWidth,
           child: GlassNavigationRail(
+            key: _railHelpKey,
             selectedIndex: _calculateSelectedIndex(context),
             onDestinationSelected: (int index) => _onItemTapped(index, context),
             trailing: (!isTablet && isLandscape)
@@ -258,9 +307,25 @@ class _MainScaffoldState extends State<MainScaffold>
                 label: const Text('Collections'),
               ),
               NavigationRailDestination(
-                icon: const Icon(Icons.settings_outlined),
+                icon: KeyedSubtree(
+                  key: _settingsRailHelpKey,
+                  child: const Icon(Icons.settings_outlined),
+                ),
                 selectedIcon: const Icon(Icons.settings),
                 label: const Text('Settings'),
+              ),
+            ],
+          ),
+        ),
+        // Coach marks sit above the rail so tails can reach rail controls.
+        Positioned.fill(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ValueListenableBuilder<Widget?>(
+                valueListenable: coachOverlay,
+                builder: (context, overlay, _) =>
+                    overlay ?? const SizedBox.shrink(),
               ),
             ],
           ),

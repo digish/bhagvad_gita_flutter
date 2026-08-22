@@ -24,6 +24,7 @@ import '../../services/notification_service.dart';
 import '../../services/analytics_service.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/sacred_sutra_promo_card.dart';
+import '../widgets/reminder_pitch.dart';
 import 'package:flutter/foundation.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -39,11 +40,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Always preload ad in settings screen so it's ready if they want to watch for credits.
+        // Always preload ad in settings screen so it's ready if they want to watch it here.
         debugPrint(
           '🔵 [SettingsScreen] Pre-loading ad just in case user watches it here.',
         );
         AdService.instance.loadRewardedAd();
+        ReminderPitch.maybeShow(context);
       }
     });
   }
@@ -1233,24 +1235,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const SizedBox(height: 32),
 
-                                // --- Support Section ---
-                                _buildSectionHeader('Support', context),
+                                // --- Help Section ---
+                                _buildSectionHeader('Help', context),
                                 _buildActionTile(
                                   context,
-                                  title: 'Help',
-                                  subtitle: 'How to use Parayan — simple guide',
-                                  icon: Icons.help_outline,
+                                  title: 'Home & search',
+                                  subtitle:
+                                      'Floating tips for search, Ask Gita, today\'s verse, and more',
+                                  icon: Icons.search,
+                                  onTap: (innerContext) {
+                                    AnalyticsService.instance.logFeatureUsed(
+                                      feature: 'search_help_from_settings',
+                                    );
+                                    GoRouter.of(innerContext).go(
+                                      '/',
+                                      extra: {'searchHints': true},
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionTile(
+                                  context,
+                                  title: 'Chapter verses',
+                                  subtitle: 'Read a chapter, size, play, and save',
+                                  icon: Icons.menu_book_outlined,
+                                  onTap: (innerContext) {
+                                    AnalyticsService.instance.logFeatureUsed(
+                                      feature: 'chapter_help_from_settings',
+                                    );
+                                    GoRouter.of(innerContext).push(
+                                      '/shloka-list/1',
+                                      extra: {'help': true},
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildActionTile(
+                                  context,
+                                  title: 'Parayan',
+                                  subtitle: 'How to use continuous reading',
+                                  icon: Icons.auto_stories_outlined,
                                   onTap: (innerContext) {
                                     AnalyticsService.instance.logFeatureUsed(
                                       feature: 'parayan_help_from_settings',
                                     );
-                                    // Open Parayan with the spotlight guide.
                                     GoRouter.of(innerContext).go(
                                       '/parayan?help=1',
                                     );
                                   },
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 32),
+
+                                // --- Support Section ---
+                                _buildSectionHeader('Support', context),
                                 _buildActionTile(
                                   context,
                                   title: 'Send Feedback',

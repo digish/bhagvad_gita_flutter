@@ -246,18 +246,24 @@ class _ParayanHelpGuideOverlayState extends State<ParayanHelpGuideOverlay>
             left: card.left,
             right: card.right,
             top: card.top,
-            child: _HelpTipCard(
-              isLight: isLight,
-              title: _title,
-              body: _body,
-              footer: _step == _HelpStep.font
-                  ? 'Open this help anytime in Settings.'
-                  : null,
-              stepIndex: _stepIndex,
-              stepCount: _stepCount,
-              onNext: _next,
-              onSkip: _finish,
-              nextLabel: _step == _HelpStep.font ? 'Done' : 'Next',
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: card.maxWidth),
+                child: _HelpTipCard(
+                  isLight: isLight,
+                  title: _title,
+                  body: _body,
+                  footer: _step == _HelpStep.font
+                      ? 'Open this help anytime in Settings.'
+                      : null,
+                  stepIndex: _stepIndex,
+                  stepCount: _stepCount,
+                  onNext: _next,
+                  onSkip: _finish,
+                  nextLabel: _step == _HelpStep.font ? 'Done' : 'Next',
+                ),
+              ),
             ),
           ),
         ],
@@ -468,35 +474,44 @@ class _ParayanHelpGuideOverlayState extends State<ParayanHelpGuideOverlay>
   }
 
   _CardPlacement _cardPlacement(Size size, EdgeInsets pad, Rect? hole) {
+    final isWide = size.width > 600;
+    final maxWidth = isWide ? math.min(400.0, size.width * 0.48) : size.width;
+    final side = isWide ? 22.0 + pad.left : 22.0 + pad.left;
+    final sideRight = isWide ? 22.0 + pad.right : 22.0 + pad.right;
+
     switch (_step) {
       case _HelpStep.overview:
         return _CardPlacement(
-          left: 22 + pad.left,
-          right: 22 + pad.right,
+          left: side,
+          right: sideRight,
           top: size.height * 0.32,
+          maxWidth: maxWidth,
         );
       case _HelpStep.seek:
         final glassBottom =
             _localRect(widget.targets.glass)?.bottom ?? (size.height * 0.5);
         final tipTop = glassBottom + 20;
         return _CardPlacement(
-          left: 20 + pad.left,
-          right: ChapterSeekRail.width + 8,
+          left: isWide ? side : 20 + pad.left,
+          right: isWide ? sideRight : ChapterSeekRail.width + 8,
           top: tipTop.clamp(widget.chromeHeight + 8, size.height - 320),
+          maxWidth: maxWidth,
         );
       case _HelpStep.tap:
         final tipTop = (hole?.bottom ?? size.height * 0.55) + 10;
         return _CardPlacement(
-          left: 16 + pad.left,
-          right: 16 + pad.right,
+          left: isWide ? side : 16 + pad.left,
+          right: isWide ? sideRight : 16 + pad.right,
           top: tipTop.clamp(widget.chromeHeight + 8, size.height - 300),
+          maxWidth: maxWidth,
         );
       case _HelpStep.controls:
         final tipTop = (hole?.bottom ?? size.height * 0.55) + 8;
         return _CardPlacement(
-          left: 16 + pad.left,
-          right: 16 + pad.right,
+          left: isWide ? side : 16 + pad.left,
+          right: isWide ? sideRight : 16 + pad.right,
           top: tipTop.clamp(widget.chromeHeight + 8, size.height - 360),
+          maxWidth: maxWidth,
         );
       case _HelpStep.font:
         final dockTop = _localRect(widget.targets.fontDock)?.top;
@@ -506,12 +521,18 @@ class _ParayanHelpGuideOverlayState extends State<ParayanHelpGuideOverlay>
           size.height * 0.35,
         );
         return _CardPlacement(
-          left: 22 + pad.left,
-          right: 22 + pad.right,
+          left: side,
+          right: sideRight,
           top: tipTop,
+          maxWidth: maxWidth,
         );
       case _HelpStep.done:
-        return const _CardPlacement(left: 20, right: 20, top: 100);
+        return _CardPlacement(
+          left: 20,
+          right: 20,
+          top: 100,
+          maxWidth: maxWidth,
+        );
     }
   }
 }
@@ -718,11 +739,13 @@ class _CardPlacement {
   final double left;
   final double right;
   final double top;
+  final double maxWidth;
 
   const _CardPlacement({
     required this.left,
     required this.right,
     required this.top,
+    this.maxWidth = double.infinity,
   });
 }
 

@@ -11,6 +11,8 @@
 *
 **/
 
+import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/foundation.dart';
@@ -18,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../navigation/app_router.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
@@ -28,6 +31,8 @@ import '../../data/database_helper_interface.dart';
 
 import '../widgets/responsive_wrapper.dart';
 import '../theme/app_colors.dart';
+import '../widgets/spotlight_help_overlay.dart';
+import '../widgets/reminder_pitch.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -35,6 +40,8 @@ class ShlokaListScreen extends StatefulWidget {
   final bool delayEmblem; // ✨ NEW parameter for animation
   final bool isEmbedded; // ✨ NEW parameter for unified background
   final int? initialShlokaNo; // ✨ NEW parameter for scrolling
+  /// When true (Settings → Help), always open the spotlight guide.
+  final bool showHelp;
 
   const ShlokaListScreen({
     super.key,
@@ -43,6 +50,7 @@ class ShlokaListScreen extends StatefulWidget {
     this.delayEmblem = false,
     this.isEmbedded = false,
     this.initialShlokaNo,
+    this.showHelp = false,
   });
 
   @override
@@ -63,6 +71,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
+
+  bool _showHelpGuide = false;
+  Timer? _helpGuideTimer;
+  int? _helpVerseIndex;
+  final GlobalKey _headerIslandHelpKey =
+      GlobalKey(debugLabel: 'chapterHeaderIsland');
+  final GlobalKey _fontSizeHelpKey = GlobalKey(debugLabel: 'chapterFontSize');
+  final GlobalKey _bookModeHelpKey = GlobalKey(debugLabel: 'chapterBookMode');
+  final GlobalKey _helpVerseActionsKey =
+      GlobalKey(debugLabel: 'chapterVerseActions');
 
   @override
   void initState() {
@@ -88,15 +106,179 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     // ✨ FIX: Get the provider once and store it.
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
+    _scheduleHelpGuide();
+    final isChapter =
+        int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
+    if (isChapter) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future<void>.delayed(const Duration(milliseconds: 1400), () {
+          if (!mounted) return;
+          ReminderPitch.maybeShow(context, blocked: _showHelpGuide);
+        });
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ShlokaListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.showHelp && !oldWidget.showHelp) {
+      _scheduleHelpGuide();
+    }
   }
 
   @override
   void dispose() {
+    _helpGuideTimer?.cancel();
     // ✨ FIX: Use the stored provider instance for safe cleanup.
     _audioProvider?.removeListener(_handleAudioChange);
     _shlokaProvider.dispose(); // Dispose the provider we created.
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _scheduleHelpGuide() async {
+    final force = widget.showHelp;
+    if (!force) {
+      final done = await SpotlightHelpPrefs.isDone(kChapterHelpGuideDoneKey);
+      if (done) return;
+    }
+    if (!mounted) return;
+    _helpGuideTimer = Timer(const Duration(milliseconds: 900), () async {
+      if (!mounted) return;
+      final isChapter =
+          int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
+      if (!force && !isChapter) return;
+      for (var i = 0; i < 20 && _shlokaProvider.isLoading; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        if (!mounted) return;
+      }
+      if (!mounted) return;
+      final count = _shlokaProvider.shlokas.length;
+      if (count > 0) {
+        // Wait until list item keys exist (built after load).
+        for (var i = 0; i < 20 && _itemKeys.length < count; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          if (!mounted) return;
+        }
+        // Mid-chapter verse so the card spotlight isn't stuck on the first row.
+        final mid = count ~/ 2;
+        _helpVerseIndex = mid;
+        if (mounted) setState(() {});
+        await _scrollToIndex(mid, awaitVisible: true);
+        if (!mounted) return;
+        for (var i = 0; i < 24 && _helpVerseActionsKey.currentContext == null; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          if (!mounted) return;
+        }
+        final actionsCtx = _helpVerseActionsKey.currentContext;
+        if (actionsCtx != null) {
+          await Scrollable.ensureVisible(
+            actionsCtx,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeInOutCubic,
+            alignment: 0.72,
+          );
+        }
+        if (!mounted) return;
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        if (!mounted) return;
+      }
+      setState(() => _showHelpGuide = true);
+    });
+  }
+
+  void _closeHelpGuide() {
+    if (!_showHelpGuide) return;
+    setState(() => _showHelpGuide = false);
+  }
+
+  /// Show back when we can pop, or when this route replaced the stack
+  /// (Settings → Help) so the user is never trapped.
+  bool _shouldShowBackButton(BuildContext context) {
+    if (!widget.showBackButton) return false;
+    if (!GoRouter.of(context).canPop()) return true;
+    // Match existing phone-iOS chrome; tablets use the rail instead.
+    return Theme.of(context).platform == TargetPlatform.iOS &&
+        MediaQuery.sizeOf(context).width <= 600;
+  }
+
+  void _handleBack(BuildContext context) {
+    if (GoRouter.of(context).canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.settings);
+    }
+  }
+
+  Rect? _helpRectOf(GlobalKey key) {
+    final ctx = key.currentContext;
+    final box = ctx?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  List<SpotlightHelpStep> _chapterHelpSteps() {
+    final island = _helpRectOf(_headerIslandHelpKey);
+    final font = _helpRectOf(_fontSizeHelpKey);
+    final book = _helpRectOf(_bookModeHelpKey);
+    final actionsRow = _helpRectOf(_helpVerseActionsKey);
+
+    return [
+      const SpotlightHelpStep(
+        title: 'Chapter verses',
+        body:
+            'Each chapter is a list of shlokas you can read, play, and save.\n\n'
+            'Next steps show text size, the commentary book, and verse actions.',
+      ),
+      SpotlightHelpStep(
+        title: 'Size & commentary',
+        body:
+            'Use − / + to change text size.\n\n'
+            'Commentry Book opens the chapter as a running commentary.',
+        globalHoles: [
+          if (island != null) island else ...[
+            if (font != null) font,
+            if (book != null) book,
+          ],
+        ],
+        callouts: [
+          if (font != null)
+            SpotlightCallout(
+              globalTarget: font.center,
+              label: 'Size',
+              arrow: SpotlightArrow.down,
+            ),
+          if (book != null)
+            SpotlightCallout(
+              globalTarget: book.center,
+              label: 'Book',
+              arrow: SpotlightArrow.down,
+            ),
+        ],
+        cornerRadius: 24,
+      ),
+      SpotlightHelpStep(
+        title: 'A verse card',
+        body:
+            'This is one shloka. Under the verse text you’ll find Play, bookmark, and Share.\n\n'
+            'Close help, then try those buttons on any card. You can reopen this guide in Settings.',
+        globalHoles: [if (actionsRow != null) actionsRow],
+        callouts: [
+          if (actionsRow != null)
+            SpotlightCallout(
+              globalTarget: Offset(
+                actionsRow.center.dx,
+                actionsRow.bottom,
+              ),
+              label: 'Play · Save · Share',
+              arrow: SpotlightArrow.up,
+            ),
+        ],
+        showTapHint: false,
+        cornerRadius: 24,
+      ),
+    ];
   }
 
   void _handleAudioChange() {
@@ -127,7 +309,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   }
 
   // A more robust scrolling method.
-  Future<void> _scrollToIndex(int index) async {
+  Future<void> _scrollToIndex(int index, {bool awaitVisible = false}) async {
     if (index < 0 || index >= _itemKeys.length) return;
 
     // Small delay to allow initial list render
@@ -165,40 +347,51 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
     if (!mounted) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future<void> ensureVisibleNow() async {
       if (key.currentContext == null) {
         debugPrint("Cannot scroll to index $index: context is still null.");
         return;
       }
 
-      // Check if the item is already reasonably visible.
       final RenderBox renderBox =
           key.currentContext!.findRenderObject() as RenderBox;
       final position = renderBox.localToGlobal(Offset.zero);
       final screenSize = MediaQuery.of(context).size;
-      final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
+      final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 80;
 
-      // Is the item within the visible area (below app bar, above bottom of screen)?
-      final isVisible =
-          (position.dy >= topPadding) &&
-          (position.dy + renderBox.size.height <= screenSize.height);
+      // Prefer aligning near the top under the sticky chapter header.
+      final fullyFramed =
+          position.dy >= topPadding &&
+          position.dy + math.min(renderBox.size.height, 320) <=
+              screenSize.height - 24;
 
-      if (!isVisible) {
+      if (!fullyFramed || awaitVisible) {
         debugPrint(
-          "[SCROLL] Item at index $index is not visible. Scrolling now.",
+          "[SCROLL] Item at index $index — ensureVisible (await=$awaitVisible).",
         );
-        Scrollable.ensureVisible(
+        await Scrollable.ensureVisible(
           key.currentContext!,
-          duration: const Duration(milliseconds: 600),
+          duration: Duration(milliseconds: awaitVisible ? 500 : 600),
           curve: Curves.easeInOutCubic,
-          alignment: 0.1, // Align near the top of the viewport.
+          alignment: 0.08,
         );
       } else {
         debugPrint(
           "[SCROLL] Item at index $index is already visible. No scroll needed.",
         );
       }
-    });
+    }
+
+    if (awaitVisible) {
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+      await ensureVisibleNow();
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ensureVisibleNow();
+      });
+    }
   }
 
   // --- NEW: Helper methods for the playback mode cycle button ---
@@ -236,7 +429,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             title = StaticData.getQueryTitle(widget.searchQuery);
           }
 
-          return Scaffold(
+          return Stack(
+            children: [
+              Scaffold(
             // ✨ FIX: Set background color based on settings.
             // If embedded, force transparent.
             backgroundColor: widget.isEmbedded
@@ -259,12 +454,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                     ).appBarTheme.backgroundColor,
                     elevation: 0,
                     centerTitle: true,
-                    leading:
-                        widget.showBackButton &&
-                            (Theme.of(context).platform == TargetPlatform.iOS &&
-                                MediaQuery.of(context).size.width <= 600)
-                        ? const BackButton(color: Colors.white)
-                        : null, // ✨ Respect showBackButton AND Platform logic
+                    leading: _shouldShowBackButton(context)
+                        ? BackButton(
+                            color: Colors.white,
+                            onPressed: () => _handleBack(context),
+                          )
+                        : null,
                     bottom: PreferredSize(
                       preferredSize: const Size.fromHeight(50.0),
                       child: Padding(
@@ -463,13 +658,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 // Further increase maxExtent to ensure title and switches are visible initially
                                 maxExtent:
                                     MediaQuery.of(context).padding.top + 350,
-                                showBackButton:
-                                    widget.showBackButton &&
-                                    (Theme.of(context).platform ==
-                                            TargetPlatform.iOS &&
-                                        MediaQuery.of(context).size.width <=
-                                            600), // ✨ Pass validated logic
+                                showBackButton: _shouldShowBackButton(context),
+                                onBack: () => _handleBack(context),
                                 delayEmblem: widget.delayEmblem,
+                                islandKey: _headerIslandHelpKey,
+                                fontSizeKey: _fontSizeHelpKey,
+                                bookModeKey: _bookModeHelpKey,
                               ),
                             ),
                           // Add some spacing between the header and the first card for chapter views
@@ -489,6 +683,10 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                       isLightTheme:
                                           Theme.of(context).brightness ==
                                           Brightness.light,
+                                      helpActionsRowKey:
+                                          index == _helpVerseIndex
+                                          ? _helpVerseActionsKey
+                                          : null,
                                     ),
                                     currentlyPlayingId: _currentShlokId,
                                     onPlayPause: () {
@@ -518,6 +716,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                 ),
               ],
             ),
+          ),
+              if (_showHelpGuide)
+                Positioned.fill(
+                  child: SpotlightHelpOverlay(
+                    steps: _chapterHelpSteps(),
+                    prefsKey: kChapterHelpGuideDoneKey,
+                    onFinished: _closeHelpGuide,
+                  ),
+                ),
+            ],
           );
         },
       ),
@@ -603,7 +811,11 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   final double maxExtent;
   final bool showBackButton; // ✨ NEW parameter
+  final VoidCallback? onBack;
   final bool delayEmblem;
+  final Key? islandKey;
+  final Key? fontSizeKey;
+  final Key? bookModeKey;
 
   _AnimatingHeaderDelegate({
     required this.chapterNumber,
@@ -614,7 +826,11 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.minExtent,
     required this.maxExtent,
     required this.showBackButton,
+    this.onBack,
     required this.delayEmblem,
+    this.islandKey,
+    this.fontSizeKey,
+    this.bookModeKey,
   });
 
   @override
@@ -696,7 +912,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 right: 0,
                 child: Center(
                   child: Container(
-                    // height: 56, // removed fixed height
+                    key: islandKey,
                     // width:  constraints.maxWidth * 0.9, // Constrain width or let it hug content
                     constraints: BoxConstraints(maxWidth: 700, minWidth: 300),
                     margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -740,9 +956,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                             children: [
                               // 1. Back Button & Docked Emblem Group
                               GestureDetector(
-                                onTap: showBackButton
-                                    ? () => context.pop()
-                                    : null,
+                                onTap: showBackButton ? onBack : null,
                                 behavior: HitTestBehavior.opaque,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -822,7 +1036,9 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.center,
                                                 children: [
-                                                  FontSizeControl(
+                                                  KeyedSubtree(
+                                                    key: fontSizeKey,
+                                                    child: FontSizeControl(
                                                     currentSize:
                                                         currentFontSize,
                                                     onSizeChanged: (newSize) {
@@ -840,12 +1056,15 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                             ?.color ??
                                                         Colors.black87,
                                                   ),
+                                                  ),
 
                                                   const SizedBox(width: 8),
                                                   _VerticalDivider(),
                                                   const SizedBox(width: 8),
 
-                                                  FilledButton.icon(
+                                                  KeyedSubtree(
+                                                    key: bookModeKey,
+                                                    child: FilledButton.icon(
                                                     onPressed: () {
                                                       context.push(
                                                         '/book-reading/$chapterNumber',
@@ -880,6 +1099,7 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
                                                             ),
                                                       ),
                                                     ),
+                                                  ),
                                                   ),
                                                 ],
                                               ),
@@ -985,7 +1205,8 @@ class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
         // playbackMode removed
         currentFontSize != oldDelegate.currentFontSize ||
         onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
-        onFontSizeDecrement != oldDelegate.onFontSizeDecrement;
+        onFontSizeDecrement != oldDelegate.onFontSizeDecrement ||
+        showBackButton != oldDelegate.showBackButton;
   }
 }
 

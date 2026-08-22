@@ -20,6 +20,7 @@ import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
 import '../widgets/liquid_reveal.dart';
+import '../widgets/main_scaffold.dart';
 import '../../models/shloka_list.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/bookmark_provider.dart';
@@ -36,7 +37,10 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../data/ai_questions.dart';
 
 class SearchScreen extends StatelessWidget {
-  const SearchScreen({super.key});
+  /// Settings → Help: Home & search — replay floating onboarding tips.
+  final bool showSearchHints;
+
+  const SearchScreen({super.key, this.showSearchHints = false});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +53,6 @@ class SearchScreen extends StatelessWidget {
     final script = Provider.of<SettingsProvider>(context).script;
     final shlokaScript = Provider.of<SettingsProvider>(context).shlokaScript;
 
-    // Pass the helper to the SearchProvider
     return ChangeNotifierProvider(
       key: ValueKey(
         '$language-$script-$shlokaScript',
@@ -60,13 +63,15 @@ class SearchScreen extends StatelessWidget {
         script,
         shlokaScript: shlokaScript,
       ), // Re-creates on change
-      child: const _SearchScreenView(),
+      child: _SearchScreenView(showSearchHints: showSearchHints),
     );
   }
 }
 
 class _SearchScreenView extends StatefulWidget {
-  const _SearchScreenView();
+  final bool showSearchHints;
+
+  const _SearchScreenView({this.showSearchHints = false});
 
   @override
   State<_SearchScreenView> createState() => _SearchScreenViewState();
@@ -93,6 +98,38 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   Set<int>? _lastKnownSources; // Cache for change detection
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
   String? _todaysQuestion;
+  ValueNotifier<Widget?>? _coachOverlayRef;
+  bool _railThemeCoachVisible = false;
+
+  void _syncRailThemeCoachOverlay({
+    required bool show,
+    required SettingsProvider settings,
+  }) {
+    final overlay = _coachOverlayRef;
+    if (overlay == null) return;
+
+    if (!show) {
+      if (_railThemeCoachVisible) {
+        _railThemeCoachVisible = false;
+        overlay.value = null;
+      }
+      return;
+    }
+
+    if (_railThemeCoachVisible && overlay.value != null) return;
+
+    _railThemeCoachVisible = true;
+    overlay.value = _RailThemeHintOverlay(
+      onTap: () {
+        settings.markThemeHintUsed();
+        _syncRailThemeCoachOverlay(show: false, settings: settings);
+      },
+      onDismiss: () {
+        settings.markThemeHintUsed();
+        _syncRailThemeCoachOverlay(show: false, settings: settings);
+      },
+    );
+  }
 
   Future<void> _loadTodaysQuestion() async {
     final suggestions = await AiQuestionBank.getNonRepeatingRandomSuggestions(
@@ -133,6 +170,34 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
     // Top lotuses scroll up with home content, but never below their rest position.
     _homeScrollController.addListener(_onHomeScroll);
+    if (widget.showSearchHints) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _replaySearchOnboardingHints();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchScreenView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.showSearchHints && !oldWidget.showSearchHints) {
+      _replaySearchOnboardingHints();
+    }
+  }
+
+  Future<void> _replaySearchOnboardingHints() async {
+    if (!mounted) return;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    await settings.resetSearchOnboardingHints();
+    if (!mounted) return;
+    GoRouter.of(context).go('/');
+  }
+
+  bool _showHomeOnboardingHints(SettingsProvider settings) {
+    return settings.hasSeenLanguagePrompt &&
+        !_isSearchFocused &&
+        MediaQuery.of(context).viewInsets.bottom == 0 &&
+        _searchController.text.isEmpty;
   }
 
   void _onHomeScroll() {
@@ -206,6 +271,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _coachOverlayRef = HelpRailAnchors.maybeOf(context)?.coachOverlay;
     final settings = Provider.of<SettingsProvider>(context);
     final newSources = settings.randomShlokaSources;
 
@@ -236,14 +302,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   @override
   void dispose() {
+    _coachOverlayRef?.value = null;
     _homeScrollController.removeListener(_onHomeScroll);
     _homeScrollController.dispose();
     _lotusLift.dispose();
     _revealController.dispose();
     _pulseController.dispose();
     _lotusController.dispose();
-    _searchController.dispose(); // ✨ Dispose controller
-    _searchFocusNode.dispose(); // ✨ Dispose focus node
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -348,6 +415,20 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    final showOnboarding = _showHomeOnboardingHints(settings) && !shouldShowResults;
+    final showRailThemeCoach =
+        width > 600 &&
+        MediaQuery.of(context).viewInsets.bottom == 0 &&
+        !settings.hasUsedThemeHint &&
+        showOnboarding;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncRailThemeCoachOverlay(
+        show: showRailThemeCoach,
+        settings: settings,
+      );
+    });
 
     return PopScope(
       canPop: false,
@@ -378,7 +459,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (!settings.hasUsedExploreMore && !shouldShowResults)
+                  if (!settings.hasUsedExploreMore && showOnboarding)
                     _OnboardingBubble(
                       text: "Explore more",
                       icon: Icons.explore_outlined,
@@ -478,6 +559,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   );
 
                   return Stack(
+                    clipBehavior: Clip.none,
                     children: [
                       // ✨ FIX: Safety Layer to prevent "White Flash" during transitions
                       // Matches the BOTTOM layer's color (the one being covered/revealed over).
@@ -577,6 +659,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                       // Wrap the interactive UI in a SafeArea
                       SafeArea(
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             Align(
                               alignment: Alignment.topCenter,
@@ -612,15 +695,89 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                             settings.streakSystemEnabled)
                                           _buildSoulStatusChip(settings),
                                         _buildSearchBar(provider),
+                                        if (showOnboarding &&
+                                            (!settings.hasUsedSearchBarHint ||
+                                                (!settings.hasUsedAskAi &&
+                                                    !_isAiMode)))
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 6,
+                                              left: 12,
+                                              right: 12,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                if (!settings
+                                                    .hasUsedSearchBarHint)
+                                                  Expanded(
+                                                    child: Align(
+                                                      alignment:
+                                                          Alignment.topCenter,
+                                                      child: _OnboardingBubble(
+                                                        text:
+                                                            'Search by word, chapter, or verse',
+                                                        icon: Icons.search,
+                                                        tailAlign:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        onTap: () => settings
+                                                            .markSearchBarHintUsed(),
+                                                        onDismiss: () =>
+                                                            settings
+                                                                .markSearchBarHintUsed(),
+                                                      ),
+                                                    ),
+                                                  )
+                                                else
+                                                  const Spacer(),
+                                                if (!settings.hasUsedAskAi &&
+                                                    !_isAiMode)
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                      right: 8,
+                                                      top: 2,
+                                                    ),
+                                                    child: _OnboardingBubble(
+                                                      onTap: () {
+                                                        settings
+                                                            .markAskAiUsed();
+                                                        setState(() {
+                                                          _isAiMode = true;
+                                                        });
+                                                        final creditProvider =
+                                                            Provider.of<
+                                                              CreditProvider
+                                                            >(
+                                                              context,
+                                                              listen: false,
+                                                            );
+                                                        if (!creditProvider
+                                                                .isLoading &&
+                                                            creditProvider
+                                                                    .balance <=
+                                                                0) {
+                                                          // Ad loading handled by CreditProvider.
+                                                        }
+                                                      },
+                                                      onDismiss: () {
+                                                        settings
+                                                            .markAskAiUsed();
+                                                      },
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
                                         // ✨ AI Suggestions
-                                        // Only show if focused, in AI mode, AND text field is empty
                                         if (_isSearchFocused &&
                                             _isAiMode &&
                                             provider.searchQuery.isEmpty)
                                           AiSuggestionChips(
                                             isVisible: true,
-                                            direction: Axis
-                                                .vertical, // ✨ Vertical suggestions
+                                            direction: Axis.vertical,
                                             onSuggestionSelected: (suggestion) {
                                               _searchController.text =
                                                   suggestion;
@@ -634,50 +791,32 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               );
                                             },
                                           ),
-                                        if (!settings.hasUsedAskAi &&
-                                            !shouldShowResults &&
-                                            !_isAiMode)
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(
-                                                right: 32.0,
-                                              ),
-                                              child: _OnboardingBubble(
-                                                onTap: () {
-                                                  // 1. Mark as used
-                                                  settings.markAskAiUsed();
-                                                  // 2. Switch mode or Navigate
-                                                  // Option A: Just switch to AI mode in place
-                                                  setState(() {
-                                                    _isAiMode = true;
-                                                  });
-                                                  final creditProvider =
-                                                      Provider.of<
-                                                        CreditProvider
-                                                      >(context, listen: false);
-                                                  if (!creditProvider
-                                                          .isLoading &&
-                                                      creditProvider.balance <=
-                                                          0) {
-                                                    // Ad loading handled by CreditProvider.
-                                                  }
-                                                },
-                                                onDismiss: () {
-                                                  // Just hide locally for this session, or forever?
-                                                  // User said "ok to not show them", implies permanent dismissal
-                                                  // or until they actually use it?
-                                                  // Let's mark it as used so it doesn't pester them.
-                                                  settings.markAskAiUsed();
-                                                },
-                                              ),
-                                            ),
-                                          ),
                                         if (!shouldShowResults) ...[
-                                          if (!settings.reminderEnabled)
-                                            _buildReminderNudge(settings),
-                                          if (settings.showRandomShloka)
+                                          if (settings.showRandomShloka) ...[
+                                            if (!settings.hasUsedDailyShlokaHint &&
+                                                showOnboarding)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 16,
+                                                  left: 28,
+                                                ),
+                                                child: Align(
+                                                  alignment: Alignment.centerLeft,
+                                                  child: _OnboardingBubble(
+                                                    text: "Today's verse",
+                                                    icon: Icons.wb_sunny_outlined,
+                                                    pointingDown: true,
+                                                    tailAlign:
+                                                        CrossAxisAlignment.start,
+                                                    onTap: () => settings
+                                                        .markDailyShlokaHintUsed(),
+                                                    onDismiss: () => settings
+                                                        .markDailyShlokaHintUsed(),
+                                                  ),
+                                                ),
+                                              ),
                                             _buildRandomShlokaCard(),
+                                          ],
                                           if (settings.showSacredSutraQuote)
                                             SacredSutraPromoCard(
                                               isSimpleLight:
@@ -802,53 +941,77 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             // Simple Theme Toggle Button (Bottom Left)
                             // Should only be visible on phones in PORTRAIT mode.
                             if (MediaQuery.of(context).viewInsets.bottom == 0 &&
-                                width <=
-                                    600 && // Phone check (width-based is more reliable for hidden state)
-                                !isLandscape) // Portrait check
+                                width <= 600 &&
+                                !isLandscape)
                               Positioned(
                                 left: 16,
                                 bottom: 16,
-                                child: FloatingActionButton(
-                                  key: _themeToggleKey,
-                                  heroTag: 'simple_theme_toggle',
-                                  mini: true,
-                                  // Use Theme Extension for colors
-                                  backgroundColor:
-                                      Theme.of(context)
-                                          .extension<AppColors>()
-                                          ?.simpleThemeToggle ??
-                                      Theme.of(context).primaryColor,
-                                  foregroundColor:
-                                      Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : Colors.white,
-                                  onPressed: () {
-                                    if (_revealController.isAnimating) return;
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (!settings.hasUsedThemeHint &&
+                                        showOnboarding)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 10,
+                                          left: 4,
+                                        ),
+                                        child: _OnboardingBubble(
+                                          text: 'Simple theme',
+                                          icon: Icons.format_paint_outlined,
+                                          pointingDown: true,
+                                          tailAlign: CrossAxisAlignment.start,
+                                          onTap: () =>
+                                              settings.markThemeHintUsed(),
+                                          onDismiss: () =>
+                                              settings.markThemeHintUsed(),
+                                        ),
+                                      ),
+                                    FloatingActionButton(
+                                      key: _themeToggleKey,
+                                      heroTag: 'simple_theme_toggle',
+                                      mini: true,
+                                      backgroundColor:
+                                          Theme.of(context)
+                                              .extension<AppColors>()
+                                              ?.simpleThemeToggle ??
+                                          Theme.of(context).primaryColor,
+                                      foregroundColor:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary
+                                          : Colors.white,
+                                      onPressed: () {
+                                        if (_revealController.isAnimating) {
+                                          return;
+                                        }
 
-                                    HapticFeedback.lightImpact();
-                                    _captureThemeTogglePosition();
-                                    // Ease lotuses/content back to rest while revealing.
-                                    _resetLotusScrollLift();
-                                    setState(() {
-                                      _isBackgroundRequested =
-                                          !settings.showBackground;
-                                    });
-                                    _revealController.forward(from: 0).then((
-                                      _,
-                                    ) {
-                                      settings.setShowBackground(
-                                        _isBackgroundRequested!,
-                                      );
-                                      // Don't jump again — just heal any leftover stale lift.
-                                      _ensureLotusLiftSynced();
-                                    });
-                                  },
-                                  child: Icon(
-                                    settings.showBackground
-                                        ? Icons.format_paint_outlined
-                                        : Icons.format_paint,
-                                  ),
+                                        HapticFeedback.lightImpact();
+                                        _captureThemeTogglePosition();
+                                        _resetLotusScrollLift();
+                                        setState(() {
+                                          _isBackgroundRequested =
+                                              !settings.showBackground;
+                                        });
+                                        _revealController.forward(from: 0).then((
+                                          _,
+                                        ) {
+                                          settings.setShowBackground(
+                                            _isBackgroundRequested!,
+                                          );
+                                          _ensureLotusLiftSynced();
+                                        });
+                                      },
+                                      child: Icon(
+                                        settings.showBackground
+                                            ? Icons.format_paint_outlined
+                                            : Icons.format_paint,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                           ],
@@ -924,6 +1087,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           ],
                         ),
                       ),
+
                     ],
                   );
                 },
@@ -1635,80 +1799,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildReminderNudge(SettingsProvider settings) {
-    final isSimpleLight =
-        !settings.showBackground &&
-        Theme.of(context).brightness == Brightness.light;
-
-    if (settings.reminderNudgeDismissed) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 24, right: 24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSimpleLight
-              ? Colors.pink.withOpacity(0.05)
-              : Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: InkWell(
-                onTap: () {
-                  settings.setReminderEnabled(true);
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.notification_add,
-                        size: 14,
-                        color: isSimpleLight ? Colors.pink : Colors.amberAccent,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Remind me daily to maintain my streak',
-                          style: TextStyle(
-                            color: isSimpleLight
-                                ? Colors.pink[800]
-                                : Colors.amberAccent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.visible,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            IconButton(
-              onPressed: () => settings.dismissReminderNudge(),
-              icon: Icon(
-                Icons.close,
-                size: 14,
-                color: isSimpleLight ? Colors.pink[200] : Colors.white24,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              splashRadius: 12,
-              tooltip: 'Dismiss',
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2525,19 +2615,137 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   }
 }
 
+class _RailThemeHintOverlay extends StatefulWidget {
+  final VoidCallback onTap;
+  final VoidCallback onDismiss;
+
+  const _RailThemeHintOverlay({
+    required this.onTap,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_RailThemeHintOverlay> createState() => _RailThemeHintOverlayState();
+}
+
+class _RailThemeHintOverlayState extends State<_RailThemeHintOverlay> {
+  double? _left;
+  double? _bottom;
+  final GlobalKey _bubbleKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updatePosition());
+  }
+
+  RenderBox? _stackBox() {
+    RenderBox? stackBox;
+    context.visitAncestorElements((element) {
+      if (element.widget is Stack) {
+        stackBox = element.renderObject as RenderBox?;
+        return false;
+      }
+      return true;
+    });
+    return stackBox;
+  }
+
+  void _updatePosition({bool afterLayout = false}) {
+    final themeKey = HelpRailAnchors.maybeOf(context)?.themeKey;
+    final targetContext = themeKey?.currentContext;
+    final stackBox = _stackBox();
+    if (targetContext == null || stackBox == null || !mounted) return;
+
+    final targetBox = targetContext.findRenderObject() as RenderBox?;
+    if (targetBox == null || !targetBox.hasSize) return;
+
+    var bubbleWidth = 252.0;
+    var bubbleHeight = 76.0;
+    if (afterLayout) {
+      final bubbleBox =
+          _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
+      if (bubbleBox != null && bubbleBox.hasSize) {
+        bubbleWidth = bubbleBox.size.width;
+        bubbleHeight = bubbleBox.size.height;
+      }
+    }
+
+    const tailInset = 18.0;
+    const gapAboveButton = 6.0;
+
+    final buttonCenterGlobal =
+        targetBox.localToGlobal(targetBox.size.center(Offset.zero));
+    final buttonTopGlobal = targetBox.localToGlobal(Offset.zero);
+
+    final buttonCenterLocal = stackBox.globalToLocal(buttonCenterGlobal);
+    final buttonTopLocal = stackBox.globalToLocal(buttonTopGlobal).dy;
+
+    // Align the downward tail (start) with the rail paint button.
+    var left = buttonCenterLocal.dx - tailInset;
+    left = left.clamp(
+      8.0,
+      (stackBox.size.width - bubbleWidth).clamp(0.0, double.infinity),
+    );
+
+    final bottom = (stackBox.size.height - buttonTopLocal + gapAboveButton)
+        .clamp(gapAboveButton, stackBox.size.height);
+
+    final changed = _left != left || _bottom != bottom;
+    if (changed) {
+      setState(() {
+        _left = left;
+        _bottom = bottom;
+      });
+    }
+
+    if (!afterLayout) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _updatePosition(afterLayout: true),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_left == null || _bottom == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      left: _left,
+      bottom: _bottom,
+      child: _OnboardingBubble(
+        key: _bubbleKey,
+        text: 'Paint button on the left rail switches theme',
+        icon: Icons.format_paint_outlined,
+        pointingDown: true,
+        tailAlign: CrossAxisAlignment.start,
+        onTap: widget.onTap,
+        onDismiss: widget.onDismiss,
+      ),
+    );
+  }
+}
+
 class _OnboardingBubble extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onDismiss;
   final String text;
   final IconData icon;
   final bool pointingDown;
+  final bool pointingLeft;
+  final CrossAxisAlignment tailAlign;
 
   const _OnboardingBubble({
+    super.key,
     required this.onTap,
     required this.onDismiss,
     this.text = "Try Ask Gita",
     this.icon = Icons.auto_awesome,
     this.pointingDown = false,
+    this.pointingLeft = false,
+    this.tailAlign = CrossAxisAlignment.end,
   });
 
   @override
@@ -2580,6 +2788,120 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
     final bubbleColor = isDark ? const Color(0xFF424242) : Colors.white;
     final borderColor = isDark ? Colors.white24 : Colors.amber.withOpacity(0.5);
 
+    final bubbleBody = GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 260),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: borderColor, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.icon,
+              color: Colors.amber,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                widget.text,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: widget.onDismiss,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Icon(
+                  Icons.close,
+                  size: 16,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final Widget bubbleContent;
+    if (widget.pointingLeft) {
+      bubbleContent = Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(10, 20),
+            painter: _BubbleTailPainter(
+              color: bubbleColor,
+              borderColor: borderColor,
+              pointingLeft: true,
+            ),
+          ),
+          bubbleBody,
+        ],
+      );
+    } else {
+      bubbleContent = Column(
+        crossAxisAlignment: widget.tailAlign,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!widget.pointingDown)
+            Padding(
+              padding: EdgeInsets.only(
+                right: widget.tailAlign == CrossAxisAlignment.end ? 20 : 0,
+                left: widget.tailAlign == CrossAxisAlignment.start ? 20 : 0,
+              ),
+              child: CustomPaint(
+                size: const Size(20, 10),
+                painter: _BubbleTailPainter(
+                  color: bubbleColor,
+                  borderColor: borderColor,
+                  pointingDown: false,
+                ),
+              ),
+            ),
+          bubbleBody,
+          if (widget.pointingDown)
+            Padding(
+              padding: EdgeInsets.only(
+                right: widget.tailAlign == CrossAxisAlignment.end ? 18 : 0,
+                left: widget.tailAlign == CrossAxisAlignment.start ? 18 : 0,
+              ),
+              child: CustomPaint(
+                size: const Size(20, 10),
+                painter: _BubbleTailPainter(
+                  color: bubbleColor,
+                  borderColor: borderColor,
+                  pointingDown: true,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _controller,
@@ -2589,101 +2911,7 @@ class _OnboardingBubbleState extends State<_OnboardingBubble>
             child: Transform.scale(scale: _scaleAnimation.value, child: child),
           );
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!widget.pointingDown)
-              // The Tail pointing up
-              Padding(
-                padding: const EdgeInsets.only(right: 20.0),
-                child: CustomPaint(
-                  size: const Size(20, 10),
-                  painter: _BubbleTailPainter(
-                    color: bubbleColor,
-                    borderColor: borderColor,
-                    pointingDown: false,
-                  ),
-                ),
-              ),
-            // The Bubble Body
-            GestureDetector(
-              onTap: widget.onTap,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 240),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: bubbleColor,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(color: borderColor, width: 1.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      widget.icon,
-                      color: Colors.amber,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.text,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: widget.onDismiss,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Icon(
-                          Icons.close,
-                          size: 16,
-                          color: isDark ? Colors.white38 : Colors.black38,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (widget.pointingDown)
-              // The Tail pointing down
-              Padding(
-                padding: const EdgeInsets.only(right: 18.0), // Better center over FAB
-                child: CustomPaint(
-                  size: const Size(20, 10),
-                  painter: _BubbleTailPainter(
-                    color: bubbleColor,
-                    borderColor: borderColor,
-                    pointingDown: true,
-                  ),
-                ),
-              ),
-          ],
-        ),
+        child: bubbleContent,
       ),
     );
   }
@@ -2693,11 +2921,13 @@ class _BubbleTailPainter extends CustomPainter {
   final Color color;
   final Color borderColor;
   final bool pointingDown;
+  final bool pointingLeft;
 
   _BubbleTailPainter({
     required this.color,
     required this.borderColor,
     this.pointingDown = false,
+    this.pointingLeft = false,
   });
 
   @override
@@ -2712,30 +2942,33 @@ class _BubbleTailPainter extends CustomPainter {
       ..strokeWidth = 1.5;
 
     final path = Path();
-    if (pointingDown) {
+    final borderPath = Path();
+    if (pointingLeft) {
+      path.moveTo(0, size.height / 2);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height);
+      borderPath.moveTo(0, size.height / 2);
+      borderPath.lineTo(size.width, 0);
+      borderPath.moveTo(0, size.height / 2);
+      borderPath.lineTo(size.width, size.height);
+    } else if (pointingDown) {
       path.moveTo(0, 0);
       path.lineTo(size.width, 0);
       path.lineTo(size.width / 2, size.height);
-    } else {
-      path.moveTo(size.width / 2, 0); // Tip pointing up
-      path.lineTo(0, size.height);
-      path.lineTo(size.width, size.height);
-    }
-    path.close();
-
-    canvas.drawPath(path, paint);
-
-    // Draw only the slanted sides for the border to merge with bubble
-    final borderPath = Path();
-    if (pointingDown) {
       borderPath.moveTo(0, 0);
       borderPath.lineTo(size.width / 2, size.height);
       borderPath.lineTo(size.width, 0);
     } else {
+      path.moveTo(size.width / 2, 0);
+      path.lineTo(0, size.height);
+      path.lineTo(size.width, size.height);
       borderPath.moveTo(0, size.height);
       borderPath.lineTo(size.width / 2, 0);
       borderPath.lineTo(size.width, size.height);
     }
+    path.close();
+
+    canvas.drawPath(path, paint);
     canvas.drawPath(borderPath, borderPaint);
   }
 

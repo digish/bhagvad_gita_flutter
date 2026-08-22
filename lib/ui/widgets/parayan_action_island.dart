@@ -115,16 +115,11 @@ class ParayanActionIsland extends StatelessWidget {
             enabled: enabled,
             onPressed: enabled
                 ? () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useRootNavigator: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => CommentarySheet(
-                        commentaries: current?.commentaries ?? [],
-                        chapterNo: current!.chapterNo,
-                        shlokNo: current.shlokNo,
-                      ),
+                    CommentarySheet.show(
+                      context,
+                      commentaries: current?.commentaries,
+                      chapterNo: current!.chapterNo,
+                      shlokNo: current.shlokNo,
                     );
                   }
                 : null,

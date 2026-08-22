@@ -40,6 +40,15 @@ class SettingsProvider extends ChangeNotifier {
   bool _hasUsedExploreMore = false;
   bool get hasUsedExploreMore => _hasUsedExploreMore;
 
+  bool _hasUsedSearchBarHint = false;
+  bool get hasUsedSearchBarHint => _hasUsedSearchBarHint;
+
+  bool _hasUsedDailyShlokaHint = false;
+  bool get hasUsedDailyShlokaHint => _hasUsedDailyShlokaHint;
+
+  bool _hasUsedThemeHint = false;
+  bool get hasUsedThemeHint => _hasUsedThemeHint;
+
   int _dailyStreak = 0;
   int get dailyStreak => _dailyStreak;
 
@@ -82,6 +91,10 @@ class SettingsProvider extends ChangeNotifier {
 
   bool _reminderNudgeDismissed = false;
   bool get reminderNudgeDismissed => _reminderNudgeDismissed;
+
+  /// Opens of Parayan / Settings / chapter list — pitch reminder on the 2nd visit.
+  int _featureScreenVisits = 0;
+  int get featureScreenVisits => _featureScreenVisits;
 
   // Legacy flag — migrated into showSacredSutraQuote on load.
   bool _sacredSutraPromoDismissed = false;
@@ -160,6 +173,46 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_used_explore_more', true);
+  }
+
+  Future<void> markSearchBarHintUsed() async {
+    if (_hasUsedSearchBarHint) return;
+    _hasUsedSearchBarHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_search_bar_hint', true);
+  }
+
+  Future<void> markDailyShlokaHintUsed() async {
+    if (_hasUsedDailyShlokaHint) return;
+    _hasUsedDailyShlokaHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_daily_shloka_hint', true);
+  }
+
+  Future<void> markThemeHintUsed() async {
+    if (_hasUsedThemeHint) return;
+    _hasUsedThemeHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_theme_hint', true);
+  }
+
+  /// Settings → Help: Home & search — show all floating tips again.
+  Future<void> resetSearchOnboardingHints() async {
+    _hasUsedAskAi = false;
+    _hasUsedExploreMore = false;
+    _hasUsedSearchBarHint = false;
+    _hasUsedDailyShlokaHint = false;
+    _hasUsedThemeHint = false;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_ask_ai', false);
+    await prefs.setBool('has_used_explore_more', false);
+    await prefs.setBool('has_used_search_bar_hint', false);
+    await prefs.setBool('has_used_daily_shloka_hint', false);
+    await prefs.setBool('has_used_theme_hint', false);
   }
 
   /* DEPRECATED: Replaced by CreditProvider */
@@ -370,6 +423,10 @@ class SettingsProvider extends ChangeNotifier {
     _customAiApiKey = prefs.getString('custom_ai_api_key');
     _hasUsedAskAi = prefs.getBool('has_used_ask_ai') ?? false;
     _hasUsedExploreMore = prefs.getBool('has_used_explore_more') ?? false;
+    _hasUsedSearchBarHint = prefs.getBool('has_used_search_bar_hint') ?? false;
+    _hasUsedDailyShlokaHint =
+        prefs.getBool('has_used_daily_shloka_hint') ?? false;
+    _hasUsedThemeHint = prefs.getBool('has_used_theme_hint') ?? false;
     // Streak alerts are silent — clear any legacy queued dialog messages.
     await prefs.remove('last_soul_status_message');
     _streakSystemEnabled = prefs.getBool('streak_system_enabled') ?? true;
@@ -382,6 +439,7 @@ class SettingsProvider extends ChangeNotifier {
 
     _reminderNudgeDismissed =
         prefs.getBool('reminder_nudge_dismissed') ?? false;
+    _featureScreenVisits = prefs.getInt('feature_screen_visits') ?? 0;
 
     _sacredSutraPromoDismissed =
         prefs.getBool('sacred_sutra_promo_dismissed') ?? false;
@@ -775,4 +833,18 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('reminder_nudge_dismissed', true);
   }
+
+  /// Count a visit to Parayan, Settings, or chapter verses.
+  Future<void> noteFeatureScreenVisit() async {
+    if (_reminderEnabled || _reminderNudgeDismissed) return;
+    _featureScreenVisits += 1;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('feature_screen_visits', _featureScreenVisits);
+  }
+
+  /// True once the user has opened a key screen at least twice.
+  bool get shouldOfferReminderPitch =>
+      !_reminderEnabled &&
+      !_reminderNudgeDismissed &&
+      _featureScreenVisits >= 2;
 }

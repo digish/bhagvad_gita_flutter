@@ -26,6 +26,7 @@ import '../../models/shloka_result.dart';
 import '../widgets/chapter_seek_rail.dart';
 import '../widgets/parayan_action_island.dart';
 import '../widgets/parayan_help_guide.dart';
+import '../widgets/reminder_pitch.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/simple_gradient_background.dart';
@@ -245,6 +246,12 @@ class _ParayanScreenState extends State<ParayanScreen> {
     _audioProvider?.addListener(_handleAudioChange);
     _itemPositionsListener.itemPositions.addListener(_onParayanScrollForFontDock);
     _scheduleHelpGuide();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 1400), () {
+        if (!mounted) return;
+        ReminderPitch.maybeShow(context, blocked: _showHelpGuide);
+      });
+    });
   }
 
   @override

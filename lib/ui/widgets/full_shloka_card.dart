@@ -648,7 +648,9 @@ class FullShlokaCard extends StatelessWidget {
                           // 4. Action Row (Bottom)
                           if (config.showActions)
                             Center(
-                              child: Container(
+                              child: KeyedSubtree(
+                                key: config.helpActionsRowKey,
+                                child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 6,
                                   horizontal: 16,
@@ -686,21 +688,12 @@ class FullShlokaCard extends StatelessWidget {
                                             _ActionButton(
                                               icon: Icons.menu_book_rounded,
                                               onPressed: () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  useRootNavigator: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      CommentarySheet(
-                                                        commentaries:
-                                                            shloka.commentaries ??
-                                                            [],
-                                                        chapterNo:
-                                                            shloka.chapterNo,
-                                                        shlokNo: shloka.shlokNo,
-                                                      ),
+                                                CommentarySheet.show(
+                                                  context,
+                                                  commentaries:
+                                                      shloka.commentaries,
+                                                  chapterNo: shloka.chapterNo,
+                                                  shlokNo: shloka.shlokNo,
                                                 );
                                               },
                                             ),
@@ -766,6 +759,7 @@ class FullShlokaCard extends StatelessWidget {
                                     );
                                   },
                                 ),
+                              ),
                               ),
                             ),
                         ],
@@ -1415,6 +1409,8 @@ class FullShlokaCardConfig {
   final ParayanLayoutCount layoutCount;
   /// Pair shown when [layoutCount] is two.
   final ContinuousListPair listPairMode;
+  /// Live spotlight target for chapter help (Play / bookmark / Share row).
+  final Key? helpActionsRowKey;
 
   const FullShlokaCardConfig({
     this.showSpeaker = true,
@@ -1432,6 +1428,7 @@ class FullShlokaCardConfig {
     this.listBodyMode = ContinuousListBody.shloka,
     this.layoutCount = ParayanLayoutCount.one,
     this.listPairMode = ContinuousListPair.shlokaAnvay,
+    this.helpActionsRowKey,
   });
 
   /// Bodies shown in the Parayan continuous list.
@@ -1502,6 +1499,7 @@ class FullShlokaCardConfig {
     ContinuousListBody? listBodyMode,
     ParayanLayoutCount? layoutCount,
     ContinuousListPair? listPairMode,
+    Key? helpActionsRowKey,
   }) {
     return FullShlokaCardConfig(
       showSpeaker: showSpeaker ?? this.showSpeaker,
@@ -1519,6 +1517,7 @@ class FullShlokaCardConfig {
       listBodyMode: listBodyMode ?? this.listBodyMode,
       layoutCount: layoutCount ?? this.layoutCount,
       listPairMode: listPairMode ?? this.listPairMode,
+      helpActionsRowKey: helpActionsRowKey ?? this.helpActionsRowKey,
     );
   }
 }
