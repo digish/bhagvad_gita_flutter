@@ -18,14 +18,34 @@ Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
 }
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 6; // Increment this to force DB update
+  static const int DB_VERSION = 7; // geeta_v7: chapter JSON + Gemini bhashya JSON
+  static const String DB_FILE_NAME = 'geeta_v7.db';
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
 
+  /// WAL-mode SQLite files copied without -wal/-shm sidecars fail on iOS
+  /// when opened read-only. Merge journal into the main file after copy.
+  static Future<void> _finalizeCopiedDatabase(String path) async {
+    final db = await openDatabase(path);
+    try {
+      // PRAGMA journal_mode returns rows; rawQuery avoids iOS sqflite execute errors.
+      await db.rawQuery('PRAGMA journal_mode=DELETE');
+      await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+    } finally {
+      await db.close();
+    }
+    for (final suffix in ['-wal', '-shm']) {
+      final sidecar = File('$path$suffix');
+      if (await sidecar.exists()) {
+        await sidecar.delete();
+      }
+    }
+  }
+
   static Future<DatabaseHelperImpl> create() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, "geeta_v6.db");
+    final path = join(documentsDirectory.path, DB_FILE_NAME);
 
     // Check version
     final prefs = await SharedPreferences.getInstance();
@@ -41,25 +61,19 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
 
       try {
         // 1. Clean up OLD databases to save space
-        final oldDbV5 = File(join(documentsDirectory.path, "geeta_v5.db"));
-        if (await oldDbV5.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta_v5.db");
-          await oldDbV5.delete();
-        }
-        final oldDbV4 = File(join(documentsDirectory.path, "geeta_v4.db"));
-        if (await oldDbV4.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta_v4.db");
-          await oldDbV4.delete();
-        }
-        final oldDbV2 = File(join(documentsDirectory.path, "geeta_v2.db"));
-        if (await oldDbV2.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta_v2.db");
-          await oldDbV2.delete();
-        }
-        final oldDbV1 = File(join(documentsDirectory.path, "geeta_v1.db"));
-        if (await oldDbV1.exists()) {
-          print("[DB_MOBILE] Deleting old DB: geeta_v1.db");
-          await oldDbV1.delete();
+        for (final oldName in [
+          'geeta_v8.db',
+          'geeta_v6.db',
+          'geeta_v5.db',
+          'geeta_v4.db',
+          'geeta_v2.db',
+          'geeta_v1.db',
+        ]) {
+          final oldDb = File(join(documentsDirectory.path, oldName));
+          if (await oldDb.exists()) {
+            print("[DB_MOBILE] Deleting old DB: $oldName");
+            await oldDb.delete();
+          }
         }
 
         // 2. Delete current file if it exists (to overwrite)
@@ -72,13 +86,14 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
         print("[DB_MOBILE] Copying new database from assets...");
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load(
-          join("assets", "database", "geeta_v6.db"),
+          join("assets", "database", DB_FILE_NAME),
         );
         List<int> bytes = data.buffer.asUint8List(
           data.offsetInBytes,
           data.lengthInBytes,
         );
         await File(path).writeAsBytes(bytes, flush: true);
+        await _finalizeCopiedDatabase(path);
 
         // 4. Update preference
         await prefs.setInt('db_version', DB_VERSION);
@@ -91,6 +106,13 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       print(
         "[DB_MOBILE] Opening existing database (Version $savedVersion): $path",
       );
+      // Heal sidecars from an interrupted or WAL-mode copy.
+      final wal = File('$path-wal');
+      final shm = File('$path-shm');
+      if (await wal.exists() || await shm.exists()) {
+        print("[DB_MOBILE] Normalizing WAL sidecars at $path");
+        await _finalizeCopiedDatabase(path);
+      }
     }
 
     final db = await openDatabase(path, readOnly: true);

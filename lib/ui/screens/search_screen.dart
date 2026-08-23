@@ -696,11 +696,34 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                         if (!shouldShowResults &&
                                             settings.streakSystemEnabled)
                                           _buildSoulStatusChip(settings),
+                                        if (showOnboarding &&
+                                            !settings.hasUsedSearchBarHint)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 8,
+                                              left: 12,
+                                              right: 12,
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.topCenter,
+                                              child: OnboardingBubble(
+                                                text:
+                                                    'Search by word, chapter, or verse',
+                                                icon: Icons.search,
+                                                pointingDown: true,
+                                                tailAlign:
+                                                    CrossAxisAlignment.center,
+                                                onTap: () => settings
+                                                    .markSearchBarHintUsed(),
+                                                onDismiss: () => settings
+                                                    .markSearchBarHintUsed(),
+                                              ),
+                                            ),
+                                          ),
                                         _buildSearchBar(provider),
                                         if (showOnboarding &&
-                                            (!settings.hasUsedSearchBarHint ||
-                                                (!settings.hasUsedAskAi &&
-                                                    !_isAiMode)))
+                                            !settings.hasUsedAskAi &&
+                                            !_isAiMode)
                                           Padding(
                                             padding: const EdgeInsets.only(
                                               top: 6,
@@ -708,68 +731,40 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               right: 12,
                                             ),
                                             child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
                                               children: [
-                                                if (!settings
-                                                    .hasUsedSearchBarHint)
-                                                  Expanded(
-                                                    child: Align(
-                                                      alignment:
-                                                          Alignment.topCenter,
-                                                      child: OnboardingBubble(
-                                                        text:
-                                                            'Search by word, chapter, or verse',
-                                                        icon: Icons.search,
-                                                        tailAlign:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        onTap: () => settings
-                                                            .markSearchBarHintUsed(),
-                                                        onDismiss: () =>
-                                                            settings
-                                                                .markSearchBarHintUsed(),
-                                                      ),
-                                                    ),
-                                                  )
-                                                else
-                                                  const Spacer(),
-                                                if (!settings.hasUsedAskAi &&
-                                                    !_isAiMode)
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                      right: 8,
-                                                      top: 2,
-                                                    ),
-                                                    child: OnboardingBubble(
-                                                      onTap: () {
-                                                        settings
-                                                            .markAskAiUsed();
-                                                        setState(() {
-                                                          _isAiMode = true;
-                                                        });
-                                                        final creditProvider =
-                                                            Provider.of<
-                                                              CreditProvider
-                                                            >(
-                                                              context,
-                                                              listen: false,
-                                                            );
-                                                        if (!creditProvider
-                                                                .isLoading &&
-                                                            creditProvider
-                                                                    .balance <=
-                                                                0) {
-                                                          // Ad loading handled by CreditProvider.
-                                                        }
-                                                      },
-                                                      onDismiss: () {
-                                                        settings
-                                                            .markAskAiUsed();
-                                                      },
-                                                    ),
+                                                const Spacer(),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                    right: 8,
+                                                    top: 2,
                                                   ),
+                                                  child: OnboardingBubble(
+                                                    onTap: () {
+                                                      settings.markAskAiUsed();
+                                                      setState(() {
+                                                        _isAiMode = true;
+                                                      });
+                                                      final creditProvider =
+                                                          Provider.of<
+                                                            CreditProvider
+                                                          >(
+                                                            context,
+                                                            listen: false,
+                                                          );
+                                                      if (!creditProvider
+                                                              .isLoading &&
+                                                          creditProvider
+                                                                  .balance <=
+                                                              0) {
+                                                        // Ad loading handled by CreditProvider.
+                                                      }
+                                                    },
+                                                    onDismiss: () {
+                                                      settings.markAskAiUsed();
+                                                    },
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),

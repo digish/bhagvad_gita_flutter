@@ -54,7 +54,9 @@ class _AnchoredOnboardingBubbleState extends State<AnchoredOnboardingBubble> {
   void initState() {
     super.initState();
     widget.repositionListenable?.addListener(_scheduleReposition);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updatePosition());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePosition();
+    });
   }
 
   @override
@@ -75,7 +77,9 @@ class _AnchoredOnboardingBubbleState extends State<AnchoredOnboardingBubble> {
       oldWidget.repositionListenable?.removeListener(_scheduleReposition);
       widget.repositionListenable?.addListener(_scheduleReposition);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updatePosition());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePosition();
+    });
   }
 
   RenderBox? _stackBox() {
@@ -198,12 +202,15 @@ class _AnchoredOnboardingBubbleState extends State<AnchoredOnboardingBubble> {
   }
 
   void _updatePosition({bool afterLayout = false}) {
+    if (!mounted) return;
     final stackBox = _stackBox();
-    if (stackBox == null || !mounted) return;
+    if (stackBox == null) return;
 
     final target = _targetRectInStack(stackBox);
     if (target == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _updatePosition());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _updatePosition();
+      });
       return;
     }
 
@@ -261,9 +268,9 @@ class _AnchoredOnboardingBubbleState extends State<AnchoredOnboardingBubble> {
     }
 
     if (!afterLayout) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _updatePosition(afterLayout: true),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _updatePosition(afterLayout: true);
+      });
     }
   }
 

@@ -555,57 +555,77 @@ class _EpicExploreCard extends StatelessWidget {
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    SacredSutraPromoCard.iconAsset,
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.asset(
+                        SacredSutraPromoCard.iconAsset,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mahabharata & Ramayana',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              height: 1.15,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Still for the life you are living',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontSize: 16,
+                              color: accent,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 28,
+                      color: accent.withValues(alpha: 0.7),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'They still speak to this day: a promise that costs, a family that pulls two ways, a choice with no clean win. From them you can take how to keep your word, how to use power, and how to stand when it would be easier to leave.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontSize: 17,
+                    height: 1.5,
+                    color: theme.textTheme.bodyLarge?.color?.withValues(
+                      alpha: 0.88,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mahabharata',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      Text(
-                        'Ramayana',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Explore the epics',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 14,
-                          color: accent,
-                          fontWeight: FontWeight.w600,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 10),
+                Text(
+                  'You do not need the whole epic at once. This app lets you explore them in bits and pieces — a scene, a person, a dilemma — and apply what lands.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontSize: 17,
+                    height: 1.5,
+                    fontWeight: FontWeight.w600,
+                    color: theme.textTheme.bodyLarge?.color?.withValues(
+                      alpha: 0.92,
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: accent.withValues(alpha: 0.7),
                 ),
               ],
             ),

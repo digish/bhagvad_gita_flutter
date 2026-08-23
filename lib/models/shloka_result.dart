@@ -129,6 +129,14 @@ class Commentary {
     return canonicalAuthorName;
   }
 
+  /// Per-verse heading in book mode.
+  String get sectionHeading {
+    if (languageCode.toLowerCase() == 'sa') {
+      return 'Commentary by $displayAuthorName';
+    }
+    return 'Commentary by $displayAuthorName · AI generated';
+  }
+
   ModernCommentary? get modern {
     if (!isAI) return null;
     try {

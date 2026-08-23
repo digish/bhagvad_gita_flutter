@@ -65,7 +65,7 @@ lib/generated_plugin_registrant.dart
 scripts/bhashya_pilot_results.json
 scripts/bhashya_gemini_progress.jsonl
 scripts/bhashya_gemini_state.json
-scripts/bhashya_gemini_out/
+scripts/bhashya_gemini_run.log
 lib/secrets.dart
 lib/core/secrets_config.dart
 scripts/scramble_api_key.dart
@@ -95,6 +95,8 @@ scripts/scramble_api_key.dart
 
 # Large database / embeddings
 assets/database/*.db
+assets/database/*.db-wal
+assets/database/*.db-shm
 assets/database/timings.json
 assets/database/build/
 test/*.db

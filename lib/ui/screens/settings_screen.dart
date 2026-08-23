@@ -220,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       backgroundColor: theme.primaryColor
                                           .withOpacity(isDark ? 0.25 : 0.1),
                                       child: Icon(
-                                        Icons.translate,
+                                        Icons.menu_book_outlined,
                                         color: theme.primaryColor,
                                       ),
                                     ),
@@ -871,7 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      'Shankara, Ramanuja, and Madhva in your language (translation of their bhashya, not the modern AI summary)',
+                                      'Shankara, Ramanuja, and Madhva bhashya',
                                       style: TextStyle(
                                         color: subtitleColor,
                                         fontSize: 12,

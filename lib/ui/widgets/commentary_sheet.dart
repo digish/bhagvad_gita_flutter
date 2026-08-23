@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../models/shloka_result.dart';
 import '../../data/database_helper.dart';
+import '../../utils/commentary_language.dart';
+import 'commentary_language_switcher.dart';
 
 class CommentarySheet extends StatefulWidget {
   final List<Commentary> commentaries;
@@ -57,7 +59,8 @@ class CommentarySheet extends StatefulWidget {
 }
 
 class _CommentarySheetState extends State<CommentarySheet> {
-  int _selectedIndex = 0;
+  int _selectedAuthorIndex = 0;
+  final Map<String, String> _languageByAuthor = {};
   bool _isLoading = false;
   late List<Commentary> _effectiveCommentaries;
 
@@ -179,83 +182,19 @@ class _CommentarySheetState extends State<CommentarySheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // --- NEW: Read Settings ---
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final preferredScript = settings.script;
-    final preferredLang = settings.language; // 'hi' or 'en'
 
-    // --- NEW: Group and Select Best Commentary ---
-    // 1. Group by canonical author so Sanskrit + translations share one tab
-    final Map<String, List<Commentary>> groupedByAuthor = {};
-    for (var c in _effectiveCommentaries) {
-      if (c.content.isNotEmpty) {
-        groupedByAuthor.putIfAbsent(c.canonicalAuthorName, () => []).add(c);
-      }
-    }
+    final groupedByAuthor = groupCommentariesByAuthor(
+      _effectiveCommentaries,
+      includeAuthor: (authorName) {
+        if (settings.showClassicalCommentaries) return true;
+        return _getCommentaryType(authorName) != 'Big Three (Classical)';
+      },
+    );
 
-    final List<Commentary> displayCommentaries = [];
+    final authorNames = groupedByAuthor.keys.toList()..sort();
 
-    // 2. Filter and Select Variants
-    groupedByAuthor.forEach((authorName, variants) {
-      // Filter based on Settings
-      final type = _getCommentaryType(authorName);
-      if (!settings.showClassicalCommentaries &&
-          type == 'Big Three (Classical)') {
-        return; // Skip this author
-      }
-
-      // Add SINGLE best variant for the author
-      Commentary? bestMatch;
-
-      // 1. Try User's Preferred Script (e.g. 'gu' for Gujarati)
-      try {
-        bestMatch = variants.firstWhere(
-          (c) => c.languageCode == preferredScript,
-        );
-      } catch (_) {}
-
-      // 2. Try User's Preferred Language (Logic varies by language)
-      if (bestMatch == null) {
-        if (preferredLang == 'en') {
-          // If User wants English, try English
-          try {
-            bestMatch = variants.firstWhere((c) => c.languageCode == 'en');
-          } catch (_) {}
-        } else if (preferredLang == 'hi') {
-          // If User wants Hindi
-          // Try Hindi
-          try {
-            bestMatch = variants.firstWhere((c) => c.languageCode == 'hi');
-          } catch (_) {
-            // If Hindi missing, try Sanskrit (User preference for Classical fallbacks)
-            try {
-              bestMatch = variants.firstWhere((c) => c.languageCode == 'sa');
-            } catch (_) {}
-          }
-        }
-      }
-
-      // 3. Fallbacks
-      if (bestMatch == null) {
-        // Try English
-        try {
-          bestMatch = variants.firstWhere((c) => c.languageCode == 'en');
-        } catch (_) {}
-      }
-      if (bestMatch == null) {
-        // Try Sanskrit
-        try {
-          bestMatch = variants.firstWhere((c) => c.languageCode == 'sa');
-        } catch (_) {}
-      }
-
-      // 4. Last Resort
-      bestMatch ??= variants.first;
-
-      displayCommentaries.add(bestMatch);
-    });
-
-    if (displayCommentaries.isEmpty) {
+    if (authorNames.isEmpty) {
       return _buildSheetFrame(
         context,
         child: Padding(
@@ -278,12 +217,30 @@ class _CommentarySheetState extends State<CommentarySheet> {
       );
     }
 
-    // Ensure index validity if list changed
-    if (_selectedIndex >= displayCommentaries.length) {
-      _selectedIndex = 0;
+    if (_selectedAuthorIndex >= authorNames.length) {
+      _selectedAuthorIndex = 0;
     }
 
-    final selectedCommentary = displayCommentaries[_selectedIndex];
+    final selectedAuthor = authorNames[_selectedAuthorIndex];
+    final authorVariants = groupedByAuthor[selectedAuthor]!;
+    final availableLanguages = availableLanguageCodesForVariants(authorVariants);
+
+    var selectedLanguage = _languageByAuthor[selectedAuthor] ??
+        defaultCommentaryLanguage(
+          authorVariants,
+          preferredLanguage: settings.language,
+        );
+    if (!availableLanguages.contains(selectedLanguage)) {
+      selectedLanguage = availableLanguages.first;
+      _languageByAuthor[selectedAuthor] = selectedLanguage;
+    }
+
+    final selectedCommentary = commentaryForAuthorAndLanguage(
+          authorVariants,
+          selectedAuthor,
+          selectedLanguage,
+        ) ??
+        authorVariants.first;
 
     return _buildSheetFrame(
       context,
@@ -347,56 +304,84 @@ class _CommentarySheetState extends State<CommentarySheet> {
 
                     const Divider(height: 1),
 
-                    // Author Tabs
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                    // Author tabs + compact language cycle
+                    Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 10,
                       ),
                       child: Row(
-                        children: List.generate(displayCommentaries.length, (
-                          index,
-                        ) {
-                          final comm = displayCommentaries[index];
-                          final isSelected = index == _selectedIndex;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(
-                                "${comm.displayAuthorName} (${comm.languageCode.toUpperCase()})",
-                                style: TextStyle(
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                  color: isSelected
-                                      ? theme.colorScheme.onPrimary
-                                      : theme.textTheme.bodyMedium?.color,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (bool selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedIndex = index;
-                                  });
-                                }
-                              },
-                              selectedColor: theme.colorScheme.primary,
-                              backgroundColor: isDark
-                                  ? Colors.white.withOpacity(0.05)
-                                  : Colors.grey.shade100,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? Colors.transparent
-                                      : theme.dividerColor.withOpacity(0.1),
-                                ),
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: List.generate(authorNames.length, (
+                                  index,
+                                ) {
+                                  final author = authorNames[index];
+                                  final displayName = commentaryAuthorShortName(
+                                    groupedByAuthor[author]!.first
+                                        .displayAuthorName,
+                                  );
+                                  final isSelected =
+                                      index == _selectedAuthorIndex;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(
+                                        displayName,
+                                        style: TextStyle(
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? theme.colorScheme.onPrimary
+                                              : theme.textTheme.bodyMedium?.color,
+                                        ),
+                                      ),
+                                      selected: isSelected,
+                                      onSelected: (bool selected) {
+                                        if (selected) {
+                                          setState(() {
+                                            _selectedAuthorIndex = index;
+                                          });
+                                        }
+                                      },
+                                      selectedColor: theme.colorScheme.primary,
+                                      backgroundColor: isDark
+                                          ? Colors.white.withOpacity(0.05)
+                                          : Colors.grey.shade100,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? Colors.transparent
+                                              : theme.dividerColor
+                                                  .withOpacity(0.1),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
                               ),
                             ),
-                          );
-                        }),
+                          ),
+                          CommentaryLanguageCycleButton(
+                            availableLanguageCodes: availableLanguages,
+                            selectedLanguageCode: selectedLanguage,
+                            onCycle: () {
+                              final next = nextCommentaryLanguage(
+                                availableLanguages,
+                                selectedLanguage,
+                              );
+                              if (next == null) return;
+                              setState(() {
+                                _languageByAuthor[selectedAuthor] = next;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ),
 
@@ -414,96 +399,39 @@ class _CommentarySheetState extends State<CommentarySheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Metadata Row
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant
-                                    .withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: theme.dividerColor.withOpacity(0.1),
+                            if (selectedCommentary.isAI)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
                                 ),
-                              ),
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 12, // Horizontal gap
-                                runSpacing: 4, // Vertical gap if it wraps
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.language,
-                                        size: 16,
-                                        color: theme.textTheme.bodySmall?.color,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _getLanguageDisplayName(
-                                          selectedCommentary.languageCode,
-                                        ),
-                                        style: theme.textTheme.labelMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: theme
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.color,
-                                            ),
-                                      ),
-                                    ],
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surfaceVariant
+                                      .withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: theme.dividerColor.withOpacity(0.1),
                                   ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        selectedCommentary.isAI
-                                            ? Icons.auto_awesome
-                                            : Icons.timeline,
-                                        size: 16,
-                                        color: selectedCommentary.isAI
-                                            ? Colors.purple
-                                            : theme.textTheme.bodySmall?.color,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_awesome,
+                                      size: 16,
+                                      color: Colors.purple,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Modern synthesis',
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple,
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        selectedCommentary.isAI
-                                            ? 'Modern synthesis'
-                                            : selectedCommentary
-                                                  .isBhashyaTranslation
-                                            ? 'AI translation of bhashya'
-                                            : _getCommentaryType(
-                                                selectedCommentary.authorName,
-                                              ),
-                                        style: theme.textTheme.labelMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: selectedCommentary.isAI
-                                                  ? Colors.purple
-                                                  : theme.colorScheme.primary,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (selectedCommentary.isBhashyaTranslation)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: Text(
-                                  'This is a translation of the Sanskrit bhashya, not the modern AI summary.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontStyle: FontStyle.italic,
-                                    color: theme.textTheme.bodySmall?.color
-                                        ?.withOpacity(0.75),
-                                    height: 1.4,
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
@@ -635,30 +563,6 @@ class _CommentarySheetState extends State<CommentarySheet> {
         ],
       ),
     );
-  }
-
-  String _getLanguageDisplayName(String code) {
-    switch (code.toLowerCase()) {
-      case 'en':
-      case 'ro':
-        return 'English';
-      case 'hi':
-      case 'dev':
-        return 'Hindi';
-      case 'sa':
-        return 'Sanskrit';
-      case 'gu':
-        return 'Gujarati';
-      case 'te':
-        return 'Telugu';
-      case 'bn':
-        return 'Bengali';
-      case 'or':
-      case 'od':
-        return 'Odia';
-      default:
-        return code.toUpperCase();
-    }
   }
 
   String _getCommentaryType(String author) {

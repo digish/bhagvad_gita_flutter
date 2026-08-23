@@ -13,7 +13,9 @@ import '../../models/shloka_result.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
+import '../../utils/commentary_language.dart';
 import '../widgets/font_size_control.dart';
+import '../widgets/commentary_language_switcher.dart';
 
 class BookReadingScreen extends StatefulWidget {
   final int chapterNumber;
@@ -40,6 +42,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   bool _isLoading = true;
   List<ShlokaResult> _shlokas = [];
   String _selectedAuthor = 'Swami Ramsukhdas'; // Default
+  String _selectedCommentaryLanguage = 'en';
   List<String> _availableAuthors = [];
 
   // Typography Constants
@@ -91,6 +94,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
             !_availableAuthors.contains(_selectedAuthor)) {
           _selectedAuthor = _availableAuthors.first;
         }
+        _syncCommentaryLanguageForAuthor(settings.language);
         _isLoading = false;
 
         // Handle initial scroll
@@ -119,6 +123,45 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     );
   }
 
+  /// Topmost visible verse — used to hold scroll steady when commentary reflows.
+  ({int index, double alignment})? _readScrollAnchor() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return null;
+
+    final visible = positions
+        .where((p) => p.itemTrailingEdge > 0 && p.itemLeadingEdge < 1)
+        .toList();
+    if (visible.isEmpty) return null;
+
+    visible.sort((a, b) => a.itemLeadingEdge.compareTo(b.itemLeadingEdge));
+    final anchor = visible.first;
+    return (index: anchor.index, alignment: anchor.itemLeadingEdge);
+  }
+
+  void _restoreScrollAnchor(({int index, double alignment}) anchor) {
+    void apply() {
+      if (!mounted || !_itemScrollController.isAttached) return;
+      _itemScrollController.jumpTo(
+        index: anchor.index,
+        alignment: anchor.alignment.clamp(-0.5, 1.0),
+      );
+    }
+
+    // Two frames: first after rebuild, second after commentary text relayout.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      apply();
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    });
+  }
+
+  void _updateCommentaryView(VoidCallback update) {
+    final anchor = _readScrollAnchor();
+    setState(update);
+    if (anchor != null) {
+      _restoreScrollAnchor(anchor);
+    }
+  }
+
   String _processShlokaText(String rawText) {
     String processed = rawText.replaceAll(RegExp(r'॥\s?[०-९\-]+॥'), '॥');
     final couplets = processed.split('*');
@@ -136,58 +179,82 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     return allLines.join('\n');
   }
 
-  Commentary? _getBestCommentary(
-    List<Commentary>? variants,
-    String selectedAuthor,
-    String preferredScript,
-    String preferredLang,
-  ) {
-    if (variants == null || variants.isEmpty) return null;
+  List<String> _languagesForSelectedAuthor() {
+    return availableLanguagesForAuthorInChapter(_shlokas, _selectedAuthor);
+  }
 
-    final authorVariants = variants
-        .where((c) => c.canonicalAuthorName == selectedAuthor)
-        .toList();
-    if (authorVariants.isEmpty) return null;
+  void _syncCommentaryLanguageForAuthor(String preferredLanguage) {
+    final langs = _languagesForSelectedAuthor();
+    if (langs.isEmpty) return;
+    if (langs.contains(_selectedCommentaryLanguage)) return;
 
-    // Smart Match Logic (Similar to CommentarySheet)
-    Commentary? bestMatch;
-
-    // 1. Try User's Preferred Script (e.g. 'gu' for Gujarati)
-    try {
-      bestMatch = authorVariants.firstWhere(
-        (c) => c.languageCode == preferredScript,
-      );
-    } catch (_) {}
-
-    // 2. Try User's Preferred Language
-    if (bestMatch == null) {
-      if (preferredLang == 'en') {
-        try {
-          bestMatch = authorVariants.firstWhere((c) => c.languageCode == 'en');
-        } catch (_) {}
-      } else if (preferredLang == 'hi') {
-        try {
-          bestMatch = authorVariants.firstWhere((c) => c.languageCode == 'hi');
-        } catch (_) {
-          try {
-            bestMatch = authorVariants.firstWhere(
-              (c) => c.languageCode == 'sa',
-            );
-          } catch (_) {}
-        }
-      }
+    var sample = <Commentary>[];
+    for (final shloka in _shlokas) {
+      sample = variantsForAuthor(shloka.commentaries, _selectedAuthor);
+      if (sample.isNotEmpty) break;
     }
 
-    // 3. Fallbacks
-    bestMatch ??= authorVariants.firstWhere(
-      (c) => c.languageCode == 'en',
-      orElse: () => authorVariants.firstWhere(
-        (c) => c.languageCode == 'sa',
-        orElse: () => authorVariants.first,
-      ),
+    _selectedCommentaryLanguage = defaultCommentaryLanguage(
+      sample,
+      preferredLanguage: preferredLanguage,
     );
+    if (!langs.contains(_selectedCommentaryLanguage)) {
+      _selectedCommentaryLanguage = langs.first;
+    }
+  }
 
-    return bestMatch;
+  void _onAuthorSelected(String author, String preferredLanguage) {
+    _updateCommentaryView(() {
+      _selectedAuthor = author;
+      _syncCommentaryLanguageForAuthor(preferredLanguage);
+    });
+  }
+
+  Commentary? _commentaryForShloka(ShlokaResult shloka) {
+    return resolveCommentaryVariant(
+      shloka.commentaries,
+      _selectedAuthor,
+      _selectedCommentaryLanguage,
+    );
+  }
+
+  void _cycleCommentaryLanguage() {
+    final langs = _languagesForSelectedAuthor();
+    final next = nextCommentaryLanguage(langs, _selectedCommentaryLanguage);
+    if (next == null) return;
+    _updateCommentaryView(() => _selectedCommentaryLanguage = next);
+  }
+
+  Widget _buildCommentaryControls({
+    required Color textColor,
+    required String preferredLanguage,
+  }) {
+    final langs = _languagesForSelectedAuthor();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CommentaryAuthorMenuButton(
+          authors: _availableAuthors,
+          selectedAuthor: _selectedAuthor,
+          onAuthorSelected: (value) => _onAuthorSelected(value, preferredLanguage),
+          foregroundColor: textColor,
+          borderColor: textColor.withValues(alpha: 0.18),
+          backgroundColor: textColor.withValues(alpha: 0.05),
+        ),
+        if (langs.length > 1) ...[
+          const SizedBox(width: 8),
+          CommentaryLanguageCycleButton(
+            availableLanguageCodes: langs,
+            selectedLanguageCode: _selectedCommentaryLanguage,
+            onCycle: _cycleCommentaryLanguage,
+            foregroundColor: textColor,
+            borderColor: textColor.withValues(alpha: 0.18),
+            backgroundColor: textColor.withValues(alpha: 0.05),
+          ),
+        ],
+      ],
+    );
   }
 
   void _showJumpToShlokaSheet() {
@@ -311,17 +378,6 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                 color: textColor,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              "Commentary by $_selectedAuthor",
-              style: GoogleFonts.notoSerif(
-                fontSize: 10,
-                color: textColor.withOpacity(0.5),
-                letterSpacing: 0.5,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
         centerTitle: true,
@@ -329,24 +385,14 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: textColor),
         actions: [
-          // Author Selection
           if (_availableAuthors.isNotEmpty)
-            PopupMenuButton<String>(
-              icon: Icon(Icons.style, color: textColor),
-              tooltip: "Select Commentary",
-              initialValue: _selectedAuthor,
-              onSelected: (value) => setState(() => _selectedAuthor = value),
-              itemBuilder: (context) {
-                return _availableAuthors.map((author) {
-                  return PopupMenuItem(
-                    value: author,
-                    child: Text(author, style: GoogleFonts.notoSerif()),
-                  );
-                }).toList();
-              },
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: _buildCommentaryControls(
+                textColor: textColor,
+                preferredLanguage: settings.language,
+              ),
             ),
-
-          // Theme Toggle
           IconButton(
             icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode),
             tooltip: "Toggle Reading Mode",
@@ -377,28 +423,14 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                       height: MediaQuery.paddingOf(context).top + 56,
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
                         children: [
-                          if (_availableAuthors.isNotEmpty)
-                            PopupMenuButton<String>(
-                              icon: Icon(Icons.style, color: textColor),
-                              tooltip: 'Select Commentary',
-                              initialValue: _selectedAuthor,
-                              onSelected: (value) =>
-                                  setState(() => _selectedAuthor = value),
-                              itemBuilder: (context) {
-                                return _availableAuthors.map((author) {
-                                  return PopupMenuItem(
-                                    value: author,
-                                    child: Text(
-                                      author,
-                                      style: GoogleFonts.notoSerif(),
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                            ),
+                          _buildCommentaryControls(
+                            textColor: textColor,
+                            preferredLanguage: settings.language,
+                          ),
+                          const SizedBox(width: 4),
                           IconButton(
                             icon: Icon(
                               isDark
@@ -416,23 +448,20 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             tooltip: 'Jump to Shloka',
                             onPressed: _showJumpToShlokaSheet,
                           ),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              'Commentary by $_selectedAuthor',
-                              style: GoogleFonts.notoSerif(
-                                fontSize: _scaledFont(11, baseFont),
-                                color: textColor.withOpacity(0.55),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                  ],
+                  ] else if (_availableAuthors.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: _buildCommentaryControls(
+                          textColor: textColor,
+                          preferredLanguage: settings.language,
+                        ),
+                      ),
+                    ),
                   Expanded(
                     child: RepaintBoundary(
                 child: ScrollablePositionedList.separated(
@@ -454,12 +483,10 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                   ),
                   itemBuilder: (context, index) {
                     final shloka = _shlokas[index];
-                    final commentary = _getBestCommentary(
-                      shloka.commentaries,
-                      _selectedAuthor,
-                      settings.script,
-                      settings.language,
-                    );
+                    final commentary = _commentaryForShloka(shloka);
+                    final usingFallback = commentary != null &&
+                        commentary.languageCode.toLowerCase() !=
+                            _selectedCommentaryLanguage.toLowerCase();
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
@@ -530,7 +557,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    "Commentary by ${commentary.displayAuthorName}",
+                                    commentary.sectionHeading,
                                     style: GoogleFonts.cinzel(
                                       fontSize: _scaledFont(11, baseFont),
                                       fontWeight: FontWeight.bold,
@@ -551,7 +578,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      commentary.languageCode.toUpperCase(),
+                                      commentaryLanguageLabel(
+                                        commentary.languageCode,
+                                      ),
                                       style: GoogleFonts.notoSerif(
                                         fontSize: _scaledFont(9, baseFont),
                                         fontWeight: FontWeight.bold,
@@ -561,19 +590,19 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            if (commentary.isBhashyaTranslation) ...[
+                            if (usingFallback) ...[
+                              const SizedBox(height: 8),
                               Text(
-                                'AI translation of the Sanskrit bhashya — not the modern summary.',
+                                '${commentaryLanguageLabel(_selectedCommentaryLanguage)} not available for this shloka — showing ${commentaryLanguageLabel(commentary.languageCode)}.',
                                 style: GoogleFonts.notoSerif(
-                                  fontSize: _scaledFont(12, baseFont),
+                                  fontSize: _scaledFont(11, baseFont),
                                   fontStyle: FontStyle.italic,
                                   height: 1.4,
                                   color: textColor.withOpacity(0.45),
                                 ),
                               ),
-                              const SizedBox(height: 12),
                             ],
+                            const SizedBox(height: 12),
                             if (commentary.isAI && commentary.modern != null)
                               _buildModernCommentary(
                                 context,
