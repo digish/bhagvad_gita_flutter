@@ -200,30 +200,33 @@ class _CreditsScreenState extends State<CreditsScreen>
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontFamily: 'NotoSerifDevanagari',
-                                      fontSize: 22,
+                                      fontSize: 30,
                                       height: 1.2,
                                       color: accent,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
                                   Text(
                                     'Credits',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.cinzel(
-                                      textStyle: theme.textTheme.headlineSmall,
+                                      fontSize: 34,
                                       fontWeight: FontWeight.w600,
-                                      letterSpacing: 3.2,
+                                      letterSpacing: 2.4,
+                                      height: 1.15,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 12),
                                   Text(
                                     'The people and sources behind this app.',
                                     textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontSize: 18,
                                       color: theme
                                           .textTheme
-                                          .bodyMedium
+                                          .bodyLarge
                                           ?.color
                                           ?.withValues(alpha: 0.72),
                                       height: 1.4,
@@ -326,35 +329,36 @@ class _CreditsScreenState extends State<CreditsScreen>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: 'NotoSerifDevanagari',
-                                  fontSize: 16,
-                                  height: 1.55,
+                                  fontSize: 22,
+                                  height: 1.5,
                                   color: accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
                               Text(
                                 'Your right is to the work alone,\nnever to its fruits.',
                                 textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontSize: 18,
                                   fontStyle: FontStyle.italic,
                                   height: 1.45,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 10),
                               Text(
                                 'Bhagavad Gita 2.47',
                                 textAlign: TextAlign.center,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  letterSpacing: 1.4,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  letterSpacing: 1.2,
                                   color: theme
                                       .textTheme
-                                      .bodySmall
+                                      .bodyLarge
                                       ?.color
                                       ?.withValues(alpha: 0.55),
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 32),
                               Wrap(
                                 spacing: 12,
                                 runSpacing: 10,
@@ -372,13 +376,17 @@ class _CreditsScreenState extends State<CreditsScreen>
                                         alpha: 0.35,
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 18,
-                                        vertical: 12,
+                                        horizontal: 20,
+                                        vertical: 14,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     icon: const Icon(
                                       Icons.share_outlined,
-                                      size: 18,
+                                      size: 20,
                                     ),
                                     label: const Text('Share the app'),
                                   ),
@@ -396,13 +404,17 @@ class _CreditsScreenState extends State<CreditsScreen>
                                         alpha: 0.35,
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 18,
-                                        vertical: 12,
+                                        horizontal: 20,
+                                        vertical: 14,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     icon: const Icon(
                                       Icons.code_rounded,
-                                      size: 18,
+                                      size: 20,
                                     ),
                                     label: const Text('View source'),
                                   ),
@@ -462,7 +474,7 @@ class _GoldOrnament extends StatelessWidget {
             '॥',
             style: TextStyle(
               fontFamily: 'NotoSerifDevanagari',
-              fontSize: 13,
+              fontSize: 18,
               height: 1,
               color: color.withValues(alpha: 0.7),
             ),
@@ -526,7 +538,7 @@ class _AcknowledgmentCard extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
           decoration: BoxDecoration(
             color: isDark
                 ? Colors.black.withValues(alpha: 0.32)
@@ -541,8 +553,8 @@ class _AcknowledgmentCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 52,
+                    height: 52,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -555,29 +567,32 @@ class _AcknowledgmentCard extends StatelessWidget {
                       item.mark,
                       style: TextStyle(
                         fontFamily: 'NotoSerifDevanagari',
-                        fontSize: 18,
+                        fontSize: 22,
                         height: 1,
                         fontWeight: FontWeight.w700,
                         color: accent,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           item.title,
-                          style: theme.textTheme.titleSmall?.copyWith(
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
+                            letterSpacing: -0.2,
+                            height: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
                           item.source,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontSize: 16,
                             color: accent,
                             fontWeight: FontWeight.w600,
                             height: 1.3,
@@ -588,28 +603,35 @@ class _AcknowledgmentCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 item.description,
-                style: theme.textTheme.bodySmall?.copyWith(
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontSize: 17,
                   height: 1.5,
-                  color: theme.textTheme.bodySmall?.color?.withValues(
-                    alpha: 0.86,
+                  color: theme.textTheme.bodyLarge?.color?.withValues(
+                    alpha: 0.88,
                   ),
                 ),
               ),
               if (item.actionLabel != null && item.actionUrl != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     style: TextButton.styleFrom(
                       foregroundColor: accent,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 8,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     onPressed: () => onOpenUrl(item.actionUrl!),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     label: Text(item.actionLabel!),
                   ),
                 ),
