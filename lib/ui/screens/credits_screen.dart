@@ -21,6 +21,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/analytics_service.dart';
+import '../widgets/sacred_sutra_promo_card.dart';
 
 class _CreditItem {
   final String mark;
@@ -58,19 +59,26 @@ const List<_CreditItem> _credits = [
   _CreditItem(
     mark: '३',
     title: 'The commentaries',
-    source: 'Acharyas and modern teachers',
+    source: 'Classical bhashya · Public domain',
     description:
-        'Classical bhashya from Adi Shankaracharya, Ramanujacharya, and Madhvacharya. English and Hindi of those bhashyas are AI translations of the Sanskrit, kept separate from the modern AI summary. Later readings from Swami Sivananda, Swami Ramsukhdas, and others remain distinct.',
+        'Adi Shankaracharya, Ramanujacharya, and Madhvacharya — their open-domain commentaries, offered here as they have been received.',
   ),
   _CreditItem(
     mark: '४',
     title: 'The community',
-    source: 'Readers who write back',
+    source: 'Elders, seekers, and readers',
     description:
-        'Corrections, ideas, and notes from readers help keep the app accurate. Thank you.',
+        'Blessings and guidance from elders, and discourses of great personalities, have quietly shaped this work. Corrections, ideas, and notes from readers help keep it accurate. Thank you.',
   ),
   _CreditItem(
     mark: '५',
+    title: 'A humble note',
+    source: 'Errors are mine alone',
+    description:
+        'Any mistake in this app is my responsibility. It does not represent a fault in the scripture, the recitation, the commentaries, or those who blessed this work. If you see one, please point it out openly.',
+  ),
+  _CreditItem(
+    mark: '६',
     title: 'The source',
     source: 'Digish Pandya · MIT License',
     description:
@@ -220,7 +228,7 @@ class _CreditsScreenState extends State<CreditsScreen>
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'The people and sources behind this app.',
+                                    'We stand on the shoulders of giants.',
                                     textAlign: TextAlign.center,
                                     style: theme.textTheme.titleMedium?.copyWith(
                                       fontSize: 18,
@@ -420,7 +428,12 @@ class _CreditsScreenState extends State<CreditsScreen>
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 56),
+                              const SizedBox(height: 28),
+                              _EpicExploreCard(
+                                accent: accent,
+                                appColors: appColors,
+                              ),
+                              const SizedBox(height: 40),
                             ],
                           ),
                         ),
@@ -507,6 +520,97 @@ class _FadeSlide extends StatelessWidget {
           end: Offset.zero,
         ).animate(animation),
         child: child,
+      ),
+    );
+  }
+}
+
+class _EpicExploreCard extends StatelessWidget {
+  final Color accent;
+  final AppColors? appColors;
+
+  const _EpicExploreCard({
+    required this.accent,
+    required this.appColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final borderColor =
+        appColors?.cardBorder ?? accent.withValues(alpha: 0.22);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: SacredSutraPromoCard.openAppOrStoreAndMarkDiscoverDone,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.32)
+                : Colors.white.withValues(alpha: 0.46),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    SacredSutraPromoCard.iconAsset,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Mahabharata',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        'Ramayana',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Explore the epics',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: accent.withValues(alpha: 0.7),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
