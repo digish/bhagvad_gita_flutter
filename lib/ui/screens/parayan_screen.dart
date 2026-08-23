@@ -971,7 +971,8 @@ class _ParayanScreenState extends State<ParayanScreen> {
                       children: [
                         if (isChapterStart)
                           _ChapterStartHeader(
-                            chapterNumber: int.tryParse(shloka.chapterNo) ?? 0,
+                            chapterNumber:
+                                int.tryParse(shloka.chapterNo) ?? 0,
                             script: script,
                             fontSize: settingsProvider.fontSize,
                           ),

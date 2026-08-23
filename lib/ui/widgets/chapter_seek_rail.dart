@@ -25,6 +25,8 @@ import '../theme/app_colors.dart';
 class ChapterSeekRail extends StatefulWidget {
   static const double width = 72.0;
   static const double glassRadius = 26.0;
+  static const double trackInsetRight = 10.0;
+  static const double verticalPadding = 20.0;
 
   final int itemCount;
   final List<int> chapterMarkers;
@@ -53,15 +55,34 @@ class ChapterSeekRail extends StatefulWidget {
     this.onRailRect,
   });
 
+  /// Global center of the chapter marker dot for [chapterIndex] (0-based).
+  static Offset? chapterDotGlobal({
+    required Rect railRect,
+    required int chapterIndex,
+    required List<int> chapterMarkers,
+    required int itemCount,
+  }) {
+    if (chapterIndex < 0 ||
+        chapterIndex >= chapterMarkers.length ||
+        itemCount <= 1) {
+      return null;
+    }
+    final drawable = railRect.height - 2 * verticalPadding;
+    if (drawable <= 0) return null;
+    final ratio =
+        (chapterMarkers[chapterIndex] / (itemCount - 1)).clamp(0.0, 1.0);
+    final y = railRect.top + verticalPadding + ratio * drawable;
+    final x = railRect.right - trackInsetRight;
+    return Offset(x, y);
+  }
+
   @override
   State<ChapterSeekRail> createState() => _ChapterSeekRailState();
 }
 
 class _ChapterSeekRailState extends State<ChapterSeekRail> {
-  static const double _verticalPadding = 20.0;
   static const double _dotRadius = 3.5;
   static const double _activeDotRadius = 5.0;
-  static const double _trackInsetRight = 10.0;
   static const double _magnetPull = 14.0;
   static const double _bendExtent = 28.0;
 
@@ -168,14 +189,14 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
   }
 
   double _yForRatio(double ratio, double height) {
-    final drawable = height - 2 * _verticalPadding;
-    return _verticalPadding + ratio.clamp(0.0, 1.0) * drawable;
+    final drawable = height - 2 * ChapterSeekRail.verticalPadding;
+    return ChapterSeekRail.verticalPadding + ratio.clamp(0.0, 1.0) * drawable;
   }
 
   double _ratioForY(double y, double height) {
-    final drawable = height - 2 * _verticalPadding;
+    final drawable = height - 2 * ChapterSeekRail.verticalPadding;
     if (drawable <= 0) return 0;
-    return ((y - _verticalPadding) / drawable).clamp(0.0, 1.0);
+    return ((y - ChapterSeekRail.verticalPadding) / drawable).clamp(0.0, 1.0);
   }
 
   int _indexForRatio(double ratio) {
@@ -255,7 +276,7 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
         builder: (context, constraints) {
           final height = constraints.maxHeight;
           final thumbY = _yForRatio(_scrollRatio, height);
-          final trackX = ChapterSeekRail.width - _trackInsetRight;
+          final trackX = ChapterSeekRail.width - ChapterSeekRail.trackInsetRight;
           final glassCenterX = ChapterSeekRail.glassRadius + 2;
           final activeChapter = _isDragging
               ? (_dragChapterIndex ?? _currentChapterIndex)
@@ -362,8 +383,8 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
                       thumbY: thumbY,
                       glassRightX:
                           glassCenterX + ChapterSeekRail.glassRadius - 2,
-                      top: _verticalPadding,
-                      bottom: height - _verticalPadding,
+                      top: ChapterSeekRail.verticalPadding,
+                      bottom: height - ChapterSeekRail.verticalPadding,
                       pull: _magnetPull,
                       bendExtent: _bendExtent,
                       color: trackColor,

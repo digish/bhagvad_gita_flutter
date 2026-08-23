@@ -1237,52 +1237,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                                 // --- Help Section ---
                                 _buildSectionHeader('Help', context),
-                                _buildActionTile(
-                                  context,
-                                  title: 'Home & search',
-                                  subtitle:
-                                      'Floating tips for search, Ask Gita, today\'s verse, and more',
-                                  icon: Icons.search,
-                                  onTap: (innerContext) {
-                                    AnalyticsService.instance.logFeatureUsed(
-                                      feature: 'search_help_from_settings',
-                                    );
-                                    GoRouter.of(innerContext).go(
-                                      '/',
-                                      extra: {'searchHints': true},
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                _buildActionTile(
-                                  context,
-                                  title: 'Chapter verses',
-                                  subtitle: 'Read a chapter, size, play, and save',
-                                  icon: Icons.menu_book_outlined,
-                                  onTap: (innerContext) {
-                                    AnalyticsService.instance.logFeatureUsed(
-                                      feature: 'chapter_help_from_settings',
-                                    );
-                                    GoRouter.of(innerContext).push(
-                                      '/shloka-list/1',
-                                      extra: {'help': true},
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                _buildActionTile(
-                                  context,
-                                  title: 'Parayan',
-                                  subtitle: 'How to use continuous reading',
-                                  icon: Icons.auto_stories_outlined,
-                                  onTap: (innerContext) {
-                                    AnalyticsService.instance.logFeatureUsed(
-                                      feature: 'parayan_help_from_settings',
-                                    );
-                                    GoRouter.of(innerContext).go(
-                                      '/parayan?help=1',
-                                    );
-                                  },
+                                Card(
+                                  color: Theme.of(context).cardTheme.color,
+                                  elevation: 4,
+                                  child: Column(
+                                    children: [
+                                      _buildActionTile(
+                                        context,
+                                        title: 'Home & search',
+                                        subtitle:
+                                            'Floating tips for search, Ask Gita, today\'s verse, and more',
+                                        icon: Icons.search,
+                                        grouped: true,
+                                        onTap: (innerContext) {
+                                          AnalyticsService.instance
+                                              .logFeatureUsed(
+                                            feature:
+                                                'search_help_from_settings',
+                                          );
+                                          GoRouter.of(innerContext).go(
+                                            '/',
+                                            extra: {'searchHints': true},
+                                          );
+                                        },
+                                      ),
+                                      const Divider(height: 1, indent: 72),
+                                      _buildActionTile(
+                                        context,
+                                        title: 'Chapter verses',
+                                        subtitle:
+                                            'Read a chapter, size, play, and save',
+                                        icon: Icons.menu_book_outlined,
+                                        grouped: true,
+                                        onTap: (innerContext) {
+                                          AnalyticsService.instance
+                                              .logFeatureUsed(
+                                            feature:
+                                                'chapter_help_from_settings',
+                                          );
+                                          GoRouter.of(innerContext).push(
+                                            '/shloka-list/1',
+                                            extra: {'help': true},
+                                          );
+                                        },
+                                      ),
+                                      const Divider(height: 1, indent: 72),
+                                      _buildActionTile(
+                                        context,
+                                        title: 'Parayan',
+                                        subtitle:
+                                            'How to use continuous reading',
+                                        icon: Icons.auto_stories_outlined,
+                                        grouped: true,
+                                        onTap: (innerContext) {
+                                          AnalyticsService.instance
+                                              .logFeatureUsed(
+                                            feature:
+                                                'parayan_help_from_settings',
+                                          );
+                                          GoRouter.of(innerContext).go(
+                                            '/parayan?help=1',
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 32),
 
@@ -1418,41 +1437,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required void Function(BuildContext) onTap,
     Widget? leading,
+    bool grouped = false,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final subtitleColor = isDark ? Colors.white70 : Colors.grey[700];
 
+    final tile = Builder(
+      builder: (innerContext) {
+        return ListTile(
+          leading: leading ??
+              CircleAvatar(
+                backgroundColor: theme.primaryColor.withOpacity(
+                  isDark ? 0.25 : 0.1,
+                ),
+                child: Icon(icon, color: theme.primaryColor),
+              ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(color: subtitleColor, fontSize: 14),
+          ),
+          onTap: () => onTap(innerContext),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: subtitleColor,
+          ),
+        );
+      },
+    );
+
+    if (grouped) return tile;
+
     return Card(
       color: Theme.of(context).cardTheme.color,
       elevation: 4,
-      child: Builder(
-        builder: (innerContext) {
-          return ListTile(
-            leading: leading ??
-                CircleAvatar(
-                  backgroundColor: theme.primaryColor.withOpacity(
-                    isDark ? 0.25 : 0.1,
-                  ),
-                  child: Icon(icon, color: theme.primaryColor),
-                ),
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            subtitle: Text(
-              subtitle,
-              style: TextStyle(color: subtitleColor, fontSize: 14),
-            ),
-            onTap: () => onTap(innerContext),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: subtitleColor,
-            ),
-          );
-        },
-      ),
+      child: tile,
     );
   }
 
