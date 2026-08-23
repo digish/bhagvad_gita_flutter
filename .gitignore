@@ -63,6 +63,9 @@ lib/generated_plugin_registrant.dart
 .env
 .env.local
 scripts/bhashya_pilot_results.json
+scripts/bhashya_gemini_progress.jsonl
+scripts/bhashya_gemini_state.json
+scripts/bhashya_gemini_out/
 lib/secrets.dart
 lib/core/secrets_config.dart
 scripts/scramble_api_key.dart
