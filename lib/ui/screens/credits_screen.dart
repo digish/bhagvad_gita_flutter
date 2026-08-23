@@ -560,6 +560,7 @@ class _EpicExploreCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
@@ -572,29 +573,9 @@ class _EpicExploreCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mahabharata & Ramayana',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              height: 1.15,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Still for the life you are living',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontSize: 16,
-                              color: accent,
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
+                      child: _EpicNamesBlock(
+                        theme: theme,
+                        isDark: isDark,
                       ),
                     ),
                     Icon(
@@ -617,7 +598,7 @@ class _EpicExploreCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'You do not need the whole epic at once. This app lets you explore them in bits and pieces — a scene, a person, a dilemma — and apply what lands.',
+                  'You do not need the whole epic at once. Sacred Sutra lets you explore them in bits and pieces — a scene, a person, a dilemma — and apply what lands.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontSize: 17,
                     height: 1.5,
@@ -632,6 +613,79 @@ class _EpicExploreCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _EpicNamesBlock extends StatelessWidget {
+  final ThemeData theme;
+  final bool isDark;
+
+  const _EpicNamesBlock({
+    required this.theme,
+    required this.isDark,
+  });
+
+  TextStyle _nameStyle(
+    Color color, {
+    double size = 22,
+    FontWeight weight = FontWeight.w700,
+    FontStyle fontStyle = FontStyle.normal,
+  }) {
+    return GoogleFonts.cinzel(
+      fontSize: size,
+      fontWeight: weight,
+      height: 1.12,
+      letterSpacing: 0.6,
+      fontStyle: fontStyle,
+      color: color,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sutraColor = theme.colorScheme.onSurface;
+    final mahabharataColor =
+        isDark ? Colors.amber.shade200 : const Color(0xFF5D4037);
+    final ramayanaColor =
+        isDark ? Colors.deepOrange.shade200 : const Color(0xFF9A3412);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Sacred Sutra',
+          style: _nameStyle(
+            sutraColor,
+            size: 26,
+            weight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Mahabharata',
+          style: _nameStyle(mahabharataColor, size: 23),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Ramayana',
+          style: _nameStyle(
+            ramayanaColor,
+            size: 23,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Still for the life you are living',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 14,
+            color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.62),
+            height: 1.35,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 }
