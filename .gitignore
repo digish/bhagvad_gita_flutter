@@ -60,6 +60,9 @@ lib/generated_plugin_registrant.dart
 .idea/
 
 # Local configuration / secrets
+.env
+.env.local
+scripts/bhashya_pilot_results.json
 lib/secrets.dart
 lib/core/secrets_config.dart
 scripts/scramble_api_key.dart

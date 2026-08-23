@@ -41,6 +41,8 @@ class ChapterSeekRail extends StatefulWidget {
   final ValueChanged<Rect>? onGlassRect;
   /// Full seek-rail bounds in global coordinates — for help spotlights.
   final ValueChanged<Rect>? onRailRect;
+  /// Help overlay anchor on the movable chapter glass thumb.
+  final Key? glassKey;
 
   const ChapterSeekRail({
     super.key,
@@ -53,6 +55,7 @@ class ChapterSeekRail extends StatefulWidget {
     this.focusLine = 0.40,
     this.onGlassRect,
     this.onRailRect,
+    this.glassKey,
   });
 
   /// Global center of the chapter marker dot for [chapterIndex] (0-based).
@@ -452,13 +455,16 @@ class _ChapterSeekRailState extends State<ChapterSeekRail> {
                 Positioned(
                   left: glassCenterX - ChapterSeekRail.glassRadius,
                   top: thumbY - ChapterSeekRail.glassRadius,
-                  child: _GlassVerseThumb(
-                    chapter: chapterLabel,
-                    accent: activeDot,
-                    isLight: isLight,
-                    radius: ChapterSeekRail.glassRadius,
-                    isDragging: _isDragging,
-                    showHandle: _showChapterPopup,
+                  child: KeyedSubtree(
+                    key: widget.glassKey,
+                    child: _GlassVerseThumb(
+                      chapter: chapterLabel,
+                      accent: activeDot,
+                      isLight: isLight,
+                      radius: ChapterSeekRail.glassRadius,
+                      isDragging: _isDragging,
+                      showHandle: _showChapterPopup,
+                    ),
                   ),
                 ),
               ],

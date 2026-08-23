@@ -11,7 +11,9 @@ import 'package:go_router/go_router.dart';
 import '../../data/database_helper_interface.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
+import '../widgets/font_size_control.dart';
 
 class BookReadingScreen extends StatefulWidget {
   final int chapterNumber;
@@ -42,6 +44,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
 
   // Typography Constants
   static const double _kPadding = 24.0;
+  static const double _kRefFontSize = 20.0;
+
+  double _scaledFont(double size, double base) => size * (base / _kRefFontSize);
 
   // Local theme override
   bool? _isNightModeOverride;
@@ -74,7 +79,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       for (var s in shlokas) {
         if (s.commentaries != null) {
           for (var c in s.commentaries!) {
-            authors.add(c.authorName);
+            authors.add(c.canonicalAuthorName);
           }
         }
       }
@@ -140,7 +145,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     if (variants == null || variants.isEmpty) return null;
 
     final authorVariants = variants
-        .where((c) => c.authorName == selectedAuthor)
+        .where((c) => c.canonicalAuthorName == selectedAuthor)
         .toList();
     if (authorVariants.isEmpty) return null;
 
@@ -270,6 +275,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       script,
     );
     final localizedLabel = StaticData.getChapterLabel(script);
+    final baseFont = settings.fontSize;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -355,12 +361,13 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         top: !widget.embedded,
         left: true,
         right: true,
-        bottom:
-            false, // Let the list handle bottom padding if needed, or keep true. Usually false for lists with bottom padding.
+        bottom: false,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -414,7 +421,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             child: Text(
                               'Commentary by $_selectedAuthor',
                               style: GoogleFonts.notoSerif(
-                                fontSize: 11,
+                                fontSize: _scaledFont(11, baseFont),
                                 color: textColor.withOpacity(0.55),
                               ),
                               maxLines: 1,
@@ -431,7 +438,12 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                 child: ScrollablePositionedList.separated(
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
-                  padding: const EdgeInsets.symmetric(vertical: _kPadding),
+                  padding: EdgeInsets.fromLTRB(
+                    0,
+                    _kPadding,
+                    0,
+                    _kPadding + 72 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   itemCount: _shlokas.length,
                   separatorBuilder: (context, index) => Divider(
                     color: separatorColor,
@@ -456,7 +468,6 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Shloka Number
                           Center(
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -473,7 +484,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                               child: Text(
                                 "${shloka.chapterNo}.${shloka.shlokNo}",
                                 style: GoogleFonts.notoSerif(
-                                  fontSize: 14,
+                                  fontSize: _scaledFont(14, baseFont),
                                   color: accentColor,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -481,21 +492,17 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
-
-                          // Sanskrit Shloka
                           Text(
                             _processShlokaText(shloka.shlok),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.notoSerif(
-                              fontSize: 20,
+                              fontSize: baseFont,
                               height: 1.8,
                               color: textColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 24),
-
-                          // Bhavarth (Summary) - Distinguished by style
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -508,7 +515,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             child: Text(
                               shloka.bhavarth,
                               style: GoogleFonts.notoSerif(
-                                fontSize: 16,
+                                fontSize: _scaledFont(16, baseFont),
                                 height: 1.6,
                                 color: textColor.withOpacity(0.9),
                                 fontStyle: FontStyle.italic,
@@ -516,7 +523,6 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
-
                           if (commentary != null &&
                               commentary.content.isNotEmpty) ...[
                             Row(
@@ -524,9 +530,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    "Commentary by $_selectedAuthor",
+                                    "Commentary by ${commentary.displayAuthorName}",
                                     style: GoogleFonts.cinzel(
-                                      fontSize: 11,
+                                      fontSize: _scaledFont(11, baseFont),
                                       fontWeight: FontWeight.bold,
                                       color: textColor.withOpacity(0.5),
                                       letterSpacing: 1.0,
@@ -547,7 +553,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                                     child: Text(
                                       commentary.languageCode.toUpperCase(),
                                       style: GoogleFonts.notoSerif(
-                                        fontSize: 9,
+                                        fontSize: _scaledFont(9, baseFont),
                                         fontWeight: FontWeight.bold,
                                         color: textColor.withOpacity(0.4),
                                       ),
@@ -556,18 +562,31 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                               ],
                             ),
                             const SizedBox(height: 12),
+                            if (commentary.isBhashyaTranslation) ...[
+                              Text(
+                                'AI translation of the Sanskrit bhashya — not the modern summary.',
+                                style: GoogleFonts.notoSerif(
+                                  fontSize: _scaledFont(12, baseFont),
+                                  fontStyle: FontStyle.italic,
+                                  height: 1.4,
+                                  color: textColor.withOpacity(0.45),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                             if (commentary.isAI && commentary.modern != null)
                               _buildModernCommentary(
                                 context,
                                 commentary.modern!,
                                 textColor,
                                 accentColor,
+                                baseFont,
                               )
                             else
                               Text(
                                 commentary.content,
                                 style: GoogleFonts.notoSerif(
-                                  fontSize: 17,
+                                  fontSize: _scaledFont(17, baseFont),
                                   height: 1.7,
                                   color: textColor.withOpacity(0.85),
                                 ),
@@ -583,6 +602,28 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                 ],
               ),
       ),
+          Consumer<AudioProvider>(
+            builder: (context, audio, _) {
+              final miniPlayerVisible =
+                  audio.playbackState != PlaybackState.stopped &&
+                  audio.currentPlayingShlokaId != null;
+              final bottomSafe = MediaQuery.paddingOf(context).bottom;
+              return Positioned(
+                left: MediaQuery.paddingOf(context).left,
+                bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
+                child: FontSizeDock(
+                  currentSize: settings.fontSize,
+                  onSizeChanged: settings.setFontSize,
+                  iconColor: textColor,
+                  backgroundColor: isDark
+                      ? const Color(0xFF2A2A2A)
+                      : const Color(0xFFF7F4EE),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -591,6 +632,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     ModernCommentary data,
     Color textColor,
     Color accentColor,
+    double baseFont,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -599,7 +641,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           data.headline,
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
-            fontSize: 18,
+            fontSize: _scaledFont(18, baseFont),
             fontWeight: FontWeight.bold,
             color: accentColor,
           ),
@@ -610,7 +652,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
             data.context!,
             textAlign: TextAlign.center,
             style: GoogleFonts.notoSerif(
-              fontSize: 14,
+              fontSize: _scaledFont(14, baseFont),
               fontStyle: FontStyle.italic,
               color: textColor.withOpacity(0.6),
             ),
@@ -623,6 +665,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           Icons.psychology_outlined,
           textColor,
           accentColor,
+          baseFont,
         ),
         _buildSection(
           "Modern Relevance",
@@ -630,6 +673,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           Icons.update_outlined,
           textColor,
           accentColor,
+          baseFont,
         ),
         _buildSection(
           "Actionable Takeaway",
@@ -637,6 +681,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           Icons.directions_run_outlined,
           textColor,
           accentColor,
+          baseFont,
         ),
         if (data.keywords.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -659,7 +704,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                     child: Text(
                       kw,
                       style: GoogleFonts.notoSerif(
-                        fontSize: 11,
+                        fontSize: _scaledFont(11, baseFont),
                         color: accentColor.withOpacity(0.8),
                       ),
                     ),
@@ -678,6 +723,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     IconData icon,
     Color textColor,
     Color accentColor,
+    double baseFont,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -691,7 +737,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
               Text(
                 title.toUpperCase(),
                 style: GoogleFonts.cinzel(
-                  fontSize: 12,
+                  fontSize: _scaledFont(12, baseFont),
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
                   color: accentColor,
@@ -703,7 +749,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           Text(
             content,
             style: GoogleFonts.notoSerif(
-              fontSize: 16,
+              fontSize: _scaledFont(16, baseFont),
               height: 1.6,
               color: textColor.withOpacity(0.85),
             ),

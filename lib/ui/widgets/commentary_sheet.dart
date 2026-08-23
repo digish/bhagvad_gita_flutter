@@ -185,11 +185,11 @@ class _CommentarySheetState extends State<CommentarySheet> {
     final preferredLang = settings.language; // 'hi' or 'en'
 
     // --- NEW: Group and Select Best Commentary ---
-    // 1. Group by Author Name
+    // 1. Group by canonical author so Sanskrit + translations share one tab
     final Map<String, List<Commentary>> groupedByAuthor = {};
     for (var c in _effectiveCommentaries) {
       if (c.content.isNotEmpty) {
-        groupedByAuthor.putIfAbsent(c.authorName, () => []).add(c);
+        groupedByAuthor.putIfAbsent(c.canonicalAuthorName, () => []).add(c);
       }
     }
 
@@ -473,7 +473,10 @@ class _CommentarySheetState extends State<CommentarySheet> {
                                       const SizedBox(width: 6),
                                       Text(
                                         selectedCommentary.isAI
-                                            ? 'Modern Synthesis'
+                                            ? 'Modern synthesis'
+                                            : selectedCommentary
+                                                  .isBhashyaTranslation
+                                            ? 'AI translation of bhashya'
                                             : _getCommentaryType(
                                                 selectedCommentary.authorName,
                                               ),
@@ -490,6 +493,19 @@ class _CommentarySheetState extends State<CommentarySheet> {
                                 ],
                               ),
                             ),
+                            if (selectedCommentary.isBhashyaTranslation)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Text(
+                                  'This is a translation of the Sanskrit bhashya, not the modern AI summary.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.textTheme.bodySmall?.color
+                                        ?.withOpacity(0.75),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
 
                             // --- NEW: Rich Rendering for AI Commentary ---
                             if (selectedCommentary.isAI &&

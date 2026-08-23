@@ -11,11 +11,9 @@
 *
 **/
 
-import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
+
 import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +29,7 @@ import '../../data/database_helper_interface.dart';
 
 import '../widgets/responsive_wrapper.dart';
 import '../theme/app_colors.dart';
-import '../widgets/spotlight_help_overlay.dart';
+import '../widgets/onboarding_bubble.dart';
 import '../widgets/reminder_pitch.dart';
 import 'book_reading_screen.dart';
 
@@ -41,7 +39,7 @@ class ShlokaListScreen extends StatefulWidget {
   final bool delayEmblem; // ✨ NEW parameter for animation
   final bool isEmbedded; // ✨ NEW parameter for unified background
   final int? initialShlokaNo; // ✨ NEW parameter for scrolling
-  /// When true (Settings → Help), always open the spotlight guide.
+  /// When true (Settings → Help), replay floating onboarding tips.
   final bool showHelp;
 
   const ShlokaListScreen({
@@ -73,20 +71,14 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   // ✨ FIX: Store the provider instance to avoid unsafe lookups in dispose().
   AudioProvider? _audioProvider;
 
-  bool _showHelpGuide = false;
-  Timer? _helpGuideTimer;
-  int? _helpVerseIndex;
-  final GlobalKey _chapterTitleBarKey =
-      GlobalKey(debugLabel: 'chapterTitleBar');
-  final GlobalKey _fontSizeHelpKey = GlobalKey(debugLabel: 'chapterFontSize');
-  final GlobalKey _bookModeHelpKey = GlobalKey(debugLabel: 'chapterBookMode');
-  final GlobalKey _helpVerseActionsKey =
-      GlobalKey(debugLabel: 'chapterVerseActions');
-
   /// Commentary book vs verse-card list (chapter view only).
   bool _isBookMode = false;
   /// Chapter list: which verse has Anvay/Bhavarth expanded (null = all collapsed).
   int? _expandedVerseIndex;
+
+  final GlobalKey _bookModeKey = GlobalKey(debugLabel: 'chapterBookMode');
+  final GlobalKey _fontDockKey = GlobalKey(debugLabel: 'chapterFontDock');
+  final GlobalKey _verseHintKey = GlobalKey(debugLabel: 'chapterVerseHint');
 
   @override
   void initState() {
@@ -112,14 +104,18 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     // ✨ FIX: Get the provider once and store it.
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
-    _scheduleHelpGuide();
+    if (widget.showHelp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _replayChapterOnboardingHints();
+      });
+    }
     final isChapter =
         int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
     if (isChapter) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future<void>.delayed(const Duration(milliseconds: 1400), () {
           if (!mounted) return;
-          ReminderPitch.maybeShow(context, blocked: _showHelpGuide);
+          ReminderPitch.maybeShow(context, blocked: _chapterHintsVisible());
         });
       });
     }
@@ -129,7 +125,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   void didUpdateWidget(covariant ShlokaListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.showHelp && !oldWidget.showHelp) {
-      _scheduleHelpGuide();
+      _replayChapterOnboardingHints();
     }
     if (widget.searchQuery != oldWidget.searchQuery) {
       _expandedVerseIndex = null;
@@ -138,7 +134,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   @override
   void dispose() {
-    _helpGuideTimer?.cancel();
     // ✨ FIX: Use the stored provider instance for safe cleanup.
     _audioProvider?.removeListener(_handleAudioChange);
     _shlokaProvider.dispose(); // Dispose the provider we created.
@@ -146,62 +141,17 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     super.dispose();
   }
 
-  Future<void> _scheduleHelpGuide() async {
-    final force = widget.showHelp;
-    if (!force) {
-      final done = await SpotlightHelpPrefs.isDone(kChapterHelpGuideDoneKey);
-      if (done) return;
-    }
+  Future<void> _replayChapterOnboardingHints() async {
     if (!mounted) return;
-    _helpGuideTimer = Timer(const Duration(milliseconds: 900), () async {
-      if (!mounted) return;
-      final isChapter =
-          int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
-      if (!force && !isChapter) return;
-      for (var i = 0; i < 20 && _shlokaProvider.isLoading; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-        if (!mounted) return;
-      }
-      if (!mounted) return;
-      final count = _shlokaProvider.shlokas.length;
-      if (count > 0) {
-        // Wait until list item keys exist (built after load).
-        for (var i = 0; i < 20 && _itemKeys.length < count; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 80));
-          if (!mounted) return;
-        }
-        // Mid-chapter verse so the card spotlight isn't stuck on the first row.
-        final mid = count ~/ 2;
-        _helpVerseIndex = mid;
-        // Expand so the action island exists for the help spotlight.
-        _expandedVerseIndex = mid;
-        if (mounted) setState(() {});
-        await _scrollToIndex(mid, awaitVisible: true);
-        if (!mounted) return;
-        for (var i = 0; i < 24 && _helpVerseActionsKey.currentContext == null; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 80));
-          if (!mounted) return;
-        }
-        final actionsCtx = _helpVerseActionsKey.currentContext;
-        if (actionsCtx != null) {
-          await Scrollable.ensureVisible(
-            actionsCtx,
-            duration: const Duration(milliseconds: 450),
-            curve: Curves.easeInOutCubic,
-            alignment: 0.72,
-          );
-        }
-        if (!mounted) return;
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        if (!mounted) return;
-      }
-      setState(() => _showHelpGuide = true);
-    });
+    await Provider.of<SettingsProvider>(context, listen: false)
+        .resetChapterOnboardingHints();
   }
 
-  void _closeHelpGuide() {
-    if (!_showHelpGuide) return;
-    setState(() => _showHelpGuide = false);
+  bool _chapterHintsVisible() {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    return !settings.hasUsedChapterBookHint ||
+        !settings.hasUsedChapterFontHint ||
+        !settings.hasUsedChapterTapHint;
   }
 
   /// Show back when we can pop, or when this route replaced the stack
@@ -220,75 +170,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     } else {
       context.go(AppRoutes.settings);
     }
-  }
-
-  Rect? _helpRectOf(GlobalKey key) {
-    final ctx = key.currentContext;
-    final box = ctx?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
-  }
-
-  List<SpotlightHelpStep> _chapterHelpSteps() {
-    final titleBar = _helpRectOf(_chapterTitleBarKey);
-    final font = _helpRectOf(_fontSizeHelpKey);
-    final book = _helpRectOf(_bookModeHelpKey);
-    final actionsRow = _helpRectOf(_helpVerseActionsKey);
-
-    return [
-      const SpotlightHelpStep(
-        title: 'Chapter verses',
-        body:
-            'Each chapter is a list of shlokas you can read, play, and save.\n\n'
-            'Next steps show text size, the commentary book, and verse actions.',
-      ),
-      SpotlightHelpStep(
-        title: 'Size & commentary',
-        body:
-            'The font dock sits on the left — use − / + for text size.\n\n'
-            'Tap the Book button to switch into continuous commentary reading.',
-        globalHoles: [
-          if (titleBar != null) titleBar,
-          if (font != null) font,
-          if (book != null) book,
-        ],
-        callouts: [
-          if (font != null)
-            SpotlightCallout(
-              globalTarget: font.center,
-              label: 'Size',
-              arrow: SpotlightArrow.right,
-            ),
-          if (book != null)
-            SpotlightCallout(
-              globalTarget: book.center,
-              label: 'Book / Verses',
-              arrow: SpotlightArrow.down,
-            ),
-        ],
-        cornerRadius: 24,
-      ),
-      SpotlightHelpStep(
-        title: 'A verse card',
-        body:
-            'This is one shloka. Under the verse text you’ll find Play, bookmark, and Share.\n\n'
-            'Close help, then try those buttons on any card. You can reopen this guide in Settings.',
-        globalHoles: [if (actionsRow != null) actionsRow],
-        callouts: [
-          if (actionsRow != null)
-            SpotlightCallout(
-              globalTarget: Offset(
-                actionsRow.center.dx,
-                actionsRow.bottom,
-              ),
-              label: 'Play · Save · Share',
-              arrow: SpotlightArrow.up,
-            ),
-        ],
-        showTapHint: false,
-        cornerRadius: 24,
-      ),
-    ];
   }
 
   void _handleAudioChange() {
@@ -667,55 +548,61 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 final meaningsOpen =
                                     !isChapter ||
                                     _expandedVerseIndex == index;
+                                final card = ResponsiveWrapper(
+                                  child: FullShlokaCard(
+                                    shloka: shlokas[index],
+                                    config: _cardConfig.copyWith(
+                                      baseFontSize:
+                                          settingsProvider.fontSize,
+                                      isLightTheme:
+                                          Theme.of(context).brightness ==
+                                          Brightness.light,
+                                      showEmblem: !isChapter,
+                                      showSeparator: isChapter
+                                          ? meaningsOpen
+                                          : true,
+                                      showAnvay: meaningsOpen,
+                                      showBhavarth: meaningsOpen,
+                                      showActions: meaningsOpen,
+                                      spacingCompact: isChapter,
+                                      showMeaningsHint:
+                                          isChapter && !meaningsOpen,
+                                    ),
+                                    currentlyPlayingId: _currentShlokId,
+                                    onTap: isChapter
+                                        ? () {
+                                            setState(() {
+                                              _expandedVerseIndex =
+                                                  _expandedVerseIndex ==
+                                                      index
+                                                  ? null
+                                                  : index;
+                                            });
+                                          }
+                                        : null,
+                                    onPlayPause: () {
+                                      Provider.of<AudioProvider>(
+                                        context,
+                                        listen: false,
+                                      ).playChapter(
+                                        shlokas: shlokas,
+                                        initialIndex: index,
+                                      );
+                                    },
+                                  ),
+                                );
+                                final wrapped = index == 0 &&
+                                        isChapter &&
+                                        !settingsProvider
+                                            .hasUsedChapterTapHint
+                                    ? KeyedSubtree(
+                                        key: _verseHintKey,
+                                        child: card,
+                                      )
+                                    : card;
                                 return Container(
                                   key: _itemKeys[index],
-                                  child: ResponsiveWrapper(
-                                    child: FullShlokaCard(
-                                      shloka: shlokas[index],
-                                      config: _cardConfig.copyWith(
-                                        baseFontSize:
-                                            settingsProvider.fontSize,
-                                        isLightTheme:
-                                            Theme.of(context).brightness ==
-                                            Brightness.light,
-                                        showEmblem: !isChapter,
-                                        showSeparator: isChapter
-                                            ? meaningsOpen
-                                            : true,
-                                        showAnvay: meaningsOpen,
-                                        showBhavarth: meaningsOpen,
-                                        showActions: meaningsOpen,
-                                        spacingCompact: isChapter,
-                                        showMeaningsHint:
-                                            isChapter && !meaningsOpen,
-                                        helpActionsRowKey:
-                                            index == _helpVerseIndex
-                                            ? _helpVerseActionsKey
-                                            : null,
-                                      ),
-                                      currentlyPlayingId: _currentShlokId,
-                                      onTap: isChapter
-                                          ? () {
-                                              setState(() {
-                                                _expandedVerseIndex =
-                                                    _expandedVerseIndex ==
-                                                        index
-                                                    ? null
-                                                    : index;
-                                              });
-                                            }
-                                          : null,
-                                      onPlayPause: () {
-                                        Provider.of<AudioProvider>(
-                                          context,
-                                          listen: false,
-                                        ).playChapter(
-                                          shlokas: shlokas,
-                                          initialIndex: index,
-                                        );
-                                      },
-                                    ),
-                                  ),
+                                  child: wrapped,
                                 );
                               },
                               childCount: shlokas.length,
@@ -738,21 +625,42 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   left: MediaQuery.of(context).padding.left,
                   top: MediaQuery.of(context).padding.top + 6,
                   right: 12,
-                  child: IgnorePointer(
-                    ignoring: _showHelpGuide,
-                    child: _ChapterPeekTitleBar(
-                      key: _chapterTitleBarKey,
-                      title: title,
-                      showBack: _shouldShowBackButton(context),
-                      onBack: () => _handleBack(context),
-                      isBookMode: _isBookMode,
-                      bookModeKey: _bookModeHelpKey,
-                      onToggleMode: () {
-                        setState(() => _isBookMode = !_isBookMode);
-                      },
-                    ),
+                  child: _ChapterPeekTitleBar(
+                    title: title,
+                    showBack: _shouldShowBackButton(context),
+                    onBack: () => _handleBack(context),
+                    isBookMode: _isBookMode,
+                    bookModeKey: _bookModeKey,
+                    onToggleMode: () {
+                      setState(() => _isBookMode = !_isBookMode);
+                    },
                   ),
                 ),
+                if (!_isBookMode &&
+                    !settingsProvider.hasUsedChapterBookHint)
+                  AnchoredOnboardingBubble(
+                    targetKey: _bookModeKey,
+                    placement: OnboardingBubblePlacement.belowTarget,
+                    repositionListenable: _scrollController,
+                    text: 'Book mode — continuous commentary',
+                    icon: Icons.menu_book_outlined,
+                    onTap: () =>
+                        settingsProvider.markChapterBookHintUsed(),
+                    onDismiss: () =>
+                        settingsProvider.markChapterBookHintUsed(),
+                  ),
+                if (!_isBookMode &&
+                    !settingsProvider.hasUsedChapterTapHint)
+                  AnchoredOnboardingBubble(
+                    targetKey: _verseHintKey,
+                    placement: OnboardingBubblePlacement.belowTarget,
+                    repositionListenable: _scrollController,
+                    text: 'Tap a verse for meaning & actions',
+                    icon: Icons.touch_app_outlined,
+                    onTap: () => settingsProvider.markChapterTapHintUsed(),
+                    onDismiss: () =>
+                        settingsProvider.markChapterTapHintUsed(),
+                  ),
                 if (!_isBookMode)
                   Consumer<AudioProvider>(
                     builder: (context, audio, _) {
@@ -766,26 +674,29 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         bottom: miniPlayerVisible
                             ? 96 + bottomSafe
                             : 12 + bottomSafe,
-                        child: IgnorePointer(
-                          ignoring: _showHelpGuide,
-                          child: _ChapterFontSizeDock(
-                            sizeClusterKey: _fontSizeHelpKey,
-                            currentSize: settingsProvider.fontSize,
-                            onSizeChanged: settingsProvider.setFontSize,
-                          ),
+                        child: KeyedSubtree(
+                          key: _fontDockKey,
+                        child: FontSizeDock(
+                          currentSize: settingsProvider.fontSize,
+                          onSizeChanged: settingsProvider.setFontSize,
+                        ),
                         ),
                       );
                     },
                   ),
-              ],
-              if (_showHelpGuide)
-                Positioned.fill(
-                  child: SpotlightHelpOverlay(
-                    steps: _chapterHelpSteps(),
-                    prefsKey: kChapterHelpGuideDoneKey,
-                    onFinished: _closeHelpGuide,
+                if (!_isBookMode && !settingsProvider.hasUsedChapterFontHint)
+                  AnchoredOnboardingBubble(
+                    targetKey: _fontDockKey,
+                    placement: OnboardingBubblePlacement.leftOfTarget,
+                    repositionListenable: _scrollController,
+                    text: '− / + text size',
+                    icon: Icons.format_size,
+                    onTap: () =>
+                        settingsProvider.markChapterFontHintUsed(),
+                    onDismiss: () =>
+                        settingsProvider.markChapterFontHintUsed(),
                   ),
-                ),
+              ],
             ],
           );
         },
@@ -812,11 +723,10 @@ class _ChapterPeekTitleBar extends StatelessWidget {
   final bool showBack;
   final VoidCallback onBack;
   final bool isBookMode;
-  final Key? bookModeKey;
   final VoidCallback onToggleMode;
+  final Key? bookModeKey;
 
   const _ChapterPeekTitleBar({
-    super.key,
     required this.title,
     required this.showBack,
     required this.onBack,
@@ -893,12 +803,10 @@ class _ChapterPeekTitleBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        KeyedSubtree(
+        _ChapterModeToggleButton(
           key: bookModeKey,
-          child: _ChapterModeToggleButton(
-            isBookMode: isBookMode,
-            onTap: onToggleMode,
-          ),
+          isBookMode: isBookMode,
+          onTap: onToggleMode,
         ),
       ],
     );
@@ -911,6 +819,7 @@ class _ChapterModeToggleButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ChapterModeToggleButton({
+    super.key,
     required this.isBookMode,
     required this.onTap,
   });
@@ -983,67 +892,6 @@ class _ChapterModeToggleButton extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChapterFontSizeDock extends StatelessWidget {
-  final double currentSize;
-  final ValueChanged<double> onSizeChanged;
-  final Key? sizeClusterKey;
-
-  const _ChapterFontSizeDock({
-    required this.currentSize,
-    required this.onSizeChanged,
-    this.sizeClusterKey,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final iconColor =
-        Theme.of(context).iconTheme.color ??
-        (isLight ? Colors.black87 : Colors.white);
-    final glass = isLight ? const Color(0xFFF7F4EE) : const Color(0xFF2A2A2A);
-
-    return Material(
-      color: glass,
-      elevation: 0,
-      shadowColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.horizontal(
-          right: Radius.circular(22),
-        ),
-        side: BorderSide(
-          color: isLight
-              ? Colors.black.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.08),
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            iconButtonTheme: IconButtonThemeData(
-              style: IconButton.styleFrom(
-                foregroundColor: iconColor,
-                disabledForegroundColor: iconColor.withValues(alpha: 0.35),
-                overlayColor: Colors.black.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          child: KeyedSubtree(
-            key: sizeClusterKey,
-            child: FontSizeControl(
-              currentSize: currentSize,
-              onSizeChanged: onSizeChanged,
-              color: iconColor,
             ),
           ),
         ),

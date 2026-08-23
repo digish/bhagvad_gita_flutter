@@ -871,7 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      'Show Big Three (Shankaracharya, Ramanujacharya, Madhvacharya)',
+                                      'Shankara, Ramanuja, and Madhva in your language (translation of their bhashya, not the modern AI summary)',
                                       style: TextStyle(
                                         color: subtitleColor,
                                         fontSize: 12,
@@ -1266,7 +1266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                         title: 'Chapter verses',
                                         subtitle:
-                                            'Read a chapter, size, play, and save',
+                                            'Floating tips for verses, size, and book mode',
                                         icon: Icons.menu_book_outlined,
                                         grouped: true,
                                         onTap: (innerContext) {
@@ -1286,7 +1286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                         title: 'Parayan',
                                         subtitle:
-                                            'How to use continuous reading',
+                                            'Floating tips for seek rail, tap, and font dock',
                                         icon: Icons.auto_stories_outlined,
                                         grouped: true,
                                         onTap: (innerContext) {

@@ -108,9 +108,25 @@ class Commentary {
       authorName == 'AI Insights' ||
       authorName == 'Gita AI Wisdom';
 
+  /// Strips "(Sanskrit)" so EN/HI translations group with the original bhashya.
+  String get canonicalAuthorName => authorName
+      .replaceAll(RegExp(r'\s*\(\s*Sanskrit\s*\)\s*', caseSensitive: false), '')
+      .trim();
+
+  bool get isClassical {
+    final name = canonicalAuthorName.toLowerCase();
+    return name.contains('shankar') ||
+        name.contains('ramanuj') ||
+        name.contains('madhv');
+  }
+
+  /// Faithful EN/HI rendering of the acharya's Sanskrit — not AI Insights.
+  bool get isBhashyaTranslation =>
+      isClassical && !isAI && languageCode.toLowerCase() != 'sa';
+
   String get displayAuthorName {
     if (isAI) return 'Gita AI Wisdom';
-    return authorName;
+    return canonicalAuthorName;
   }
 
   ModernCommentary? get modern {

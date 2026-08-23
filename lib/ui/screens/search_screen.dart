@@ -19,6 +19,7 @@ import '../widgets/sacred_sutra_promo_card.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../widgets/onboarding_bubble.dart';
 import '../widgets/liquid_reveal.dart';
 import '../widgets/main_scaffold.dart';
 import '../../models/shloka_list.dart';
@@ -460,7 +461,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (!settings.hasUsedExploreMore && showOnboarding)
-                    _OnboardingBubble(
+                    OnboardingBubble(
                       text: "Explore more",
                       icon: Icons.explore_outlined,
                       pointingDown: true,
@@ -715,7 +716,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                     child: Align(
                                                       alignment:
                                                           Alignment.topCenter,
-                                                      child: _OnboardingBubble(
+                                                      child: OnboardingBubble(
                                                         text:
                                                             'Search by word, chapter, or verse',
                                                         icon: Icons.search,
@@ -740,7 +741,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                       right: 8,
                                                       top: 2,
                                                     ),
-                                                    child: _OnboardingBubble(
+                                                    child: OnboardingBubble(
                                                       onTap: () {
                                                         settings
                                                             .markAskAiUsed();
@@ -802,7 +803,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                 ),
                                                 child: Align(
                                                   alignment: Alignment.centerLeft,
-                                                  child: _OnboardingBubble(
+                                                  child: OnboardingBubble(
                                                     text: "Today's verse",
                                                     icon: Icons.wb_sunny_outlined,
                                                     pointingDown: true,
@@ -957,7 +958,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           bottom: 10,
                                           left: 4,
                                         ),
-                                        child: _OnboardingBubble(
+                                        child: OnboardingBubble(
                                           text: 'Simple theme',
                                           icon: Icons.format_paint_outlined,
                                           pointingDown: true,
@@ -2715,7 +2716,7 @@ class _RailThemeHintOverlayState extends State<_RailThemeHintOverlay> {
     return Positioned(
       left: _left,
       bottom: _bottom,
-      child: _OnboardingBubble(
+      child: OnboardingBubble(
         key: _bubbleKey,
         text: 'Paint button on the left rail switches theme',
         icon: Icons.format_paint_outlined,
@@ -2726,254 +2727,6 @@ class _RailThemeHintOverlayState extends State<_RailThemeHintOverlay> {
       ),
     );
   }
-}
-
-class _OnboardingBubble extends StatefulWidget {
-  final VoidCallback onTap;
-  final VoidCallback onDismiss;
-  final String text;
-  final IconData icon;
-  final bool pointingDown;
-  final bool pointingLeft;
-  final CrossAxisAlignment tailAlign;
-
-  const _OnboardingBubble({
-    super.key,
-    required this.onTap,
-    required this.onDismiss,
-    this.text = "Try Ask Gita",
-    this.icon = Icons.auto_awesome,
-    this.pointingDown = false,
-    this.pointingLeft = false,
-    this.tailAlign = CrossAxisAlignment.end,
-  });
-
-  @override
-  State<_OnboardingBubble> createState() => _OnboardingBubbleState();
-}
-
-class _OnboardingBubbleState extends State<_OnboardingBubble>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _floatAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.98,
-      end: 1.02,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _floatAnimation = Tween<double>(
-      begin: 0,
-      end: -8,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bubbleColor = isDark ? const Color(0xFF424242) : Colors.white;
-    final borderColor = isDark ? Colors.white24 : Colors.amber.withOpacity(0.5);
-
-    final bubbleBody = GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 260),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: borderColor, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              widget.icon,
-              color: Colors.amber,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text(
-                widget.text,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            InkWell(
-              onTap: widget.onDismiss,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: Icon(
-                  Icons.close,
-                  size: 16,
-                  color: isDark ? Colors.white38 : Colors.black38,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final Widget bubbleContent;
-    if (widget.pointingLeft) {
-      bubbleContent = Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(10, 20),
-            painter: _BubbleTailPainter(
-              color: bubbleColor,
-              borderColor: borderColor,
-              pointingLeft: true,
-            ),
-          ),
-          bubbleBody,
-        ],
-      );
-    } else {
-      bubbleContent = Column(
-        crossAxisAlignment: widget.tailAlign,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!widget.pointingDown)
-            Padding(
-              padding: EdgeInsets.only(
-                right: widget.tailAlign == CrossAxisAlignment.end ? 20 : 0,
-                left: widget.tailAlign == CrossAxisAlignment.start ? 20 : 0,
-              ),
-              child: CustomPaint(
-                size: const Size(20, 10),
-                painter: _BubbleTailPainter(
-                  color: bubbleColor,
-                  borderColor: borderColor,
-                  pointingDown: false,
-                ),
-              ),
-            ),
-          bubbleBody,
-          if (widget.pointingDown)
-            Padding(
-              padding: EdgeInsets.only(
-                right: widget.tailAlign == CrossAxisAlignment.end ? 18 : 0,
-                left: widget.tailAlign == CrossAxisAlignment.start ? 18 : 0,
-              ),
-              child: CustomPaint(
-                size: const Size(20, 10),
-                painter: _BubbleTailPainter(
-                  color: bubbleColor,
-                  borderColor: borderColor,
-                  pointingDown: true,
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(0, _floatAnimation.value),
-            child: Transform.scale(scale: _scaleAnimation.value, child: child),
-          );
-        },
-        child: bubbleContent,
-      ),
-    );
-  }
-}
-
-class _BubbleTailPainter extends CustomPainter {
-  final Color color;
-  final Color borderColor;
-  final bool pointingDown;
-  final bool pointingLeft;
-
-  _BubbleTailPainter({
-    required this.color,
-    required this.borderColor,
-    this.pointingDown = false,
-    this.pointingLeft = false,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    final path = Path();
-    final borderPath = Path();
-    if (pointingLeft) {
-      path.moveTo(0, size.height / 2);
-      path.lineTo(size.width, 0);
-      path.lineTo(size.width, size.height);
-      borderPath.moveTo(0, size.height / 2);
-      borderPath.lineTo(size.width, 0);
-      borderPath.moveTo(0, size.height / 2);
-      borderPath.lineTo(size.width, size.height);
-    } else if (pointingDown) {
-      path.moveTo(0, 0);
-      path.lineTo(size.width, 0);
-      path.lineTo(size.width / 2, size.height);
-      borderPath.moveTo(0, 0);
-      borderPath.lineTo(size.width / 2, size.height);
-      borderPath.lineTo(size.width, 0);
-    } else {
-      path.moveTo(size.width / 2, 0);
-      path.lineTo(0, size.height);
-      path.lineTo(size.width, size.height);
-      borderPath.moveTo(0, size.height);
-      borderPath.lineTo(size.width / 2, 0);
-      borderPath.lineTo(size.width, size.height);
-    }
-    path.close();
-
-    canvas.drawPath(path, paint);
-    canvas.drawPath(borderPath, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _RoadmapItem extends StatelessWidget {

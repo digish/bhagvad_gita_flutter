@@ -49,6 +49,24 @@ class SettingsProvider extends ChangeNotifier {
   bool _hasUsedThemeHint = false;
   bool get hasUsedThemeHint => _hasUsedThemeHint;
 
+  bool _hasUsedChapterBookHint = false;
+  bool get hasUsedChapterBookHint => _hasUsedChapterBookHint;
+
+  bool _hasUsedChapterFontHint = false;
+  bool get hasUsedChapterFontHint => _hasUsedChapterFontHint;
+
+  bool _hasUsedChapterTapHint = false;
+  bool get hasUsedChapterTapHint => _hasUsedChapterTapHint;
+
+  bool _hasUsedParayanSeekHint = false;
+  bool get hasUsedParayanSeekHint => _hasUsedParayanSeekHint;
+
+  bool _hasUsedParayanTapHint = false;
+  bool get hasUsedParayanTapHint => _hasUsedParayanTapHint;
+
+  bool _hasUsedParayanFontHint = false;
+  bool get hasUsedParayanFontHint => _hasUsedParayanFontHint;
+
   int _dailyStreak = 0;
   int get dailyStreak => _dailyStreak;
 
@@ -199,6 +217,54 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setBool('has_used_theme_hint', true);
   }
 
+  Future<void> markChapterBookHintUsed() async {
+    if (_hasUsedChapterBookHint) return;
+    _hasUsedChapterBookHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_chapter_book_hint', true);
+  }
+
+  Future<void> markChapterFontHintUsed() async {
+    if (_hasUsedChapterFontHint) return;
+    _hasUsedChapterFontHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_chapter_font_hint', true);
+  }
+
+  Future<void> markChapterTapHintUsed() async {
+    if (_hasUsedChapterTapHint) return;
+    _hasUsedChapterTapHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_chapter_tap_hint', true);
+  }
+
+  Future<void> markParayanSeekHintUsed() async {
+    if (_hasUsedParayanSeekHint) return;
+    _hasUsedParayanSeekHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_parayan_seek_hint', true);
+  }
+
+  Future<void> markParayanTapHintUsed() async {
+    if (_hasUsedParayanTapHint) return;
+    _hasUsedParayanTapHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_parayan_tap_hint', true);
+  }
+
+  Future<void> markParayanFontHintUsed() async {
+    if (_hasUsedParayanFontHint) return;
+    _hasUsedParayanFontHint = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_parayan_font_hint', true);
+  }
+
   /// Settings → Help: Home & search — show all floating tips again.
   Future<void> resetSearchOnboardingHints() async {
     _hasUsedAskAi = false;
@@ -213,6 +279,30 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setBool('has_used_search_bar_hint', false);
     await prefs.setBool('has_used_daily_shloka_hint', false);
     await prefs.setBool('has_used_theme_hint', false);
+  }
+
+  /// Settings → Help: Chapter verses — show floating tips again.
+  Future<void> resetChapterOnboardingHints() async {
+    _hasUsedChapterBookHint = false;
+    _hasUsedChapterFontHint = false;
+    _hasUsedChapterTapHint = false;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_chapter_book_hint', false);
+    await prefs.setBool('has_used_chapter_font_hint', false);
+    await prefs.setBool('has_used_chapter_tap_hint', false);
+  }
+
+  /// Settings → Help: Parayan — show floating tips again.
+  Future<void> resetParayanOnboardingHints() async {
+    _hasUsedParayanSeekHint = false;
+    _hasUsedParayanTapHint = false;
+    _hasUsedParayanFontHint = false;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_used_parayan_seek_hint', false);
+    await prefs.setBool('has_used_parayan_tap_hint', false);
+    await prefs.setBool('has_used_parayan_font_hint', false);
   }
 
   /* DEPRECATED: Replaced by CreditProvider */
@@ -427,6 +517,24 @@ class SettingsProvider extends ChangeNotifier {
     _hasUsedDailyShlokaHint =
         prefs.getBool('has_used_daily_shloka_hint') ?? false;
     _hasUsedThemeHint = prefs.getBool('has_used_theme_hint') ?? false;
+
+    final chapterHelpLegacyDone =
+        prefs.getBool('chapter_shloka_help_guide_done') ?? false;
+    _hasUsedChapterBookHint = chapterHelpLegacyDone ||
+        (prefs.getBool('has_used_chapter_book_hint') ?? false);
+    _hasUsedChapterFontHint = chapterHelpLegacyDone ||
+        (prefs.getBool('has_used_chapter_font_hint') ?? false);
+    _hasUsedChapterTapHint = chapterHelpLegacyDone ||
+        (prefs.getBool('has_used_chapter_tap_hint') ?? false);
+
+    final parayanHelpLegacyDone =
+        prefs.getBool('parayan_help_guide_done') ?? false;
+    _hasUsedParayanSeekHint = parayanHelpLegacyDone ||
+        (prefs.getBool('has_used_parayan_seek_hint') ?? false);
+    _hasUsedParayanTapHint = parayanHelpLegacyDone ||
+        (prefs.getBool('has_used_parayan_tap_hint') ?? false);
+    _hasUsedParayanFontHint = parayanHelpLegacyDone ||
+        (prefs.getBool('has_used_parayan_font_hint') ?? false);
     // Streak alerts are silent — clear any legacy queued dialog messages.
     await prefs.remove('last_soul_status_message');
     _streakSystemEnabled = prefs.getBool('streak_system_enabled') ?? true;

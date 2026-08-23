@@ -60,7 +60,7 @@ const List<_CreditItem> _credits = [
     title: 'The commentaries',
     source: 'Acharyas and modern teachers',
     description:
-        'Classical bhashya from Adi Shankaracharya, Ramanujacharya, and Madhvacharya, with later readings from Swami Sivananda, Swami Ramsukhdas, and others. Each lineage is kept distinct.',
+        'Classical bhashya from Adi Shankaracharya, Ramanujacharya, and Madhvacharya. English and Hindi of those bhashyas are AI translations of the Sanskrit, kept separate from the modern AI summary. Later readings from Swami Sivananda, Swami Ramsukhdas, and others remain distinct.',
   ),
   _CreditItem(
     mark: '४',
