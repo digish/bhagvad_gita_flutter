@@ -85,10 +85,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   /// Commentary book vs verse-card list (chapter view only).
   bool _isBookMode = false;
-  bool _fontDockExpanded = true;
-  Timer? _fontDockIdleTimer;
-  Timer? _fontDockTuckTimer;
-  bool _fontDockScrollActive = false;
 
   @override
   void initState() {
@@ -114,7 +110,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     // ✨ FIX: Get the provider once and store it.
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
-    _scrollController.addListener(_onChapterScrollForFontDock);
     _scheduleHelpGuide();
     final isChapter =
         int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
@@ -139,46 +134,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   @override
   void dispose() {
     _helpGuideTimer?.cancel();
-    _fontDockIdleTimer?.cancel();
-    _fontDockTuckTimer?.cancel();
-    _scrollController.removeListener(_onChapterScrollForFontDock);
     // ✨ FIX: Use the stored provider instance for safe cleanup.
     _audioProvider?.removeListener(_handleAudioChange);
     _shlokaProvider.dispose(); // Dispose the provider we created.
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onChapterScrollForFontDock() {
-    if (_isBookMode) return;
-    if (!_fontDockScrollActive) {
-      _fontDockScrollActive = true;
-      _fontDockTuckTimer?.cancel();
-      _fontDockTuckTimer = Timer(const Duration(milliseconds: 1800), () {
-        if (!mounted || _isBookMode) return;
-        if (_fontDockExpanded) {
-          setState(() => _fontDockExpanded = false);
-        }
-      });
-    }
-    _fontDockIdleTimer?.cancel();
-    _fontDockIdleTimer = Timer(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      _fontDockScrollActive = false;
-      _fontDockTuckTimer?.cancel();
-      if (!_fontDockExpanded) {
-        setState(() => _fontDockExpanded = true);
-      }
-    });
-  }
-
-  void _revealFontDockNow() {
-    _fontDockTuckTimer?.cancel();
-    _fontDockIdleTimer?.cancel();
-    _fontDockScrollActive = false;
-    if (!_fontDockExpanded) {
-      setState(() => _fontDockExpanded = true);
-    }
   }
 
   Future<void> _scheduleHelpGuide() async {
@@ -278,7 +238,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       SpotlightHelpStep(
         title: 'Size & commentary',
         body:
-            'The font dock peeks from the left — use − / + for text size.\n\n'
+            'The font dock sits on the left — use − / + for text size.\n\n'
             'Tap the Book button to switch into continuous commentary reading.',
         globalHoles: [
           if (titleBar != null) titleBar,
@@ -756,9 +716,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                       bookModeKey: _bookModeHelpKey,
                       onToggleMode: () {
                         setState(() => _isBookMode = !_isBookMode);
-                        if (!_isBookMode) {
-                          _revealFontDockNow();
-                        }
                       },
                     ),
                   ),
@@ -780,8 +737,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           ignoring: _showHelpGuide,
                           child: _ChapterFontSizeDock(
                             sizeClusterKey: _fontSizeHelpKey,
-                            expanded: _fontDockExpanded,
-                            onPeekTap: _revealFontDockNow,
                             currentSize: settingsProvider.fontSize,
                             onSizeChanged: settingsProvider.setFontSize,
                           ),
@@ -1004,17 +959,13 @@ class _ChapterModeToggleButton extends StatelessWidget {
 }
 
 class _ChapterFontSizeDock extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback? onPeekTap;
   final double currentSize;
   final ValueChanged<double> onSizeChanged;
   final Key? sizeClusterKey;
 
   const _ChapterFontSizeDock({
-    required this.expanded,
     required this.currentSize,
     required this.onSizeChanged,
-    this.onPeekTap,
     this.sizeClusterKey,
   });
 
@@ -1026,7 +977,7 @@ class _ChapterFontSizeDock extends StatelessWidget {
         (isLight ? Colors.black87 : Colors.white);
     final glass = isLight ? const Color(0xFFF7F4EE) : const Color(0xFF2A2A2A);
 
-    final dock = Material(
+    return Material(
       color: glass,
       elevation: 0,
       shadowColor: Colors.transparent,
@@ -1065,17 +1016,6 @@ class _ChapterFontSizeDock extends StatelessWidget {
         ),
       ),
     );
-
-    return AnimatedSlide(
-      duration: const Duration(milliseconds: 320),
-      curve: expanded ? Curves.easeOutCubic : Curves.easeInCubic,
-      offset: expanded ? Offset.zero : const Offset(-0.84, 0),
-      child: GestureDetector(
-        onTap: expanded ? null : onPeekTap,
-        behavior: HitTestBehavior.opaque,
-        child: dock,
-      ),
-    );
   }
 }
 
@@ -1086,7 +1026,7 @@ class _ChapterEmblemHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.only(bottom: 72.0),
       child: Hero(
         tag: 'chapterEmblem_$chapterNumber',
         child: Container(
