@@ -284,14 +284,25 @@ class _ChaptersScreenState extends State<ChaptersScreen>
                     // DETAIL PANE
                     Expanded(
                       child: ClipRect(
-                        child: ShlokaListScreen(
-                          key: ValueKey(
-                            activeChapter,
-                          ), // Force rebuild on change
-                          searchQuery: activeChapter.toString(),
-                          showBackButton: false,
-                          delayEmblem: _shouldDelayEmblem, // Pass flag
-                          isEmbedded: true, // ✨ Use shared background
+                        child: MediaQuery(
+                          // Master pane already consumed the rail inset.
+                          // Zero it so chapter/book chrome (title bar, font
+                          // dock) flush to this pane's left wall — same
+                          // padding.left pattern as Parayan on the rail.
+                          data: MediaQuery.of(context).copyWith(
+                            padding: MediaQuery.of(context).padding.copyWith(
+                              left: 0,
+                            ),
+                          ),
+                          child: ShlokaListScreen(
+                            key: ValueKey(
+                              activeChapter,
+                            ), // Force rebuild on change
+                            searchQuery: activeChapter.toString(),
+                            showBackButton: false,
+                            delayEmblem: _shouldDelayEmblem, // Pass flag
+                            isEmbedded: true, // ✨ Use shared background
+                          ),
                         ),
                       ),
                     ),

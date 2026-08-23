@@ -688,8 +688,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           height: shouldShowResults
                                               ? 16
                                               : (settings.showBackground
-                                                    // Tighter under lotuses; chip sits in this gap when shown
-                                                    ? 190
+                                                    // Clear the lotus cluster; tablet needs more
+                                                    // room for the larger flowers + streak chip.
+                                                    ? (isTablet ? 300.0 : 190.0)
                                                     : 60),
                                         ),
                                         if (!shouldShowResults &&
@@ -1483,7 +1484,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final double innerSize = isTablet ? 120.0 : 80.0;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18, right: 4),
+      padding: EdgeInsets.only(bottom: isTablet ? 28 : 18, right: 4),
       child: Align(
         alignment: Alignment.centerRight,
         child: GestureDetector(

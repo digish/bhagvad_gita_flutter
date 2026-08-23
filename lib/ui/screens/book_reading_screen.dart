@@ -365,7 +365,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         children: [
           SafeArea(
         top: !widget.embedded,
-        left: true,
+        left: !widget.embedded,
         right: true,
         bottom: false,
         child: _isLoading

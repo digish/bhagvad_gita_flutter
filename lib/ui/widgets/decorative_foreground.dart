@@ -39,13 +39,20 @@ class DecorativeForeground extends StatelessWidget {
     final isTablet = screenWidth > 600;
 
     // Sizes based on device type
-    final double ringDimension = isTablet ? 200.0 : 140.0;
+    // Tablet ring is taller so labels sit fully below the larger lotus.
+    final double ringDimension = isTablet ? 230.0 : 140.0;
     final double leaves1Size = isTablet ? 220.0 : 150.0;
     final double leaves2Size = isTablet ? 150.0 : 100.0;
     final double lotusSize = isTablet ? 150.0 : 100.0;
+    // Phone: 55 keeps the current look. Tablet: past lotus radius (75) + gap.
+    final double labelOffsetY = isTablet ? 90.0 : 55.0;
 
-    // Adjusted offset for rail
-    final double railOffset = isTablet ? 100.0 : 0.0;
+    // Leaves may tuck under the rail. Lotuses must clear the real rail width
+    // (portrait 100 / landscape 220), not a hardcoded 100.
+    final double leafRailOffset = isTablet ? 100.0 : 0.0;
+    final double lotusRailOffset = isTablet
+        ? MediaQuery.of(context).padding.left
+        : 0.0;
 
     // Derived animation for "Settling" effect (Bouncy)
     // ✨ FIX: Use passed animation directly. Do not re-curve it,
@@ -61,7 +68,7 @@ class DecorativeForeground extends StatelessWidget {
           // Left Leaves
           Positioned(
             top: 20,
-            left: MediaQuery.of(context).size.width * 0.08 + railOffset,
+            left: MediaQuery.of(context).size.width * 0.08 + leafRailOffset,
             child: ScaleTransition(
               scale: bounceScale,
               child: Stack(
@@ -98,7 +105,7 @@ class DecorativeForeground extends StatelessWidget {
           // Right Leaves
           Positioned(
             top: 20,
-            left: MediaQuery.of(context).size.width * 0.7 + railOffset,
+            left: MediaQuery.of(context).size.width * 0.7 + leafRailOffset,
             child: ScaleTransition(
               scale: bounceScale,
               child: Stack(
@@ -135,7 +142,7 @@ class DecorativeForeground extends StatelessWidget {
           // "Adhyay" (Chapters) Spinner
           Positioned(
             top: 30,
-            left: MediaQuery.of(context).size.width * 0.22 + railOffset,
+            left: MediaQuery.of(context).size.width * 0.22 + lotusRailOffset,
             child: ScaleTransition(
               scale: bounceScale,
               child: CenteredSpinner(
@@ -151,7 +158,7 @@ class DecorativeForeground extends StatelessWidget {
                   height: ringDimension,
                   child: Center(
                     child: Transform.translate(
-                      offset: const Offset(0, 55),
+                      offset: Offset(0, labelOffsetY),
                       child: Text(
                         StaticData.localizeTerm(
                           'adhyay',
@@ -180,7 +187,7 @@ class DecorativeForeground extends StatelessWidget {
           // "Parayan" Spinner
           Positioned(
             top: 100,
-            left: MediaQuery.of(context).size.width * 0.01 + railOffset,
+            left: MediaQuery.of(context).size.width * 0.01 + lotusRailOffset,
             child: ScaleTransition(
               scale: bounceScale,
               child: CenteredSpinner(
@@ -197,7 +204,7 @@ class DecorativeForeground extends StatelessWidget {
                   height: ringDimension,
                   child: Center(
                     child: Transform.translate(
-                      offset: const Offset(0, 55),
+                      offset: Offset(0, labelOffsetY),
                       child: Text(
                         StaticData.localizeTerm(
                           'parayan',
@@ -243,7 +250,7 @@ class DecorativeForeground extends StatelessWidget {
                   height: ringDimension,
                   child: Center(
                     child: Transform.translate(
-                      offset: const Offset(0, 55),
+                      offset: Offset(0, labelOffsetY),
                       child: Text(
                         StaticData.localizeTerm(
                           'krutagyata',
