@@ -27,6 +27,7 @@ class SoulStatus {
       icon: Icons.flare,
       color: sparkGold,
       threshold: 0,
+      imageAssetName: 'first_spark.png',
     ),
     SoulStatus(
       title: 'Warming Up',

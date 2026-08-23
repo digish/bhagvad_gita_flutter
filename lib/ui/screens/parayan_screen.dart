@@ -101,7 +101,7 @@ bool _parayanHasInlineSpeaker(List<ShlokaResult> shlokas, int index) {
 
 /// Chapter-start items put a title above the speaker line — offset so sticky
 /// only locks once the speaker row itself reaches the pin line.
-const double _kParayanChapterTitlePx = 64.0;
+const double _kParayanChapterTitlePx = 72.0;
 const double _kParayanInlineSpeakerPadTopPx = 18.0;
 
 /// Speaker that should pin in the sticky bar, or null before the first inline
@@ -1830,19 +1830,23 @@ class _ChapterStartHeader extends StatelessWidget {
     final chapterLabel = StaticData.getChapterLabel(script);
     final localNum = StaticData.localizeNumber(safeChapterNum, script);
     final chapterName = StaticData.getChapterName(safeChapterNum, script);
-    const titleColor = Color.fromARGB(255, 4, 123, 192);
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final lineColor = titleColor.withValues(alpha: isLight ? 0.4 : 0.55);
+    // Deep navy on light lavender; warm gold on dark — both read as a title.
+    final titleColor = isLight
+        ? const Color(0xFF0B1F4A)
+        : const Color(0xFFFFD54F);
+    final lineColor = titleColor.withValues(alpha: isLight ? 0.55 : 0.65);
+    final titleSize = (fontSize * 1.28).clamp(22.0, 34.0);
 
     return Padding(
       // Match speaker insets; clear seek-rail glass lane on the right.
-      padding: const EdgeInsets.fromLTRB(16, 20, 56, 10),
+      padding: const EdgeInsets.fromLTRB(16, 24, 56, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: SizedBox(
-              height: 14,
+              height: 16,
               child: Transform.flip(
                 flipX: true,
                 child: CustomPaint(
@@ -1852,28 +1856,28 @@ class _ChapterStartHeader extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: fontSize * 0.35),
+            padding: EdgeInsets.symmetric(horizontal: fontSize * 0.4),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.55,
+                maxWidth: MediaQuery.sizeOf(context).width * 0.62,
               ),
               child: Text(
                 '$chapterLabel $localNum $chapterName',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'NotoSerif',
-                  fontSize: fontSize + 2,
-                  fontWeight: FontWeight.w700,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w800,
                   color: titleColor,
-                  letterSpacing: 0.4,
-                  height: 1.25,
+                  letterSpacing: 0.8,
+                  height: 1.3,
                 ),
               ),
             ),
           ),
           Expanded(
             child: SizedBox(
-              height: 14,
+              height: 16,
               child: CustomPaint(
                 painter: _SpeakerFlourishPainter(color: lineColor),
               ),
