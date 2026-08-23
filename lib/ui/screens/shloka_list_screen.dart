@@ -33,6 +33,7 @@ import '../widgets/responsive_wrapper.dart';
 import '../theme/app_colors.dart';
 import '../widgets/spotlight_help_overlay.dart';
 import '../widgets/reminder_pitch.dart';
+import 'book_reading_screen.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -75,12 +76,19 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   bool _showHelpGuide = false;
   Timer? _helpGuideTimer;
   int? _helpVerseIndex;
-  final GlobalKey _headerIslandHelpKey =
-      GlobalKey(debugLabel: 'chapterHeaderIsland');
+  final GlobalKey _chapterTitleBarKey =
+      GlobalKey(debugLabel: 'chapterTitleBar');
   final GlobalKey _fontSizeHelpKey = GlobalKey(debugLabel: 'chapterFontSize');
   final GlobalKey _bookModeHelpKey = GlobalKey(debugLabel: 'chapterBookMode');
   final GlobalKey _helpVerseActionsKey =
       GlobalKey(debugLabel: 'chapterVerseActions');
+
+  /// Commentary book vs verse-card list (chapter view only).
+  bool _isBookMode = false;
+  bool _fontDockExpanded = true;
+  Timer? _fontDockIdleTimer;
+  Timer? _fontDockTuckTimer;
+  bool _fontDockScrollActive = false;
 
   @override
   void initState() {
@@ -106,6 +114,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     // ✨ FIX: Get the provider once and store it.
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _audioProvider?.addListener(_handleAudioChange);
+    _scrollController.addListener(_onChapterScrollForFontDock);
     _scheduleHelpGuide();
     final isChapter =
         int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
@@ -130,11 +139,46 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   @override
   void dispose() {
     _helpGuideTimer?.cancel();
+    _fontDockIdleTimer?.cancel();
+    _fontDockTuckTimer?.cancel();
+    _scrollController.removeListener(_onChapterScrollForFontDock);
     // ✨ FIX: Use the stored provider instance for safe cleanup.
     _audioProvider?.removeListener(_handleAudioChange);
     _shlokaProvider.dispose(); // Dispose the provider we created.
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onChapterScrollForFontDock() {
+    if (_isBookMode) return;
+    if (!_fontDockScrollActive) {
+      _fontDockScrollActive = true;
+      _fontDockTuckTimer?.cancel();
+      _fontDockTuckTimer = Timer(const Duration(milliseconds: 1800), () {
+        if (!mounted || _isBookMode) return;
+        if (_fontDockExpanded) {
+          setState(() => _fontDockExpanded = false);
+        }
+      });
+    }
+    _fontDockIdleTimer?.cancel();
+    _fontDockIdleTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      _fontDockScrollActive = false;
+      _fontDockTuckTimer?.cancel();
+      if (!_fontDockExpanded) {
+        setState(() => _fontDockExpanded = true);
+      }
+    });
+  }
+
+  void _revealFontDockNow() {
+    _fontDockTuckTimer?.cancel();
+    _fontDockIdleTimer?.cancel();
+    _fontDockScrollActive = false;
+    if (!_fontDockExpanded) {
+      setState(() => _fontDockExpanded = true);
+    }
   }
 
   Future<void> _scheduleHelpGuide() async {
@@ -219,7 +263,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   }
 
   List<SpotlightHelpStep> _chapterHelpSteps() {
-    final island = _helpRectOf(_headerIslandHelpKey);
+    final titleBar = _helpRectOf(_chapterTitleBarKey);
     final font = _helpRectOf(_fontSizeHelpKey);
     final book = _helpRectOf(_bookModeHelpKey);
     final actionsRow = _helpRectOf(_helpVerseActionsKey);
@@ -234,25 +278,24 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       SpotlightHelpStep(
         title: 'Size & commentary',
         body:
-            'Use − / + to change text size.\n\n'
-            'Commentry Book opens the chapter as a running commentary.',
+            'The font dock peeks from the left — use − / + for text size.\n\n'
+            'Tap the Book button to switch into continuous commentary reading.',
         globalHoles: [
-          if (island != null) island else ...[
-            if (font != null) font,
-            if (book != null) book,
-          ],
+          if (titleBar != null) titleBar,
+          if (font != null) font,
+          if (book != null) book,
         ],
         callouts: [
           if (font != null)
             SpotlightCallout(
               globalTarget: font.center,
               label: 'Size',
-              arrow: SpotlightArrow.down,
+              arrow: SpotlightArrow.right,
             ),
           if (book != null)
             SpotlightCallout(
               globalTarget: book.center,
-              label: 'Book',
+              label: 'Book / Verses',
               arrow: SpotlightArrow.down,
             ),
         ],
@@ -408,10 +451,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       widget.searchQuery.split(',').first.trim(),
     );
 
-    // --- NEW: Constants for font size control ---
-    const double minFontSize = 16.0;
-    const double maxFontSize = 32.0;
-    const double fontStep = 2.0;
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
     // Use .value to provide the existing instance created in initState.
@@ -617,6 +656,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           }
                         }
                       });
+
+                      if (chapterNumber != null && _isBookMode) {
+                        return BookReadingScreen(
+                          key: ValueKey('book_$chapterNumber'),
+                          chapterNumber: chapterNumber,
+                          initialShlokaNo: widget.initialShlokaNo,
+                          embedded: true,
+                        );
+                      }
+
                       return CustomScrollView(
                         controller: _scrollController,
                         slivers: [
@@ -629,48 +678,21 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                     20,
                               ),
                             ),
-                          if (chapterNumber != null)
-                            SliverPersistentHeader(
-                              pinned: true,
-                              delegate: _AnimatingHeaderDelegate(
-                                chapterNumber: chapterNumber,
-                                title: title, // Use localized title
-                                // REMOVED: Playback Mode Params
-                                currentFontSize: settingsProvider.fontSize,
-                                onFontSizeIncrement: () {
-                                  if (settingsProvider.fontSize < maxFontSize) {
-                                    settingsProvider.setFontSize(
-                                      settingsProvider.fontSize + fontStep,
-                                    );
-                                  }
-                                },
-                                onFontSizeDecrement: () {
-                                  if (settingsProvider.fontSize > minFontSize) {
-                                    settingsProvider.setFontSize(
-                                      settingsProvider.fontSize - fontStep,
-                                    );
-                                  }
-                                },
-                                minExtent:
-                                    MediaQuery.of(context).padding.top +
-                                    kToolbarHeight +
-                                    100, // Tightened to reduce top margin while fitting 3 rows
-                                // Further increase maxExtent to ensure title and switches are visible initially
-                                maxExtent:
-                                    MediaQuery.of(context).padding.top + 350,
-                                showBackButton: _shouldShowBackButton(context),
-                                onBack: () => _handleBack(context),
-                                delayEmblem: widget.delayEmblem,
-                                islandKey: _headerIslandHelpKey,
-                                fontSizeKey: _fontSizeHelpKey,
-                                bookModeKey: _bookModeHelpKey,
+                          if (chapterNumber != null) ...[
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height:
+                                    MediaQuery.of(context).padding.top + 64,
                               ),
                             ),
-                          // Add some spacing between the header and the first card for chapter views
-                          if (chapterNumber != null)
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 100),
+                            SliverToBoxAdapter(
+                              child: Center(
+                                child: _ChapterEmblemHeader(
+                                  chapterNumber: chapterNumber,
+                                ),
+                              ),
                             ),
+                          ],
                           SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => Container(
@@ -707,7 +729,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                             ),
                           ),
                           const SliverPadding(
-                            padding: EdgeInsets.only(bottom: 20),
+                            padding: EdgeInsets.only(bottom: 88),
                           ),
                         ],
                       );
@@ -717,6 +739,57 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
               ],
             ),
           ),
+              // Chapter chrome — Parayan-inspired left-peek title + mode toggle
+              if (chapterNumber != null) ...[
+                Positioned(
+                  left: MediaQuery.of(context).padding.left,
+                  top: MediaQuery.of(context).padding.top + 6,
+                  right: 12,
+                  child: IgnorePointer(
+                    ignoring: _showHelpGuide,
+                    child: _ChapterPeekTitleBar(
+                      key: _chapterTitleBarKey,
+                      title: title,
+                      showBack: _shouldShowBackButton(context),
+                      onBack: () => _handleBack(context),
+                      isBookMode: _isBookMode,
+                      bookModeKey: _bookModeHelpKey,
+                      onToggleMode: () {
+                        setState(() => _isBookMode = !_isBookMode);
+                        if (!_isBookMode) {
+                          _revealFontDockNow();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                if (!_isBookMode)
+                  Consumer<AudioProvider>(
+                    builder: (context, audio, _) {
+                      final miniPlayerVisible =
+                          audio.playbackState != PlaybackState.stopped &&
+                          audio.currentPlayingShlokaId != null;
+                      final bottomSafe =
+                          MediaQuery.of(context).padding.bottom;
+                      return Positioned(
+                        left: MediaQuery.of(context).padding.left,
+                        bottom: miniPlayerVisible
+                            ? 96 + bottomSafe
+                            : 12 + bottomSafe,
+                        child: IgnorePointer(
+                          ignoring: _showHelpGuide,
+                          child: _ChapterFontSizeDock(
+                            sizeClusterKey: _fontSizeHelpKey,
+                            expanded: _fontDockExpanded,
+                            onPeekTap: _revealFontDockNow,
+                            currentSize: settingsProvider.fontSize,
+                            onSizeChanged: settingsProvider.setFontSize,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
               if (_showHelpGuide)
                 Positioned.fill(
                   child: SpotlightHelpOverlay(
@@ -746,6 +819,266 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   );
 }
 
+class _ChapterPeekTitleBar extends StatelessWidget {
+  final String title;
+  final bool showBack;
+  final VoidCallback onBack;
+  final bool isBookMode;
+  final Key? bookModeKey;
+  final VoidCallback onToggleMode;
+
+  const _ChapterPeekTitleBar({
+    super.key,
+    required this.title,
+    required this.showBack,
+    required this.onBack,
+    required this.isBookMode,
+    required this.onToggleMode,
+    this.bookModeKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final fg = isLight ? const Color(0xFF0B1F4A) : Colors.white;
+    // Opaque fill — BackdropFilter was picking up gold emblems and reading as
+    // a yellow glow / false underlines behind the title.
+    final glass = isLight ? const Color(0xFFF7F4EE) : const Color(0xFF2A2A2A);
+
+    return Row(
+      children: [
+        Flexible(
+          child: Material(
+            color: glass,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.horizontal(
+                right: Radius.circular(22),
+              ),
+              side: BorderSide(color: Color(0x14000000), width: 1),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              height: 48,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: showBack ? 4 : 14,
+                  right: 14,
+                ),
+                child: Row(
+                  children: [
+                    if (showBack)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: fg,
+                          overlayColor: Colors.black.withValues(alpha: 0.06),
+                        ),
+                        icon: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 18,
+                          color: fg,
+                        ),
+                        onPressed: onBack,
+                      ),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'NotoSerif',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: fg,
+                          height: 1.15,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        KeyedSubtree(
+          key: bookModeKey,
+          child: _ChapterModeToggleButton(
+            isBookMode: isBookMode,
+            onTap: onToggleMode,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Prominent pill that flips between verse-list and commentary-book modes.
+class _ChapterModeToggleButton extends StatelessWidget {
+  final bool isBookMode;
+  final VoidCallback onTap;
+
+  const _ChapterModeToggleButton({
+    required this.isBookMode,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final bg = isBookMode
+        ? (isLight ? const Color(0xFF0B1F4A) : const Color(0xFFFFD54F))
+        : (isLight ? const Color(0xFFE65100) : const Color(0xFFFF8A65));
+    final fg = isBookMode
+        ? (isLight ? Colors.white : const Color(0xFF1A1200))
+        : Colors.white;
+    const radius = BorderRadius.all(Radius.circular(24));
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            bg,
+            Color.lerp(bg, Colors.black, 0.18)!,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: bg.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          overlayColor: WidgetStatePropertyAll(
+            Colors.white.withValues(alpha: 0.12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isBookMode
+                      ? Icons.view_agenda_rounded
+                      : Icons.menu_book_rounded,
+                  size: 18,
+                  color: fg,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isBookMode ? 'Verses' : 'Book',
+                  style: TextStyle(
+                    fontFamily: 'NotoSerif',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                    color: fg,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterFontSizeDock extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback? onPeekTap;
+  final double currentSize;
+  final ValueChanged<double> onSizeChanged;
+  final Key? sizeClusterKey;
+
+  const _ChapterFontSizeDock({
+    required this.expanded,
+    required this.currentSize,
+    required this.onSizeChanged,
+    this.onPeekTap,
+    this.sizeClusterKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor =
+        Theme.of(context).iconTheme.color ??
+        (isLight ? Colors.black87 : Colors.white);
+    final glass = isLight ? const Color(0xFFF7F4EE) : const Color(0xFF2A2A2A);
+
+    final dock = Material(
+      color: glass,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.horizontal(
+          right: Radius.circular(22),
+        ),
+        side: BorderSide(
+          color: isLight
+              ? Colors.black.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            iconButtonTheme: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                foregroundColor: iconColor,
+                disabledForegroundColor: iconColor.withValues(alpha: 0.35),
+                overlayColor: Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          child: KeyedSubtree(
+            key: sizeClusterKey,
+            child: FontSizeControl(
+              currentSize: currentSize,
+              onSizeChanged: onSizeChanged,
+              color: iconColor,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 320),
+      curve: expanded ? Curves.easeOutCubic : Curves.easeInCubic,
+      offset: expanded ? Offset.zero : const Offset(-0.84, 0),
+      child: GestureDetector(
+        onTap: expanded ? null : onPeekTap,
+        behavior: HitTestBehavior.opaque,
+        child: dock,
+      ),
+    );
+  }
+}
+
 class _ChapterEmblemHeader extends StatelessWidget {
   final int chapterNumber;
   const _ChapterEmblemHeader({required this.chapterNumber});
@@ -757,8 +1090,8 @@ class _ChapterEmblemHeader extends StatelessWidget {
       child: Hero(
         tag: 'chapterEmblem_$chapterNumber',
         child: Container(
-          width: 160,
-          height: 160,
+          width: 110,
+          height: 110,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -796,430 +1129,6 @@ class _ChapterEmblemHeader extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _AnimatingHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final int chapterNumber;
-  final String title;
-  // REMOVED: playbackMode, onPlaybackModePressed
-  final double currentFontSize;
-  final VoidCallback onFontSizeIncrement;
-  final VoidCallback onFontSizeDecrement;
-  final double minExtent;
-  @override
-  final double maxExtent;
-  final bool showBackButton; // ✨ NEW parameter
-  final VoidCallback? onBack;
-  final bool delayEmblem;
-  final Key? islandKey;
-  final Key? fontSizeKey;
-  final Key? bookModeKey;
-
-  _AnimatingHeaderDelegate({
-    required this.chapterNumber,
-    required this.title,
-    required this.currentFontSize,
-    required this.onFontSizeIncrement,
-    required this.onFontSizeDecrement,
-    required this.minExtent,
-    required this.maxExtent,
-    required this.showBackButton,
-    this.onBack,
-    required this.delayEmblem,
-    this.islandKey,
-    this.fontSizeKey,
-    this.bookModeKey,
-  });
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final paddingTop = MediaQuery.of(context).padding.top;
-    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-
-    // ✨ Wrap in LayoutBuilder to get correct width for centering
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-
-        // Emblem properties
-        const double maxSize = 160.0;
-        const double minSize = 50.0; // Larger for the side-by-side view
-        final double currentSize = lerpDouble(maxSize, minSize, t)!;
-        // final double currentRadius = lerpDouble(16.0, minSize / 2, t)!; // Unused
-
-        // Emblem position
-        final double maxLeft = (width - maxSize) / 2;
-
-        // Target Left Logic:
-        // The Button Island is centered with constraints (maxWidth: 700).
-        // It has a horizontal margin of 16 on both sides.
-        // So visually: ScreenEdge -> Margin(16) -> FlexibleSpace -> Island -> FlexibleSpace -> Margin(16).
-        // Actually the margin is on the Container inside Center.
-        // Island Width = (width - 32).clamp(300.0, 700.0);
-        // Island Left Offset = (width - Island Width) / 2;
-        // Inside Island: Padding(horizontal: 16).
-        // Target Emblem Left = Island Left Offset + 16.
-        final double islandWidth = (width - 32.0).clamp(300.0, 700.0);
-        final double islandLeftOffset = (width - islandWidth) / 2;
-        // Target Emblem Left calculation:
-        // Island padding (16) + (Back Button Width (20) + Gap (8) IF shown).
-        final double backButtonOffset = showBackButton ? (20.0 + 8.0) : 0.0;
-        final double minLeft = islandLeftOffset + 16.0 + backButtonOffset;
-
-        final double currentLeft = lerpDouble(maxLeft, minLeft, t)!;
-
-        // Calculate minTop to align with the center of the Button Island
-        // Island is at bottom 16.
-        // Island Content Height: Title(24) + Gap(8) + Controls(48) = 80.
-        // Island Vertical Padding: 12*2 = 24.
-        // Total Height = 104 + 16 (bottom) = 120.
-        // Top of Island = minExtent - 120.
-        // Top of Row = minExtent - 108.
-        // Center of Row = minExtent - 68.
-        // Emblem Top = minExtent - 68 - 25 = minExtent - 93.
-        // Island Bottom (16) + Height (~124)/2 = Center Y from bottom (78).
-        // Emblem Top from bottom = 78 + 25 = 103.
-        // minTop = minExtent - 103.
-        final double minTop = minExtent - 103;
-        final double maxTop = paddingTop + 20; // Start near the top
-
-        final double currentTop = lerpDouble(maxTop, minTop, t)!;
-
-        return Container(
-          // ✨ FIX: Animate the background color to become less transparent as it collapses.
-          color: Colors.transparent,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned(
-                top: paddingTop,
-                right: 0,
-                height: kToolbarHeight,
-                child:
-                    Container(), // This space is now empty, actions are moved below
-              ),
-
-              // --- NEW: Button Island ---
-              Positioned(
-                bottom: 16, // Float near bottom
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    key: islandKey,
-                    // width:  constraints.maxWidth * 0.9, // Constrain width or let it hug content
-                    constraints: BoxConstraints(maxWidth: 700, minWidth: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? Colors.white.withOpacity(0.4)
-                          : Colors.black.withOpacity(
-                              0.6,
-                            ), // Semi-transparent for glass effect
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? Colors.white.withOpacity(0.4)
-                            : Colors.white12,
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 16,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: 16,
-                          sigmaY: 16,
-                        ), // Stronger blur
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 12.0,
-                          ),
-                          child: Row(
-                            // Main Layout: Left Image, Right Content
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // 1. Back Button & Docked Emblem Group
-                              GestureDetector(
-                                onTap: showBackButton ? onBack : null,
-                                behavior: HitTestBehavior.opaque,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (showBackButton) ...[
-                                      const Icon(
-                                        Icons.arrow_back_ios_new,
-                                        size: 20,
-                                        // color: Colors.black87, // Removed hardcoded color
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (t > 0.95)
-                                      Hero(
-                                        tag: 'chapterEmblem_$chapterNumber',
-                                        child: _buildEmblemContent(
-                                          minSize,
-                                          1.0,
-                                        ),
-                                      )
-                                    else
-                                      const SizedBox(width: 50, height: 50),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(width: 16),
-
-                              // 2. Right Content (Title + Controls Lines)
-                              Expanded(
-                                child: SizedBox(
-                                  height: 110, // Increased height for 3 rows
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Line 1: Title
-                                      SizedBox(
-                                        height: 20, // Compact title slot
-                                        child: Center(
-                                          child: Text(
-                                            title,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.color,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize:
-                                                      15, // Slightly smaller
-                                                  height: 1.2,
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 4),
-
-                                      // Line 2: Font Controls & Read Mode (Merged)
-                                      SizedBox(
-                                        height: 48,
-                                        child: LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            return FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  KeyedSubtree(
-                                                    key: fontSizeKey,
-                                                    child: FontSizeControl(
-                                                    currentSize:
-                                                        currentFontSize,
-                                                    onSizeChanged: (newSize) {
-                                                      if (newSize >
-                                                          currentFontSize) {
-                                                        onFontSizeIncrement();
-                                                      } else {
-                                                        onFontSizeDecrement();
-                                                      }
-                                                    },
-                                                    color:
-                                                        Theme.of(context)
-                                                            .textTheme
-                                                            .bodyMedium
-                                                            ?.color ??
-                                                        Colors.black87,
-                                                  ),
-                                                  ),
-
-                                                  const SizedBox(width: 8),
-                                                  _VerticalDivider(),
-                                                  const SizedBox(width: 8),
-
-                                                  KeyedSubtree(
-                                                    key: bookModeKey,
-                                                    child: FilledButton.icon(
-                                                    onPressed: () {
-                                                      context.push(
-                                                        '/book-reading/$chapterNumber',
-                                                      );
-                                                    },
-                                                    icon: const Icon(
-                                                      Icons.menu_book_rounded,
-                                                      size: 16,
-                                                    ),
-                                                    label: const Text(
-                                                      "Commentry Book",
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 13,
-                                                      ),
-                                                    ),
-                                                    style: FilledButton.styleFrom(
-                                                      backgroundColor:
-                                                          Colors.deepOrange,
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 8,
-                                                          ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // The animating emblem (Only visible during transition)
-              if (t <= 0.95)
-                Positioned(
-                  top: currentTop,
-                  left: currentLeft,
-                  child: delayEmblem
-                      ? TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 600),
-                          curve: const Interval(
-                            0.5,
-                            1.0,
-                            curve: Curves.easeIn,
-                          ), // Delay start
-                          builder: (context, value, child) {
-                            return Opacity(opacity: value, child: child);
-                          },
-                          child: _buildEmblemContent(currentSize, t),
-                        )
-                      : Hero(
-                          tag: 'chapterEmblem_$chapterNumber',
-                          child: _buildEmblemContent(currentSize, t),
-                        ),
-                ),
-
-              // ✨ FIX: Moved Back Button to the end of Stack to ensure it's on top
-              // Added some vertical spacing to avoid iPad multitasking controls
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEmblemContent(double currentSize, double t) {
-    return Container(
-      width: currentSize,
-      height: currentSize,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFFD700).withOpacity(0.6), // Gold tint
-          width: 2.5,
-        ),
-        gradient: RadialGradient(
-          colors: [
-            Colors.white.withOpacity(0.9),
-            Colors.amber.withOpacity(0.4),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.6, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            // Animate the glow properties
-            color: Colors.amber.withOpacity(lerpDouble(0.8, 0.7, t)!),
-            spreadRadius: lerpDouble(4, 2, t)!,
-            blurRadius: lerpDouble(15, 12, t)!,
-            offset: Offset.zero,
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          Colors.white.withOpacity(0.25),
-          BlendMode.screen,
-        ),
-        child: Image.asset(
-          'assets/emblems/chapter/ch${chapterNumber.toString().padLeft(2, '0')}.png',
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_AnimatingHeaderDelegate oldDelegate) {
-    return minExtent != oldDelegate.minExtent ||
-        maxExtent != oldDelegate.maxExtent ||
-        chapterNumber != oldDelegate.chapterNumber ||
-        title != oldDelegate.title ||
-        // playbackMode removed
-        currentFontSize != oldDelegate.currentFontSize ||
-        onFontSizeIncrement != oldDelegate.onFontSizeIncrement ||
-        onFontSizeDecrement != oldDelegate.onFontSizeDecrement ||
-        showBackButton != oldDelegate.showBackButton;
-  }
-}
-
-/// A reusable widget for switches in the collapsing header.
-
-class _VerticalDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 24,
-      width: 1,
-      color: Colors.grey.withOpacity(0.3),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
 }

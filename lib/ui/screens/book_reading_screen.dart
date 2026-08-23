@@ -16,11 +16,14 @@ import '../../data/static_data.dart';
 class BookReadingScreen extends StatefulWidget {
   final int chapterNumber;
   final int? initialShlokaNo;
+  /// When true, hide the AppBar — parent chrome (chapter title / mode toggle) owns navigation.
+  final bool embedded;
 
   const BookReadingScreen({
     super.key,
     required this.chapterNumber,
     this.initialShlokaNo,
+    this.embedded = false,
   });
 
   @override
@@ -270,7 +273,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
+      appBar: widget.embedded
+          ? null
+          : AppBar(
         toolbarHeight: 100,
         leading: BackButton(
           onPressed: () {
@@ -351,13 +356,78 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         ],
       ),
       body: SafeArea(
+        top: !widget.embedded,
         left: true,
         right: true,
         bottom:
             false, // Let the list handle bottom padding if needed, or keep true. Usually false for lists with bottom padding.
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : RepaintBoundary(
+            : Column(
+                children: [
+                  if (widget.embedded) ...[
+                    SizedBox(
+                      height: MediaQuery.paddingOf(context).top + 56,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Row(
+                        children: [
+                          if (_availableAuthors.isNotEmpty)
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.style, color: textColor),
+                              tooltip: 'Select Commentary',
+                              initialValue: _selectedAuthor,
+                              onSelected: (value) =>
+                                  setState(() => _selectedAuthor = value),
+                              itemBuilder: (context) {
+                                return _availableAuthors.map((author) {
+                                  return PopupMenuItem(
+                                    value: author,
+                                    child: Text(
+                                      author,
+                                      style: GoogleFonts.notoSerif(),
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          IconButton(
+                            icon: Icon(
+                              isDark
+                                  ? Icons.light_mode_outlined
+                                  : Icons.dark_mode,
+                              color: textColor,
+                            ),
+                            tooltip: 'Toggle Reading Mode',
+                            onPressed: () => setState(
+                              () => _isNightModeOverride = !isDark,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.apps, color: textColor),
+                            tooltip: 'Jump to Shloka',
+                            onPressed: _showJumpToShlokaSheet,
+                          ),
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              'Commentary by $_selectedAuthor',
+                              style: GoogleFonts.notoSerif(
+                                fontSize: 11,
+                                color: textColor.withOpacity(0.55),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  Expanded(
+                    child: RepaintBoundary(
                 child: ScrollablePositionedList.separated(
                   itemScrollController: _itemScrollController,
                   itemPositionsListener: _itemPositionsListener,
@@ -508,6 +578,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                     );
                   },
                 ),
+              ),
+                  ),
+                ],
               ),
       ),
     );

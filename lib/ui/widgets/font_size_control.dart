@@ -46,6 +46,7 @@ class FontSizeControl extends StatelessWidget {
               color: textColor,
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              decoration: TextDecoration.none,
             ),
           ),
         ),
