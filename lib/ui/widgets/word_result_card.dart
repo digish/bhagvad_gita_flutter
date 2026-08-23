@@ -80,8 +80,8 @@ class WordResultCard extends StatelessWidget {
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 20,
+                    vertical: 16,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,16 +89,21 @@ class WordResultCard extends StatelessWidget {
                       Text(
                         word.word,
                         style: theme.textTheme.titleMedium?.copyWith(
+                          fontFamily: 'NotoSerif',
+                          fontSize: 20,
                           color: titleColor,
                           fontWeight: FontWeight.w700,
+                          height: 1.3,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         word.definition,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontFamily: 'NotoSerif',
                           color: textColor,
-                          fontSize: 14,
+                          fontSize: 17,
+                          height: 1.5,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

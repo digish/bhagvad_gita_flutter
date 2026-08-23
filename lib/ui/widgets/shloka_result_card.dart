@@ -228,8 +228,8 @@ class ShlokaResultCard extends StatelessWidget {
                 },
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: isCompact ? 10 : 14,
+                    horizontal: isCompact ? 16 : 20,
+                    vertical: isCompact ? 12 : 18,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,19 +239,22 @@ class ShlokaResultCard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Chapter ${shloka.chapterNo}, Shloka ${shloka.shlokNo}',
-                          style: theme.textTheme.labelMedium?.copyWith(
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontSize: isCompact ? 14 : 15,
                             fontWeight: FontWeight.w700,
                             color: titleColor,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.4,
+                            height: 1.2,
                           ),
                         ),
                       ),
-                      SizedBox(height: isCompact ? 4 : 8),
+                      SizedBox(height: isCompact ? 8 : 12),
                       RichText(
                         text: TextSpan(
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontSize: isCompact ? 14 : 15,
-                            height: 1.5,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontFamily: 'NotoSerif',
+                            fontSize: isCompact ? 17 : 19,
+                            height: 1.65,
                             fontWeight: FontWeight.w400,
                             color: textColor,
                           ),

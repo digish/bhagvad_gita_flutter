@@ -918,8 +918,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                   : Colors.amber.withOpacity(
                                                       0.8,
                                                     ),
-                                              fontSize: 12,
-                                              letterSpacing: 1.8,
+                                              fontSize: 14,
+                                              letterSpacing: 1.6,
                                               fontWeight: FontWeight.w800,
                                             ),
                                           ),
