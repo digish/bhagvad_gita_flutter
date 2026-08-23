@@ -223,7 +223,7 @@ class DecorativeForeground extends StatelessWidget {
             ),
           ),
 
-          // "Credits" Spinner
+          // "Krutagyata" (Credits) Spinner
           Positioned(
             top: 65,
             right: MediaQuery.of(context).size.width * 0.15,
@@ -238,7 +238,33 @@ class DecorativeForeground extends StatelessWidget {
                   onTap: () => context.push(AppRoutes.credits),
                   size: lotusSize,
                 ),
-                child: const SizedBox.shrink(),
+                child: SizedBox(
+                  width: ringDimension,
+                  height: ringDimension,
+                  child: Center(
+                    child: Transform.translate(
+                      offset: const Offset(0, 55),
+                      child: Text(
+                        StaticData.localizeTerm(
+                          'krutagyata',
+                          Provider.of<SettingsProvider>(context).script,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFD700),
+                          shadows: [
+                            Shadow(
+                              blurRadius: 2,
+                              color: Colors.black,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

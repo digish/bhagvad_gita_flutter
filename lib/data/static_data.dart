@@ -226,6 +226,17 @@ class StaticData {
       'ta': 'அத்தியாயம்',
       'kn': 'ಅಧ್ಯಾಯ',
     },
+    'krutagyata': {
+      'en': 'Gratitude',
+      'gu': 'કૃતજ્ઞતા',
+      'dev': 'कृतज्ञता',
+      'hi': 'कृतज्ञता',
+      'mr': 'कृतज्ञता',
+      'bn': 'কৃতজ্ঞতা',
+      'te': 'కృతజ్ఞత',
+      'ta': 'கிருதஜ்ஞதா',
+      'kn': 'ಕೃತಜ್ಞತೆ',
+    },
   };
 
   static String localizeTerm(String term, String script) {

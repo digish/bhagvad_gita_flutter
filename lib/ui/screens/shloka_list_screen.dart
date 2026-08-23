@@ -85,6 +85,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   /// Commentary book vs verse-card list (chapter view only).
   bool _isBookMode = false;
+  /// Chapter list: which verse has Anvay/Bhavarth expanded (null = all collapsed).
+  int? _expandedVerseIndex;
 
   @override
   void initState() {
@@ -129,6 +131,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     if (widget.showHelp && !oldWidget.showHelp) {
       _scheduleHelpGuide();
     }
+    if (widget.searchQuery != oldWidget.searchQuery) {
+      _expandedVerseIndex = null;
+    }
   }
 
   @override
@@ -168,6 +173,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
         // Mid-chapter verse so the card spotlight isn't stuck on the first row.
         final mid = count ~/ 2;
         _helpVerseIndex = mid;
+        // Expand so the action island exists for the help spotlight.
+        _expandedVerseIndex = mid;
         if (mounted) setState(() {});
         await _scrollToIndex(mid, awaitVisible: true);
         if (!mounted) return;
@@ -655,36 +662,62 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           ],
                           SliverList(
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) => Container(
-                                key: _itemKeys[index],
-                                child: ResponsiveWrapper(
-                                  child: FullShlokaCard(
-                                    shloka: shlokas[index],
-                                    config: _cardConfig.copyWith(
-                                      baseFontSize: settingsProvider.fontSize,
-                                      isLightTheme:
-                                          Theme.of(context).brightness ==
-                                          Brightness.light,
-                                      helpActionsRowKey:
-                                          index == _helpVerseIndex
-                                          ? _helpVerseActionsKey
+                              (context, index) {
+                                final isChapter = chapterNumber != null;
+                                final meaningsOpen =
+                                    !isChapter ||
+                                    _expandedVerseIndex == index;
+                                return Container(
+                                  key: _itemKeys[index],
+                                  child: ResponsiveWrapper(
+                                    child: FullShlokaCard(
+                                      shloka: shlokas[index],
+                                      config: _cardConfig.copyWith(
+                                        baseFontSize:
+                                            settingsProvider.fontSize,
+                                        isLightTheme:
+                                            Theme.of(context).brightness ==
+                                            Brightness.light,
+                                        showEmblem: !isChapter,
+                                        showSeparator: isChapter
+                                            ? meaningsOpen
+                                            : true,
+                                        showAnvay: meaningsOpen,
+                                        showBhavarth: meaningsOpen,
+                                        showActions: meaningsOpen,
+                                        spacingCompact: isChapter,
+                                        showMeaningsHint:
+                                            isChapter && !meaningsOpen,
+                                        helpActionsRowKey:
+                                            index == _helpVerseIndex
+                                            ? _helpVerseActionsKey
+                                            : null,
+                                      ),
+                                      currentlyPlayingId: _currentShlokId,
+                                      onTap: isChapter
+                                          ? () {
+                                              setState(() {
+                                                _expandedVerseIndex =
+                                                    _expandedVerseIndex ==
+                                                        index
+                                                    ? null
+                                                    : index;
+                                              });
+                                            }
                                           : null,
+                                      onPlayPause: () {
+                                        Provider.of<AudioProvider>(
+                                          context,
+                                          listen: false,
+                                        ).playChapter(
+                                          shlokas: shlokas,
+                                          initialIndex: index,
+                                        );
+                                      },
                                     ),
-                                    currentlyPlayingId: _currentShlokId,
-                                    onPlayPause: () {
-                                      // Call playChapter to start the playlist from this index.
-                                      // This ensures background playback works via ConcatenatingAudioSource.
-                                      Provider.of<AudioProvider>(
-                                        context,
-                                        listen: false,
-                                      ).playChapter(
-                                        shlokas: shlokas,
-                                        initialIndex: index,
-                                      );
-                                    },
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                               childCount: shlokas.length,
                             ),
                           ),

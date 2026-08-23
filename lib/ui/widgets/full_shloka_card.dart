@@ -643,7 +643,7 @@ class FullShlokaCard extends StatelessWidget {
                               ),
 
                           if (config.showActions)
-                            SizedBox(height: continuous ? 10 : 16),
+                            SizedBox(height: continuous ? 10 : (config.spacingCompact ? 8 : 16)),
 
                           // 4. Action Row (Bottom)
                           if (config.showActions)
@@ -767,31 +767,71 @@ class FullShlokaCard extends StatelessWidget {
                     );
                   },
                 ),
+                if (!continuous && config.showMeaningsHint) ...[
+                  SizedBox(height: config.spacingCompact ? 4 : 8),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${StaticData.localizeTerm('anvay', Provider.of<SettingsProvider>(context).script)}'
+                          ' · '
+                          '${StaticData.localizeTerm('tika', Provider.of<SettingsProvider>(context).script)}',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: accentColor.withValues(alpha: 0.75),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.expand_more_rounded,
+                          size: 18,
+                          color: accentColor.withValues(alpha: 0.75),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (!continuous &&
                     (config.showAnvay || config.showBhavarth))
                   SizedBox(height: config.spacingCompact ? 5 : 10),
 
                 if (!continuous) ...[
                   if (config.showSeparator)
-                    Center(
-                      child: SizedBox(
-                        width: 150,
-                        child: isLightTheme
-                            ? ColorFiltered(
-                                colorFilter: ColorFilter.mode(
-                                  Colors.grey[700]!,
-                                  BlendMode.srcIn,
-                                ),
-                                child: Image.asset(
-                                  'assets/images/line_seperator.png',
-                                ),
-                              )
-                            : Image.asset('assets/images/line_seperator.png'),
-                      ),
-                    ),
+                    config.spacingCompact
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 2,
+                            ),
+                            child: Divider(
+                              height: 1,
+                              thickness: 0.8,
+                              color: accentColor.withValues(alpha: 0.35),
+                            ),
+                          )
+                        : Center(
+                            child: SizedBox(
+                              width: 150,
+                              child: isLightTheme
+                                  ? ColorFiltered(
+                                      colorFilter: ColorFilter.mode(
+                                        Colors.grey[700]!,
+                                        BlendMode.srcIn,
+                                      ),
+                                      child: Image.asset(
+                                        'assets/images/line_seperator.png',
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      'assets/images/line_seperator.png',
+                                    ),
+                            ),
+                          ),
                   if (config.showSeparator)
                     config.spacingCompact
-                        ? const SizedBox(height: 5)
+                        ? const SizedBox(height: 6)
                         : const SizedBox(height: 10),
                   if (config.showAnvay && shloka.anvay.isNotEmpty) ...[
                     Center(
@@ -848,7 +888,9 @@ class FullShlokaCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    config.spacingCompact
+                        ? const SizedBox(height: 4)
+                        : const SizedBox(height: 8),
                     Text(
                       shloka.bhavarth,
                       style: TextStyle(
@@ -1048,6 +1090,8 @@ class FullShlokaCard extends StatelessWidget {
             Padding(
               padding: config.continuousReading
                   ? const EdgeInsets.fromLTRB(8, 4, 8, 2)
+                  : config.spacingCompact
+                  ? const EdgeInsets.fromLTRB(12, 4, 12, 10)
                   : const EdgeInsets.fromLTRB(16, 8, 16, 32),
               // Pass the audio state down to the content builder
               child: GestureDetector(
@@ -1401,6 +1445,8 @@ class FullShlokaCardConfig {
   final bool isLightTheme;
   final double baseFontSize;
   final bool showActions;
+  /// Chapter list: show Anvay · Tika expand affordance when meanings are collapsed.
+  final bool showMeaningsHint;
   /// Parayan continuous reading: no card chrome unless focused.
   final bool continuousReading;
   /// Collapsed Parayan list primary body (one-item layout).
@@ -1424,6 +1470,7 @@ class FullShlokaCardConfig {
     this.isLightTheme = false,
     this.baseFontSize = 20.0,
     this.showActions = true,
+    this.showMeaningsHint = false,
     this.continuousReading = false,
     this.listBodyMode = ContinuousListBody.shloka,
     this.layoutCount = ParayanLayoutCount.one,
@@ -1495,6 +1542,7 @@ class FullShlokaCardConfig {
     bool? isLightTheme,
     double? baseFontSize,
     bool? showActions,
+    bool? showMeaningsHint,
     bool? continuousReading,
     ContinuousListBody? listBodyMode,
     ParayanLayoutCount? layoutCount,
@@ -1513,6 +1561,7 @@ class FullShlokaCardConfig {
       isLightTheme: isLightTheme ?? this.isLightTheme,
       baseFontSize: baseFontSize ?? this.baseFontSize,
       showActions: showActions ?? this.showActions,
+      showMeaningsHint: showMeaningsHint ?? this.showMeaningsHint,
       continuousReading: continuousReading ?? this.continuousReading,
       listBodyMode: listBodyMode ?? this.listBodyMode,
       layoutCount: layoutCount ?? this.layoutCount,
