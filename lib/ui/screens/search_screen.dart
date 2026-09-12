@@ -2039,6 +2039,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   double _homeHeaderOrnamentSize(bool isTablet) => isTablet ? 120.0 : 80.0;
 
+  /// Visible height of the bookmark band after [-90°] rotation (asset is 319×912).
+  static const double _bookmarkAssetWidth = 319;
+  static const double _bookmarkAssetHeight = 912;
+
+  double _homeBookmarkBandHeight(bool isTablet) => isTablet ? 52.0 : 44.0;
+
+  double _homeBookmarkBandWidth(double bandHeight) =>
+      bandHeight * (_bookmarkAssetHeight / _bookmarkAssetWidth);
+
   Color _homeHeaderLabelColor(SettingsProvider settings) {
     final isSimpleLight =
         !settings.showBackground &&
@@ -2048,10 +2057,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   /// Vertical space for [_buildHomeHeaderActionsRow] (bookmark + optional streak).
   double _homeHeaderActionsRowHeight(bool isTablet) {
-    final innerSize = _homeHeaderOrnamentSize(isTablet);
-    const gapAndLabel = 6.0 + 11.0;
+    final streakSize = _homeHeaderOrnamentSize(isTablet);
+    final bookmarkBandHeight = _homeBookmarkBandHeight(isTablet);
+    const labelGap = 6.0;
+    const labelHeight = 11.0;
+    final bookmarkColumnHeight =
+        bookmarkBandHeight + labelGap + labelHeight;
     final bottomPad = isTablet ? 28.0 : 18.0;
-    return innerSize + gapAndLabel + bottomPad;
+    final streakColumnHeight = streakSize + labelGap + labelHeight;
+    return math.max(streakColumnHeight, bookmarkColumnHeight) + bottomPad;
   }
 
   Widget _buildHomeHeaderActionsRow(
@@ -2063,7 +2077,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     return Padding(
       padding: EdgeInsets.only(bottom: isTablet ? 28 : 18),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (showBookmark)
             Padding(
@@ -2094,7 +2108,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         width: innerSize,
         height: innerSize,
         child: Transform.rotate(
-          angle: 10 * math.pi / 180,
+          angle: -math.pi / 2,
           child: ColorFiltered(
             colorFilter: ColorFilter.matrix([
               brightnessScale, 0, 0, 0, brightnessOffset,
@@ -2114,8 +2128,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   }
 
   Widget _buildHomeBookmarkChip(SettingsProvider settings, bool isTablet) {
-    final double innerSize = _homeHeaderOrnamentSize(isTablet);
+    final double innerSize = _homeBookmarkOrnamentSize(isTablet);
     final textColor = _homeHeaderLabelColor(settings);
+    final labelSize = isTablet ? 15.0 : 14.0;
 
     return Semantics(
       button: true,
@@ -2127,15 +2142,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildHomeBookmarkOrnament(settings, innerSize),
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
             Text(
               'Collections',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: textColor,
-                fontSize: 11,
+                fontSize: labelSize,
                 fontWeight: FontWeight.w600,
-                height: 1.0,
+                height: 1.15,
               ),
             ),
           ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/ask_gita_history_entry.dart';
 import '../models/shloka_result.dart';
+import '../services/ask_gita_history_service.dart';
 import '../services/ask_gita_service.dart';
 import '../data/database_helper_mobile.dart'; // Or interface, assuming getInitializedDatabaseHelper is available
 import '../data/database_helper_interface.dart';
@@ -23,6 +25,7 @@ class ChatMessage {
 
 class AskGitaProvider extends ChangeNotifier {
   AskGitaService _service;
+  final AskGitaHistoryService _historyService;
   String? _currentApiKey;
   // bool _isQuotaReached = false;
   // VoidCallback? _onQuerySent;
@@ -35,9 +38,12 @@ class AskGitaProvider extends ChangeNotifier {
 
   DatabaseHelperInterface? _dbHelper;
 
-  AskGitaProvider(String apiKey)
-    : _service = AskGitaService(apiKey),
-      _currentApiKey = apiKey;
+  AskGitaProvider(
+    String apiKey, {
+    AskGitaHistoryService? historyService,
+  })  : _service = AskGitaService(apiKey),
+        _historyService = historyService ?? AskGitaHistoryService(),
+        _currentApiKey = apiKey;
 
   void updateStatus({required String apiKey}) {
     if (_currentApiKey == apiKey) return;
@@ -134,6 +140,21 @@ class AskGitaProvider extends ChangeNotifier {
         query: sanitized,
         referenceCount: results.length,
       );
+
+      if (fullResponse.trim().isNotEmpty) {
+        await _historyService.append(
+          AskGitaHistoryEntry(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            askedAtMs: DateTime.now().millisecondsSinceEpoch,
+            question: sanitized,
+            answer: fullResponse,
+            referenceIds: results.map((s) => s.id).toList(),
+            language: language,
+            script: script,
+            shlokaScript: shlokaScript,
+          ),
+        );
+      }
     } catch (e) {
       _messages.add(
         ChatMessage(
@@ -154,5 +175,22 @@ class AskGitaProvider extends ChangeNotifier {
   void clearChat() {
     _messages.clear();
     notifyListeners();
+  }
+
+  Future<List<AskGitaHistoryEntry>> getHistory() => _historyService.load();
+
+  Future<void> clearHistory() => _historyService.clearAll();
+
+  Future<List<ShlokaResult>> resolveHistoryReferences(
+    AskGitaHistoryEntry entry,
+  ) async {
+    if (entry.referenceIds.isEmpty || _dbHelper == null) return [];
+    final refs = entry.referenceIds.map((id) => {'id': id}).toList();
+    return _dbHelper!.getShlokasByReferences(
+      refs,
+      language: entry.language,
+      script: entry.script,
+      shlokaScript: entry.shlokaScript,
+    );
   }
 }

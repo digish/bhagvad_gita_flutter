@@ -7,6 +7,8 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import '../../models/ask_gita_history_entry.dart';
 import '../../providers/ask_gita_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/credit_provider.dart';
@@ -277,6 +279,38 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
     );
   }
 
+  Future<void> _openHistory() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (_, scrollController) => _AskGitaHistorySheet(
+          scrollController: scrollController,
+          onEntrySelected: (entry) {
+            Navigator.pop(sheetContext);
+            _openHistoryDetail(entry);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openHistoryDetail(AskGitaHistoryEntry entry) async {
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _AskGitaHistoryDetailPage(entry: entry),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AskGitaProvider>();
@@ -376,9 +410,14 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
               color: theme.appBarTheme.iconTheme?.color,
             ),
             IconButton(
+              icon: const Icon(Icons.history),
+              onPressed: _openHistory,
+              tooltip: 'Past questions',
+            ),
+            IconButton(
               icon: const Icon(Icons.delete_outline),
               onPressed: () => provider.clearChat(),
-              tooltip: 'Clear Chat',
+              tooltip: 'Clear chat (saved history is kept)',
             ),
           ],
         ),
@@ -564,6 +603,225 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AskGitaHistorySheet extends StatefulWidget {
+  final ScrollController scrollController;
+  final ValueChanged<AskGitaHistoryEntry> onEntrySelected;
+
+  const _AskGitaHistorySheet({
+    required this.scrollController,
+    required this.onEntrySelected,
+  });
+
+  @override
+  State<_AskGitaHistorySheet> createState() => _AskGitaHistorySheetState();
+}
+
+class _AskGitaHistorySheetState extends State<_AskGitaHistorySheet> {
+  List<AskGitaHistoryEntry>? _entries;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await context.read<AskGitaProvider>().getHistory();
+    if (mounted) {
+      setState(() {
+        _entries = list;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _confirmClearHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear saved history?'),
+        content: const Text(
+          'This removes your last 20 saved questions and answers from this device. '
+          'Your current chat is not affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Clear history'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await context.read<AskGitaProvider>().clearHistory();
+    if (!mounted) return;
+    setState(() {
+      _entries = [];
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('History cleared'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  String _formatWhen(int askedAtMs) {
+    final when = DateTime.fromMillisecondsSinceEpoch(askedAtMs);
+    final now = DateTime.now();
+    final diff = now.difference(when);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return DateFormat.yMMMd().format(when);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 8, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recent questions',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    Text(
+                      'Last 20, saved on this device',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if ((_entries ?? []).isNotEmpty)
+                IconButton(
+                  onPressed: _confirmClearHistory,
+                  tooltip: 'Clear history',
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : (_entries == null || _entries!.isEmpty)
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No saved questions yet.\nAsk Gita AI and your answers will appear here.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: widget.scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: _entries!.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final entry = _entries![index];
+                        return ListTile(
+                          title: Text(
+                            entry.question,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(_formatWhen(entry.askedAtMs)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => widget.onEntrySelected(entry),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AskGitaHistoryDetailPage extends StatefulWidget {
+  final AskGitaHistoryEntry entry;
+
+  const _AskGitaHistoryDetailPage({required this.entry});
+
+  @override
+  State<_AskGitaHistoryDetailPage> createState() =>
+      _AskGitaHistoryDetailPageState();
+}
+
+class _AskGitaHistoryDetailPageState extends State<_AskGitaHistoryDetailPage> {
+  List<ShlokaResult> _references = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReferences();
+  }
+
+  Future<void> _loadReferences() async {
+    final refs = await context
+        .read<AskGitaProvider>()
+        .resolveHistoryReferences(widget.entry);
+    if (mounted) {
+      setState(() => _references = refs);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userMessage = ChatMessage(
+      text: widget.entry.question,
+      sender: MessageSender.user,
+    );
+    final aiMessage = ChatMessage(
+      text: widget.entry.answer,
+      sender: MessageSender.ai,
+      references: _references,
+      isStreaming: false,
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Saved answer'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _ChatBubble(message: userMessage),
+          const SizedBox(height: 8),
+          _ChatBubble(
+            message: aiMessage,
+            question: widget.entry.question,
+          ),
+        ],
       ),
     );
   }
