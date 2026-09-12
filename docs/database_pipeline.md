@@ -1,19 +1,19 @@
 # Gita database pipeline
 
-This document describes how `geeta_v7.db` is built and shipped. Follow this flow to avoid confusion between chapter JSON, bhashya JSON, and the SQLite asset.
+This document describes how `geeta.db` is built and shipped. Follow this flow to avoid confusion between chapter JSON, bhashya JSON, and the SQLite asset.
 
 ## Principles
 
 1. **One canonical source per data type** — do not keep parallel `v4` / `v5` / `v6` chapter JSON trees.
-2. **Version lives on the output** — `geeta_v7.db` and `DB_VERSION` in the app, not in chapter filenames.
+2. **Stable asset name, integer migration** — shipped file is always `geeta.db`. Bump `DB_VERSION` in the app when users must recopy a new build (content or schema). Do not rename the asset on every content fix.
 3. **SQLite is compiled, not edited** — never patch `assets/database/*.db` by hand for content changes.
-4. **Gemini capture ≠ DB build** — the translation script writes JSON only; the v7 generator builds the DB.
+4. **Gemini capture ≠ DB build** — the translation script writes JSON only; `generate_full_db.py` builds the DB.
 
 ## Folder layout
 
 ```
 lib/data/scripts/
-  generate_full_db_v7.py       # sole DB builder (run this to produce geeta_v7.db)
+  generate_full_db.py          # sole DB builder (run this to produce geeta.db)
 
   source/
     chapters/                  # canonical chapter source (18 files)
@@ -39,11 +39,11 @@ scripts/
   prepare_db_asset.py            # iOS-safe journal_mode=DELETE on the DB file
 
 assets/database/
-  geeta_v7.db                    # shipped SQLite (built by generate_full_db_v7.py)
+  geeta.db                       # shipped SQLite (built by generate_full_db.py)
   timings.json                   # shipped karaoke timings (separate pipeline)
 ```
 
-The Flutter app reads **`assets/database/geeta_v7.db`** only. It does not read anything under `lib/data/scripts/`.
+The Flutter app reads **`assets/database/geeta.db`** only. It does not read anything under `lib/data/scripts/`.
 
 ## What each source contains
 
@@ -88,7 +88,7 @@ Skipped at generation time (not stored as bhashya rows):
 1. Edit `lib/data/scripts/source/chapters/gita_chapter_<N>.json`
 2. Build DB:
    ```bash
-   python3 lib/data/scripts/generate_full_db_v7.py
+   python3 lib/data/scripts/generate_full_db.py
    python3 scripts/prepare_db_asset.py
    ```
 3. Bump `DB_VERSION` in `lib/data/database_helper_mobile.dart` if shipping to devices that already have an older DB.
@@ -105,7 +105,7 @@ Skipped at generation time (not stored as bhashya rows):
    Writes to **`lib/data/scripts/source/bhashya/`** (not `scripts/bhashya_gemini_out/`).
 3. Build DB (same as step A.2–A.4):
    ```bash
-   python3 lib/data/scripts/generate_full_db_v7.py
+   python3 lib/data/scripts/generate_full_db.py
    python3 scripts/prepare_db_asset.py
    ```
 
@@ -113,18 +113,18 @@ Skipped at generation time (not stored as bhashya rows):
 
 | App constant | Value |
 |---|---|
-| `DB_FILE_NAME` | `geeta_v7.db` |
-| `DB_VERSION` | `7` (increment when replacing the asset on user devices) |
+| `DB_FILE_NAME` | `geeta.db` |
+| `DB_VERSION` | increment when replacing the bundled DB on user devices (currently `8`) |
 
-On launch, the app copies `assets/database/geeta_v7.db` to documents if `db_version` in SharedPreferences is older than `DB_VERSION`.
+On launch, the app copies `assets/database/geeta.db` to documents if `db_version` in SharedPreferences is older than `DB_VERSION`. The filename does not change for content-only updates.
 
 ## Script responsibilities
 
 | Script | Reads | Writes | Notes |
 |---|---|---|---|
 | `scripts/bhashya_translate_gemini.py` | chapter JSON + Gemini API | `source/bhashya/*.json` | **Never touches SQLite** |
-| `lib/data/scripts/generate_full_db_v7.py` | `source/chapters/` + `source/bhashya/` | `assets/database/geeta_v7.db` | **Sole DB builder** |
-| `scripts/prepare_db_asset.py` | `geeta_v7.db` | same file, in place | Sets `journal_mode=DELETE` for iOS |
+| `lib/data/scripts/generate_full_db.py` | `source/chapters/` + `source/bhashya/` | `assets/database/geeta.db` | **Sole DB builder** |
+| `scripts/prepare_db_asset.py` | `geeta.db` | same file, in place | Sets `journal_mode=DELETE` for iOS |
 
 ## Expected DB contents (v7)
 
@@ -147,9 +147,9 @@ If the DB was written in WAL mode without sidecar files, iOS read-only open can 
 
 ## Do not
 
-- Edit `geeta_v7.db` directly for content — regenerate from source JSON.
+- Edit `geeta.db` directly for content — regenerate from source JSON.
 - Keep multiple live chapter JSON versions (`v4`, `v5`, `v6`) in `source/chapters/` — use `archive/chapter-json/` for old copies only.
-- Run `legacy/generate_full_db_v6.py` for shipping — use `generate_full_db_v7.py` (includes bhashya JSON).
+- Run `legacy/generate_full_db_v6.py` for shipping — use `generate_full_db.py` (includes bhashya JSON).
 - Expect `scripts/bhashya_gemini_out/` to be used — bhashya output moved to `source/bhashya/`.
 
 ## Quick verification
@@ -159,12 +159,16 @@ If the DB was written in WAL mode without sidecar files, iOS read-only open can 
 ls lib/data/scripts/source/bhashya/*.json | wc -l
 
 # Check DB commentary totals
-sqlite3 assets/database/geeta_v7.db \
+sqlite3 assets/database/geeta.db \
   "SELECT language_code, COUNT(*) FROM commentaries GROUP BY 1 ORDER BY 1;"
 
 # Confirm 7.13 mool vs anvay
-sqlite3 assets/database/geeta_v7.db \
+sqlite3 assets/database/geeta.db \
   "SELECT shloka_text, anvay_text FROM shloka_scripts WHERE shloka_id='7.13' AND script_code='dev';"
+
+# Confirm 3.19 Hindi bhavarth
+sqlite3 assets/database/geeta.db \
+  "SELECT bhavarth FROM translations WHERE shloka_id='3.19' AND language_code='hi';"
 ```
 
 ## Related app behaviour

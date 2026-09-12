@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DB = ROOT / "assets" / "database" / "geeta_v8.db"
+DB = ROOT / "assets" / "database" / "geeta.db"
 ENV = ROOT / ".env"
 OUT = ROOT / "scripts" / "bhashya_pilot_results.json"
 

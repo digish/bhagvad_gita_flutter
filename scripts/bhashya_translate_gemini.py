@@ -3,7 +3,7 @@
 
 Skips placeholders, copy-forward duplicates, and empty rows.
 Writes JSON only to lib/data/scripts/source/bhashya/ (never touches SQLite).
-Run lib/data/scripts/generate_full_db_v7.py to build geeta_v7.db.
+Run lib/data/scripts/generate_full_db.py to build geeta.db.
 
 Usage:
   python3 scripts/bhashya_translate_gemini.py --estimate

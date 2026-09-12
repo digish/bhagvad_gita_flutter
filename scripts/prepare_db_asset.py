@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT = ROOT / "assets" / "database" / "geeta_v7.db"
+DEFAULT = ROOT / "assets" / "database" / "geeta.db"
 
 
 def prepare(path: Path) -> None:

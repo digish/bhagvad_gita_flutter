@@ -18,8 +18,8 @@ Future<DatabaseHelperInterface> getInitializedDatabaseHelper() async {
 }
 
 class DatabaseHelperImpl implements DatabaseHelperInterface {
-  static const int DB_VERSION = 7; // geeta_v7: chapter JSON + Gemini bhashya JSON
-  static const String DB_FILE_NAME = 'geeta_v7.db';
+  static const int DB_VERSION = 8; // stable geeta.db; 8 = rename + 3.19 hi bhavarth fix
+  static const String DB_FILE_NAME = 'geeta.db';
   late Database _db;
 
   DatabaseHelperImpl._(this._db);
@@ -62,6 +62,7 @@ class DatabaseHelperImpl implements DatabaseHelperInterface {
       try {
         // 1. Clean up OLD databases to save space
         for (final oldName in [
+          'geeta_v7.db',
           'geeta_v8.db',
           'geeta_v6.db',
           'geeta_v5.db',
