@@ -2749,11 +2749,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               child: InkWell(
                 borderRadius: BorderRadius.circular(20.0),
                 onTap: () {
+                  final shlokaNo = int.tryParse(_randomShloka!.shlokNo);
                   context.push(
-                    AppRoutes.shlokaDetail.replaceFirst(
-                      ':id',
-                      _randomShloka!.id.toString(),
+                    AppRoutes.shlokaList.replaceFirst(
+                      ':query',
+                      _randomShloka!.chapterNo,
                     ),
+                    extra: shlokaNo,
                   );
                 },
                 child: AnimatedContainer(
