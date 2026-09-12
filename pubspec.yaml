@@ -113,7 +113,6 @@ flutter:
     - assets/icon/
     - assets/emblems/
     - assets/emblems/chapter/
-    - assets/emblems/authors/
     - assets/database/
     - assets/fonts/
     # iOS only: Android serves chapter audio via Play Asset Delivery packs.
