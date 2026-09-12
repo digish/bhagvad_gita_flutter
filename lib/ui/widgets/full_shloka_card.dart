@@ -33,6 +33,7 @@ import 'chapter_seek_rail.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
+import '../theme/chapter_reading_colors.dart';
 
 // --- NEW: Configurable variable to control font sizing logic ---
 const bool _enableDynamicFontSizing = false;
@@ -234,34 +235,11 @@ class FullShlokaCard extends StatelessWidget {
     ];
   }
 
-  // Your existing color logic, unchanged.
   Color getSpeakerColor(String? speaker, {bool isLightTheme = false}) {
-    if (isLightTheme) {
-      switch (speaker?.toLowerCase()) {
-        case 'श्री भगवान':
-          return const Color.fromARGB(146, 241, 245, 23);
-        case 'अर्जुन':
-          return const Color.fromARGB(148, 255, 90, 90);
-        case 'संजय':
-          return const Color.fromARGB(122, 13, 72, 161);
-        case 'धृतराष्ट्र':
-          return const Color.fromARGB(132, 78, 52, 46);
-        default:
-          return Colors.black.withOpacity(0.05);
-      }
-    }
-    switch (speaker?.toLowerCase()) {
-      case 'श्री भगवान':
-        return const Color.fromARGB(167, 248, 244, 21);
-      case 'अर्जुन':
-        return const Color.fromARGB(102, 250, 117, 9);
-      case 'संजय':
-        return const Color.fromARGB(102, 87, 155, 233);
-      case 'धृतराष्ट्र':
-        return const Color.fromARGB(102, 121, 88, 86);
-      default:
-        return Colors.white.withOpacity(0.07);
-    }
+    final palette = ChapterReadingColors.of(
+      isLightTheme ? Brightness.light : Brightness.dark,
+    );
+    return palette.speakerTint(speaker);
   }
 
   // --- NEW: Share functionality with Options ---
@@ -422,18 +400,21 @@ class FullShlokaCard extends StatelessWidget {
   }) {
     final theme = Theme.of(context);
     final bool isLightTheme = config.isLightTheme;
+    final bool continuous = config.continuousReading;
     final speakerColor = getSpeakerColor(
       shloka.speaker,
       isLightTheme: isLightTheme,
     );
-    final Color primaryTextColor = isLightTheme ? Colors.black87 : Colors.white;
+    final readingPalette = ChapterReadingColors.of(theme.brightness);
+    final Color primaryTextColor = continuous
+        ? readingPalette.shloka
+        : (isLightTheme ? Colors.black87 : Colors.white);
     final Color secondaryTextColor = isLightTheme
         ? Colors.black54
         : Colors.white.withOpacity(0.85);
     final Color accentColor = isLightTheme
         ? const Color(0xFFD84315)
         : const Color(0xFFFFD700);
-    final bool continuous = config.continuousReading;
     final bool chapterChrome = config.preserveCardChrome;
     // Continuous: layout stays identical when focused — only the border paints.
     final bool showAsCard = chapterChrome || !continuous || isFocused;
@@ -1272,10 +1253,12 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
     required double letterSpacing,
     required double indent,
   }) {
+    final palette = ChapterReadingColors.of(
+      config.isLightTheme ? Brightness.light : Brightness.dark,
+    );
+
     if (body == ContinuousListBody.translation) {
-      final tikaColor = config.isLightTheme
-          ? const Color(0xFF6B4E3D)
-          : const Color(0xFFD2B48C);
+      final tikaColor = palette.tika;
       final verseStyle = TextStyle(
         fontSize: base,
         fontStyle: FontStyle.normal,
@@ -1297,9 +1280,7 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
     }
 
     if (body == ContinuousListBody.anvay) {
-      final anvayColor = config.isLightTheme
-          ? const Color(0xFF3F4A6B)
-          : const Color(0xFFB8C0D8);
+      final anvayColor = palette.anvay;
       final verseStyle = TextStyle(
         fontSize: base,
         fontStyle: FontStyle.italic,
@@ -1327,15 +1308,9 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
     }
 
     final isFourLine = shloka.shlok.contains('<C>');
-    final verseColor = isFourLine
-        ? (config.isLightTheme
-              ? const Color(0xFF6B21A8)
-              : const Color(0xFFD8B4FE))
-        : (config.isLightTheme
-              ? const Color(0xFF1C1917)
-              : primaryTextColor);
-    // Bright yellow karaoke highlight — readable on both ink and plum verses.
-    const karaokeHighlight = Color(0xFFFFD700);
+    final verseColor =
+        isFourLine ? palette.shlokaFourLine : palette.shloka;
+    final karaokeHighlight = palette.karaokeHighlight;
 
     final verseStyle = TextStyle(
       fontSize: base,
