@@ -3139,13 +3139,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: () {
-                          // Navigate to the book reading mode and scroll to the specific shloka
+                          final shlokaNo = int.tryParse(
+                            _todaysActionShloka!.shlokNo,
+                          );
                           context.push(
-                            AppRoutes.bookReading.replaceFirst(
-                              ':chapter',
+                            AppRoutes.shlokaList.replaceFirst(
+                              ':query',
                               _todaysActionShloka!.chapterNo,
                             ),
-                            extra: int.tryParse(_todaysActionShloka!.shlokNo),
+                            extra: {
+                              'initialShloka': shlokaNo,
+                              'bookMode': true,
+                            },
                           );
                         },
                         icon: const Icon(Icons.menu_book, size: 16),

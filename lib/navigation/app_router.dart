@@ -29,7 +29,6 @@ import '../providers/settings_provider.dart'; // Import SettingsProvider
 // 1. Import the interface file directly so the router knows about the type.
 import '../data/database_helper_interface.dart';
 import '../ui/widgets/main_scaffold.dart';
-import '../ui/screens/book_reading_screen.dart';
 import '../ui/screens/ask_gita_screen.dart';
 import '../ui/screens/image_creator_screen.dart';
 import '../services/deep_link_parser.dart';
@@ -50,6 +49,24 @@ class AppRoutes {
 
   static String shlokaDetailPath(String id) =>
       shlokaDetail.replaceFirst(':id', id);
+}
+
+int? _initialShlokaFromRouteExtra(Object? extra) {
+  if (extra is int) return extra;
+  if (extra is num) return extra.toInt();
+  if (extra is String) return int.tryParse(extra);
+  if (extra is Map) {
+    final mapped = extra['initialShloka'];
+    if (mapped is int) return mapped;
+    if (mapped is num) return mapped.toInt();
+    if (mapped is String) return int.tryParse(mapped);
+  }
+  return null;
+}
+
+bool _initialBookModeFromRouteExtra(Object? extra) {
+  if (extra is Map && extra['bookMode'] == true) return true;
+  return false;
 }
 
 final GoRouter router = GoRouter(
@@ -177,32 +194,20 @@ final GoRouter router = GoRouter(
           pageBuilder: (context, state) {
             final query = state.pathParameters['query']!;
             final extra = state.extra;
-            int? initialShloka;
+            final initialShloka = _initialShlokaFromRouteExtra(extra);
             var showHelp = state.uri.queryParameters['help'] == '1';
-            if (extra is int) {
-              initialShloka = extra;
-            } else if (extra is num) {
-              initialShloka = extra.toInt();
-            } else if (extra is String) {
-              initialShloka = int.tryParse(extra);
-            } else if (extra is Map) {
-              final mapped = extra['initialShloka'];
-              if (mapped is int) {
-                initialShloka = mapped;
-              } else if (mapped is num) {
-                initialShloka = mapped.toInt();
-              } else if (mapped is String) {
-                initialShloka = int.tryParse(mapped);
-              }
+            if (extra is Map) {
               showHelp = showHelp || extra['help'] == true;
             }
+            final initialBookMode = _initialBookModeFromRouteExtra(extra);
             return CustomTransitionPage(
               key: ValueKey(
-                'shloka-list-$query-help-$showHelp-${initialShloka ?? ''}',
+                'shloka-list-$query-help-$showHelp-${initialShloka ?? ''}-book-$initialBookMode',
               ),
               child: ShlokaListScreen(
                 searchQuery: query,
-                initialShlokaNo: initialShloka, // Pass it down
+                initialShlokaNo: initialShloka,
+                initialBookMode: initialBookMode,
                 showHelp: showHelp,
               ),
               transitionDuration: const Duration(milliseconds: 700),
@@ -251,12 +256,15 @@ final GoRouter router = GoRouter(
           path: AppRoutes.bookReading,
           pageBuilder: (context, state) {
             final chapter = int.parse(state.pathParameters['chapter']!);
-            final initialShloka = state.extra as int?;
+            final initialShloka = _initialShlokaFromRouteExtra(state.extra);
             return CustomTransitionPage(
-              key: state.pageKey,
-              child: BookReadingScreen(
-                chapterNumber: chapter,
+              key: ValueKey(
+                'shloka-list-$chapter-book-${initialShloka ?? ''}',
+              ),
+              child: ShlokaListScreen(
+                searchQuery: chapter.toString(),
                 initialShlokaNo: initialShloka,
+                initialBookMode: true,
               ),
               transitionDuration: const Duration(milliseconds: 500),
               transitionsBuilder:

@@ -43,6 +43,8 @@ class ShlokaListScreen extends StatefulWidget {
   final bool delayEmblem; // ✨ NEW parameter for animation
   final bool isEmbedded; // ✨ NEW parameter for unified background
   final int? initialShlokaNo; // ✨ NEW parameter for scrolling
+  /// Open directly in commentary book mode (chapter view only).
+  final bool initialBookMode;
   /// When true (Settings → Help), replay floating onboarding tips.
   final bool showHelp;
 
@@ -53,6 +55,7 @@ class ShlokaListScreen extends StatefulWidget {
     this.delayEmblem = false,
     this.isEmbedded = false,
     this.initialShlokaNo,
+    this.initialBookMode = false,
     this.showHelp = false,
   });
 
@@ -87,7 +90,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   AudioProvider? _audioProvider;
 
   /// Commentary book vs verse-card list (chapter view only).
-  bool _isBookMode = false;
+  late bool _isBookMode;
   /// Chapter list: which verse has Anvay/Bhavarth expanded (null = all collapsed).
   int? _expandedVerseIndex;
 
@@ -103,6 +106,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   @override
   void initState() {
     super.initState();
+    _isBookMode = widget.initialBookMode;
     final dbHelper = Provider.of<DatabaseHelperInterface>(
       context,
       listen: false,

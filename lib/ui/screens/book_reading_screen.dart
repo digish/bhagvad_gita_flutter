@@ -57,6 +57,11 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   // Local theme override
   bool? _isNightModeOverride;
 
+  /// Applied once when the list first mounts (see [ScrollablePositionedList]).
+  int _listInitialScrollIndex = 0;
+  double get _listInitialScrollAlignment =>
+      (_kFocusLine - 0.09).clamp(0.0, 1.0);
+
   @override
   void initState() {
     super.initState();
@@ -100,20 +105,12 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         _syncCommentaryLanguageForAuthor(settings.language);
         _isLoading = false;
 
-        // Handle initial scroll
         if (widget.initialShlokaNo != null) {
-          final targetNo = widget.initialShlokaNo!;
           final targetIndex = _shlokas.indexWhere(
-            (s) => int.tryParse(s.shlokNo) == targetNo,
+            (s) => int.tryParse(s.shlokNo) == widget.initialShlokaNo,
           );
           if (targetIndex != -1) {
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              final ok = await _scrollToShloka(targetIndex);
-              if (!ok && mounted) {
-                await Future<void>.delayed(const Duration(milliseconds: 200));
-                if (mounted) await _scrollToShloka(targetIndex);
-              }
-            });
+            _listInitialScrollIndex = targetIndex;
           }
         }
       });
@@ -137,7 +134,7 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   }
 
   Future<bool> _scrollToShloka(int index) async {
-    for (var attempt = 0; attempt < 40; attempt++) {
+    for (var attempt = 0; attempt < 12; attempt++) {
       if (!mounted) return false;
       if (!_itemScrollController.isAttached) {
         await Future<void>.delayed(const Duration(milliseconds: 16));
@@ -172,6 +169,14 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       }
       if (item == null) {
         continue;
+      }
+
+      // Tall commentary blocks may not center exactly on the focus line — stop
+      // once the verse is on screen so manual scrolling is not fighting us.
+      if (attempt >= 1 &&
+          item.itemLeadingEdge < 0.92 &&
+          item.itemTrailingEdge > 0.08) {
+        return true;
       }
 
       final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
@@ -431,11 +436,23 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     final localizedLabel = StaticData.getChapterLabel(script);
     final baseFont = settings.fontSize;
 
+    final readingBody = _buildReadingBody(
+      backgroundColor: backgroundColor,
+      textColor: textColor,
+      separatorColor: separatorColor,
+      accentColor: accentColor,
+      baseFont: baseFont,
+      settings: settings,
+      isDark: isDark,
+    );
+
+    if (widget.embedded) {
+      return ColoredBox(color: backgroundColor, child: readingBody);
+    }
+
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: widget.embedded
-          ? null
-          : AppBar(
+      appBar: AppBar(
         toolbarHeight: 100,
         leading: BackButton(
           onPressed: () {
@@ -494,265 +511,299 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SafeArea(
-        top: !widget.embedded,
-        left: !widget.embedded,
-        right: true,
-        bottom: false,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  if (widget.embedded) ...[
-                    SizedBox(
-                      height: MediaQuery.paddingOf(context).top + 56,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                      child: Row(
-                        children: [
-                          _buildCommentaryControls(
+      body: readingBody,
+    );
+  }
+
+  Widget _buildReadingBody({
+    required Color backgroundColor,
+    required Color textColor,
+    required Color separatorColor,
+    required Color accentColor,
+    required double baseFont,
+    required SettingsProvider settings,
+    required bool isDark,
+  }) {
+    return Stack(
+      children: [
+        SafeArea(
+          top: !widget.embedded,
+          left: !widget.embedded,
+          right: true,
+          bottom: false,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    if (widget.embedded) ...[
+                      SizedBox(
+                        height: MediaQuery.paddingOf(context).top + 56,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                        child: Row(
+                          children: [
+                            _buildCommentaryControls(
+                              textColor: textColor,
+                              preferredLanguage: settings.language,
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: Icon(
+                                isDark
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode,
+                                color: textColor,
+                              ),
+                              tooltip: 'Toggle Reading Mode',
+                              onPressed: () => setState(
+                                () => _isNightModeOverride = !isDark,
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.apps, color: textColor),
+                              tooltip: 'Jump to Shloka',
+                              onPressed: _showJumpToShlokaSheet,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (_availableAuthors.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: _buildCommentaryControls(
                             textColor: textColor,
                             preferredLanguage: settings.language,
                           ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: Icon(
-                              isDark
-                                  ? Icons.light_mode_outlined
-                                  : Icons.dark_mode,
-                              color: textColor,
-                            ),
-                            tooltip: 'Toggle Reading Mode',
-                            onPressed: () => setState(
-                              () => _isNightModeOverride = !isDark,
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.apps, color: textColor),
-                            tooltip: 'Jump to Shloka',
-                            onPressed: _showJumpToShlokaSheet,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else if (_availableAuthors.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: _buildCommentaryControls(
-                          textColor: textColor,
-                          preferredLanguage: settings.language,
                         ),
                       ),
-                    ),
-                  Expanded(
-                    child: RepaintBoundary(
-                child: ScrollablePositionedList.separated(
-                  itemScrollController: _itemScrollController,
-                  itemPositionsListener: _itemPositionsListener,
-                  padding: EdgeInsets.fromLTRB(
-                    0,
-                    _kPadding,
-                    0,
-                    _kPadding + 72 + MediaQuery.paddingOf(context).bottom,
-                  ),
-                  itemCount: _shlokas.length + _kTrailingRunwayItems,
-                  separatorBuilder: (context, index) {
-                    if (index >= _shlokas.length - 1) {
-                      return const SizedBox.shrink();
-                    }
-                    return Divider(
-                      color: separatorColor,
-                      height: 48,
-                      thickness: 1,
-                      indent: _kPadding,
-                      endIndent: _kPadding,
-                    );
-                  },
-                  itemBuilder: (context, index) {
-                    if (index >= _shlokas.length) {
-                      return SizedBox(
-                        height: trailingRunwayHeightForFocusLine(
-                          context,
-                          focusLine: _kFocusLine,
-                        ),
-                      );
-                    }
-                    final shloka = _shlokas[index];
-                    final commentary = _commentaryForShloka(shloka);
-                    final usingFallback = commentary != null &&
-                        commentary.languageCode.toLowerCase() !=
-                            _selectedCommentaryLanguage.toLowerCase();
+                    Expanded(
+                      child: RepaintBoundary(
+                        child: ScrollablePositionedList.separated(
+                          itemScrollController: _itemScrollController,
+                          itemPositionsListener: _itemPositionsListener,
+                          initialScrollIndex: _listInitialScrollIndex,
+                          initialAlignment: _listInitialScrollAlignment,
+                          physics: const ClampingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          padding: EdgeInsets.fromLTRB(
+                            0,
+                            _kPadding,
+                            0,
+                            _kPadding +
+                                72 +
+                                MediaQuery.paddingOf(context).bottom,
+                          ),
+                          itemCount: _shlokas.length + _kTrailingRunwayItems,
+                          separatorBuilder: (context, index) {
+                            if (index >= _shlokas.length - 1) {
+                              return const SizedBox.shrink();
+                            }
+                            return Divider(
+                              color: separatorColor,
+                              height: 48,
+                              thickness: 1,
+                              indent: _kPadding,
+                              endIndent: _kPadding,
+                            );
+                          },
+                          itemBuilder: (context, index) {
+                            if (index >= _shlokas.length) {
+                              return SizedBox(
+                                height: trailingRunwayHeightForFocusLine(
+                                  context,
+                                  focusLine: _kFocusLine,
+                                ),
+                              );
+                            }
+                            final shloka = _shlokas[index];
+                            final commentary = _commentaryForShloka(shloka);
+                            final usingFallback = commentary != null &&
+                                commentary.languageCode.toLowerCase() !=
+                                    _selectedCommentaryLanguage
+                                        .toLowerCase();
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: _kPadding,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Center(
-                            child: Container(
+                            return Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
+                                horizontal: _kPadding,
                               ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: accentColor.withOpacity(0.4),
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                "${shloka.chapterNo}.${shloka.shlokNo}",
-                                style: GoogleFonts.notoSerif(
-                                  fontSize: _scaledFont(14, baseFont),
-                                  color: accentColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            _processShlokaText(shloka.shlok),
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.notoSerif(
-                              fontSize: baseFont,
-                              height: 1.8,
-                              color: textColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: textColor.withOpacity(0.03),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border(
-                                left: BorderSide(color: accentColor, width: 3),
-                              ),
-                            ),
-                            child: Text(
-                              shloka.bhavarth,
-                              style: GoogleFonts.notoSerif(
-                                fontSize: _scaledFont(16, baseFont),
-                                height: 1.6,
-                                color: textColor.withOpacity(0.9),
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (commentary != null &&
-                              commentary.content.isNotEmpty) ...[
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    commentary.sectionHeading,
-                                    style: GoogleFonts.cinzel(
-                                      fontSize: _scaledFont(11, baseFont),
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor.withOpacity(0.5),
-                                      letterSpacing: 1.0,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: accentColor.withOpacity(0.4),
+                                          width: 1.5,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        "${shloka.chapterNo}.${shloka.shlokNo}",
+                                        style: GoogleFonts.notoSerif(
+                                          fontSize: _scaledFont(14, baseFont),
+                                          color: accentColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                if (commentary.languageCode.isNotEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    _processShlokaText(shloka.shlok),
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.notoSerif(
+                                      fontSize: baseFont,
+                                      height: 1.8,
+                                      color: textColor,
+                                      fontWeight: FontWeight.w600,
                                     ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
-                                      color: textColor.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: textColor.withOpacity(0.03),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: accentColor,
+                                          width: 3,
+                                        ),
+                                      ),
                                     ),
                                     child: Text(
-                                      commentaryLanguageLabel(
-                                        commentary.languageCode,
-                                      ),
+                                      shloka.bhavarth,
                                       style: GoogleFonts.notoSerif(
-                                        fontSize: _scaledFont(9, baseFont),
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor.withOpacity(0.4),
+                                        fontSize: _scaledFont(16, baseFont),
+                                        height: 1.6,
+                                        color: textColor.withOpacity(0.9),
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                            if (usingFallback) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                '${commentaryLanguageLabel(_selectedCommentaryLanguage)} not available for this shloka — showing ${commentaryLanguageLabel(commentary.languageCode)}.',
-                                style: GoogleFonts.notoSerif(
-                                  fontSize: _scaledFont(11, baseFont),
-                                  fontStyle: FontStyle.italic,
-                                  height: 1.4,
-                                  color: textColor.withOpacity(0.45),
-                                ),
+                                  const SizedBox(height: 24),
+                                  if (commentary != null &&
+                                      commentary.content.isNotEmpty) ...[
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            commentary.sectionHeading,
+                                            style: GoogleFonts.cinzel(
+                                              fontSize: _scaledFont(
+                                                11,
+                                                baseFont,
+                                              ),
+                                              fontWeight: FontWeight.bold,
+                                              color: textColor.withOpacity(0.5),
+                                              letterSpacing: 1.0,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        if (commentary.languageCode.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: textColor.withOpacity(0.05),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              commentaryLanguageLabel(
+                                                commentary.languageCode,
+                                              ),
+                                              style: GoogleFonts.notoSerif(
+                                                fontSize: _scaledFont(
+                                                  9,
+                                                  baseFont,
+                                                ),
+                                                fontWeight: FontWeight.bold,
+                                                color: textColor.withOpacity(
+                                                  0.4,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    if (usingFallback) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '${commentaryLanguageLabel(_selectedCommentaryLanguage)} not available for this shloka — showing ${commentaryLanguageLabel(commentary.languageCode)}.',
+                                        style: GoogleFonts.notoSerif(
+                                          fontSize: _scaledFont(11, baseFont),
+                                          fontStyle: FontStyle.italic,
+                                          height: 1.4,
+                                          color: textColor.withOpacity(0.45),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    if (commentary.isAI &&
+                                        commentary.modern != null)
+                                      _buildModernCommentary(
+                                        context,
+                                        commentary.modern!,
+                                        textColor,
+                                        accentColor,
+                                        baseFont,
+                                      )
+                                    else
+                                      Text(
+                                        commentary.content,
+                                        style: GoogleFonts.notoSerif(
+                                          fontSize: _scaledFont(17, baseFont),
+                                          height: 1.7,
+                                          color: textColor.withOpacity(0.85),
+                                        ),
+                                      ),
+                                  ],
+                                ],
                               ),
-                            ],
-                            const SizedBox(height: 12),
-                            if (commentary.isAI && commentary.modern != null)
-                              _buildModernCommentary(
-                                context,
-                                commentary.modern!,
-                                textColor,
-                                accentColor,
-                                baseFont,
-                              )
-                            else
-                              Text(
-                                commentary.content,
-                                style: GoogleFonts.notoSerif(
-                                  fontSize: _scaledFont(17, baseFont),
-                                  height: 1.7,
-                                  color: textColor.withOpacity(0.85),
-                                ),
-                              ),
-                          ],
-                        ],
+                            );
+                          },
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+        ),
+        Consumer<AudioProvider>(
+          builder: (context, audio, _) {
+            final miniPlayerVisible =
+                audio.playbackState != PlaybackState.stopped &&
+                audio.currentPlayingShlokaId != null;
+            final bottomSafe = MediaQuery.paddingOf(context).bottom;
+            return Positioned(
+              left: MediaQuery.paddingOf(context).left,
+              bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
+              child: FontSizeDock(
+                currentSize: settings.fontSize,
+                onSizeChanged: settings.setFontSize,
+                iconColor: textColor,
+                backgroundColor: isDark
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFF7F4EE),
               ),
-                  ),
-                ],
-              ),
-      ),
-          Consumer<AudioProvider>(
-            builder: (context, audio, _) {
-              final miniPlayerVisible =
-                  audio.playbackState != PlaybackState.stopped &&
-                  audio.currentPlayingShlokaId != null;
-              final bottomSafe = MediaQuery.paddingOf(context).bottom;
-              return Positioned(
-                left: MediaQuery.paddingOf(context).left,
-                bottom: miniPlayerVisible ? 96 + bottomSafe : 12 + bottomSafe,
-                child: FontSizeDock(
-                  currentSize: settings.fontSize,
-                  onSizeChanged: settings.setFontSize,
-                  iconColor: textColor,
-                  backgroundColor: isDark
-                      ? const Color(0xFF2A2A2A)
-                      : const Color(0xFFF7F4EE),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 
