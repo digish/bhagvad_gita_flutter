@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 
 import '../models/shloka_result.dart';
 import '../data/database_helper_interface.dart';
+import '../utils/shloka_reference.dart';
 
 class ShlokaListProvider extends ChangeNotifier {
   final DatabaseHelperInterface _dbHelper;
@@ -62,9 +63,6 @@ class ShlokaListProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Case #0: Query is a "chapter,shloka" or "chapter.shloka" reference.
-    final shlokaRefMatch = RegExp(r'^(\d+)[,.](\d+)$').firstMatch(_searchQuery);
-
     // Case #0.5: Query is a list of shloka IDs (e.g. "ids:1.1,2.45")
     if (_searchQuery.startsWith('ids:')) {
       final idsStr = _searchQuery.replaceFirst('ids:', '');
@@ -94,29 +92,25 @@ class ShlokaListProvider extends ChangeNotifier {
         }
       }
       _shlokas = fetched;
-    } else if (shlokaRefMatch != null) {
-      final chapterStr = shlokaRefMatch.group(1)!;
-      final chapter = int.tryParse(chapterStr);
-      final shlokNum = int.tryParse(shlokaRefMatch.group(2)!);
+    } else if (parseShlokaChapterReference(_searchQuery) != null) {
+      final ref = parseShlokaChapterReference(_searchQuery)!;
+      final chapter = ref.chapter;
+      final shlokNum = ref.shloka;
 
-      if (chapter != null) {
-        _shlokas = await _dbHelper.getShlokasByChapter(
-          chapter,
-          language: _language,
-          script: _script,
-          shlokaScript: _shlokaScript,
+      _shlokas = await _dbHelper.getShlokasByChapter(
+        chapter,
+        language: _language,
+        script: _script,
+        shlokaScript: _shlokaScript,
+      );
+      final index = _shlokas.indexWhere(
+        (s) => int.tryParse(s.shlokNo) == shlokNum,
+      );
+      if (index != -1) {
+        _initialScrollIndex = index;
+        debugPrint(
+          'ShlokaListProvider: setting initialScrollIndex to $index for $chapter.$shlokNum',
         );
-        if (shlokNum != null) {
-          final index = _shlokas.indexWhere(
-            (s) => int.tryParse(s.shlokNo) == shlokNum,
-          );
-          if (index != -1) {
-            _initialScrollIndex = index;
-            debugPrint(
-              'ShlokaListProvider: setting initialScrollIndex to $index for $chapter.$shlokNum',
-            );
-          }
-        }
       }
     }
     // Case #1: Query is a single number (chapter search).

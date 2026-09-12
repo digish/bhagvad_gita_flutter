@@ -34,7 +34,6 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_bubble.dart';
 import '../widgets/reminder_pitch.dart';
 import 'book_reading_screen.dart';
-import '../../utils/shloka_seek_log.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -221,8 +220,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   int _chapterListIndexForVerse(int verseIndex) =>
       verseIndex + _kChapterHeaderListItems;
 
-  static const _seekScope = 'ChapterList';
-
   int _indexForShlokaNo(List<ShlokaResult> shlokas, int shlokaNo) {
     return shlokas.indexWhere(
       (s) => int.tryParse(s.shlokNo) == shlokaNo,
@@ -239,17 +236,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
     _initialSeekInFlight = true;
 
-    shlokaSeekLog(
-      _seekScope,
-      'initial seek shloka=$targetNo bookMode=$_isBookMode '
-      'verses=${shlokas.length} query="${widget.searchQuery}"',
-    );
-
     if (_isBookMode) {
-      shlokaSeekLog(
-        _seekScope,
-        'book mode active — delegating scroll to BookReadingScreen',
-      );
       _hasInitialScrolled = true;
       _initialSeekInFlight = false;
       return;
@@ -257,55 +244,34 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
     final targetIndex = _indexForShlokaNo(shlokas, targetNo);
     if (targetIndex == -1) {
-      final sample = shlokas
-          .take(5)
-          .map((s) => s.shlokNo)
-          .join(', ');
-      shlokaSeekLog(
-        _seekScope,
-        'no index for shloka $targetNo (sample shlokNo: $sample…)',
-      );
       _initialSeekInFlight = false;
       return;
     }
 
     final usePositionedList = _isChapterQuery();
     for (var attempt = 0; attempt < 10; attempt++) {
-      shlokaSeekLog(
-        _seekScope,
-        'attempt $attempt → index=$targetIndex (shloka ${shlokas[targetIndex].shlokNo}) '
-        'positionedList=$usePositionedList keys=${_itemKeys.length} '
-        'hasClients=${_scrollController.hasClients}',
-      );
       final ok = usePositionedList
           ? await _scrollToChapterVerseIndex(targetIndex)
           : await _scrollToIndex(targetIndex, awaitVisible: true);
       if (ok) {
         _hasInitialScrolled = true;
         _initialSeekInFlight = false;
-        shlokaSeekLog(_seekScope, 'initial seek succeeded on attempt $attempt');
         return;
       }
       await Future<void>.delayed(Duration(milliseconds: 80 * (attempt + 1)));
     }
-    shlokaSeekLog(_seekScope, 'initial seek failed after retries');
     _initialSeekInFlight = false;
   }
 
   /// Scrolls the verse list so [index] is framed; returns whether scroll ran.
   Future<bool> _scrollToIndex(int index, {bool awaitVisible = false}) async {
     if (index < 0 || index >= _itemKeys.length) {
-      shlokaSeekLog(
-        _seekScope,
-        'abort invalid index=$index (keys=${_itemKeys.length})',
-      );
       return false;
     }
 
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return false;
     if (!_scrollController.hasClients) {
-      shlokaSeekLog(_seekScope, 'abort index=$index: ScrollController has no clients');
       return false;
     }
 
@@ -314,10 +280,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     if (key.currentContext == null) {
       final maxExtent = _scrollController.position.maxScrollExtent;
       double targetOffset = (index * 400.0).clamp(0.0, maxExtent);
-      shlokaSeekLog(
-        _seekScope,
-        'index=$index context null — jumpTo offset=$targetOffset max=$maxExtent',
-      );
       _scrollController.jumpTo(targetOffset);
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -333,17 +295,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
         await Future.delayed(const Duration(milliseconds: 50));
         attempt++;
       }
-      shlokaSeekLog(
-        _seekScope,
-        'index=$index context after jumps: ${key.currentContext != null} (attempts=$attempt)',
-      );
     }
 
     if (!mounted) return false;
 
     Future<bool> ensureVisibleNow() async {
       if (key.currentContext == null) {
-        shlokaSeekLog(_seekScope, 'index=$index ensureVisible skipped — context null');
         return false;
       }
 
@@ -360,11 +317,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
               screenSize.height - 24;
 
       if (!fullyFramed || awaitVisible) {
-        shlokaSeekLog(
-          _seekScope,
-          'index=$index ensureVisible dy=${position.dy.toStringAsFixed(1)} '
-          'h=${renderBox.size.height.toStringAsFixed(1)} await=$awaitVisible',
-        );
         await Scrollable.ensureVisible(
           key.currentContext!,
           duration: Duration(milliseconds: awaitVisible ? 500 : 600),
@@ -373,7 +325,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
         );
         return true;
       }
-      shlokaSeekLog(_seekScope, 'index=$index already framed — no scroll');
       return true;
     }
 
@@ -409,15 +360,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   Future<bool> _scrollToChapterVerseIndex(int verseIndex) async {
     final listIndex = _chapterListIndexForVerse(verseIndex);
-    shlokaSeekLog(
-      _seekScope,
-      'positioned scroll verseIndex=$verseIndex listIndex=$listIndex '
-      'attached=${_chapterItemScrollController.isAttached}',
-    );
     for (var attempt = 0; attempt < 40; attempt++) {
       if (!mounted) return false;
       if (!_chapterItemScrollController.isAttached) {
-        shlokaSeekLog(_seekScope, 'positioned attempt $attempt: not attached');
         await Future<void>.delayed(const Duration(milliseconds: 16));
         continue;
       }
@@ -434,19 +379,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       await Future<void>.delayed(const Duration(milliseconds: 48));
       if (!mounted || !_chapterItemScrollController.isAttached) return false;
 
-      shlokaSeekLogItemPositions(
-        _seekScope,
-        _chapterItemPositionsListener.itemPositions.value,
-        highlightIndex: listIndex,
-      );
-
       final refined =
           _alignmentForChapterVerse(verseIndex, requireVisible: true);
       if (refined == null) {
-        shlokaSeekLog(
-          _seekScope,
-          'positioned attempt $attempt: listIndex $listIndex not visible yet',
-        );
         continue;
       }
 
@@ -462,7 +397,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
       final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
       if ((center - _kChapterFocusLine).abs() <= 0.03) {
-        shlokaSeekLog(_seekScope, 'positioned seek success');
         return true;
       }
 
@@ -474,7 +408,6 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       );
       await Future<void>.delayed(const Duration(milliseconds: 32));
     }
-    shlokaSeekLog(_seekScope, 'positioned seek failed verseIndex=$verseIndex');
     return false;
   }
 

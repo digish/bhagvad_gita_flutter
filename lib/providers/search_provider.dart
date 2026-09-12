@@ -18,6 +18,7 @@ import '../models/shloka_result.dart';
 import '../models/word_result.dart';
 import '../data/database_helper_interface.dart';
 import '../services/analytics_service.dart';
+import '../utils/shloka_reference.dart';
 
 abstract class SearchResultItem {}
 
@@ -70,13 +71,25 @@ class SearchProvider extends ChangeNotifier {
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       // Perform search only if query is not empty (already handled above, but for safety)
       if (_searchQuery.isNotEmpty) {
-        final words = await _dbHelper.searchWords(_searchQuery);
-        final shlokas = await _dbHelper.searchShlokas(
-          _searchQuery,
+        final referenceHits = await fetchShlokasByReferenceQuery(
+          _dbHelper,
+          query: _searchQuery,
           language: _language,
           script: _script,
           shlokaScript: _shlokaScript,
         );
+
+        final words = isTwoNumberShlokaReference(_searchQuery)
+            ? <WordResult>[]
+            : await _dbHelper.searchWords(_searchQuery);
+        var shlokas = referenceHits.isNotEmpty
+            ? referenceHits
+            : await _dbHelper.searchShlokas(
+                _searchQuery,
+                language: _language,
+                script: _script,
+                shlokaScript: _shlokaScript,
+              );
 
         // Deduplication Logic
         final uniqueShlokas = <String, ShlokaResult>{};

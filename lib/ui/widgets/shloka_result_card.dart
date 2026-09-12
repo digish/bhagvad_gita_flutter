@@ -60,8 +60,14 @@ class ShlokaResultCard extends StatelessWidget {
 
     if (snippets.isNotEmpty) {
       displayShlok = snippets.join('\n\n');
-    } else if (shloka.matchedCategory != null && shloka.matchSnippet != null) {
-      // Fallback for legacy items without categorySnippets map
+    } else if (shloka.matchedCategory == 'navigation' &&
+        shloka.shlok.trim().isNotEmpty) {
+      final parts = <String>['Verse: ${shloka.shlok}'];
+      if (shloka.anvay.trim().isNotEmpty) {
+        parts.add('Anvay: ${shloka.anvay}');
+      }
+      displayShlok = parts.join('\n\n');
+    } else if (shloka.matchSnippet != null) {
       displayShlok = shloka.matchSnippet!;
     }
 
@@ -203,10 +209,6 @@ class ShlokaResultCard extends StatelessWidget {
               child: InkWell(
                 onTap: () {
                   final shlokaNo = int.tryParse(shloka.shlokNo);
-                  debugPrint(
-                    '[SHLOKA_SEEK][SearchTap] ch=${shloka.chapterNo} '
-                    'shloka=${shloka.shlokNo} parsed=$shlokaNo id=${shloka.id}',
-                  );
                   context.push(
                     AppRoutes.shlokaList.replaceFirst(
                       ':query',

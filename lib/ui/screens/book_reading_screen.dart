@@ -14,7 +14,6 @@ import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
 import '../../utils/commentary_language.dart';
-import '../../utils/shloka_seek_log.dart';
 import '../widgets/font_size_control.dart';
 import '../widgets/commentary_language_switcher.dart';
 
@@ -51,8 +50,6 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   static const double _kRefFontSize = 20.0;
   /// Target line for scroll-to-shloka (verse center lands here).
   static const double _kFocusLine = 0.40;
-  static const _seekScope = 'BookReading';
-
   double _scaledFont(double size, double base) => size * (base / _kRefFontSize);
 
   // Local theme override
@@ -107,22 +104,10 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
           final targetIndex = _shlokas.indexWhere(
             (s) => int.tryParse(s.shlokNo) == targetNo,
           );
-          shlokaSeekLog(
-            _seekScope,
-            'loaded ch=${widget.chapterNumber} initialShloka=$targetNo '
-            'targetIndex=$targetIndex verseCount=${_shlokas.length} embedded=${widget.embedded}',
-          );
-          if (targetIndex == -1) {
-            final sample = _shlokas.take(5).map((s) => s.shlokNo).join(', ');
-            shlokaSeekLog(
-              _seekScope,
-              'no match for shloka $targetNo (sample: $sample…)',
-            );
-          } else {
+          if (targetIndex != -1) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
               final ok = await _scrollToShloka(targetIndex);
               if (!ok && mounted) {
-                shlokaSeekLog(_seekScope, 'first seek failed — second pass');
                 await Future<void>.delayed(const Duration(milliseconds: 200));
                 if (mounted) await _scrollToShloka(targetIndex);
               }
@@ -150,24 +135,15 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   }
 
   Future<bool> _scrollToShloka(int index) async {
-    shlokaSeekLog(
-      _seekScope,
-      'scrollTo index=$index attached=${_itemScrollController.isAttached}',
-    );
     for (var attempt = 0; attempt < 40; attempt++) {
       if (!mounted) return false;
       if (!_itemScrollController.isAttached) {
-        shlokaSeekLog(_seekScope, 'attempt $attempt: list not attached yet');
         await Future<void>.delayed(const Duration(milliseconds: 16));
         continue;
       }
 
       final alignment = _alignmentForItemCenter(index) ??
           (_kFocusLine - 0.09).clamp(0.0, 1.0);
-      shlokaSeekLog(
-        _seekScope,
-        'attempt $attempt: scrollTo alignment=${alignment.toStringAsFixed(3)}',
-      );
 
       await _itemScrollController.scrollTo(
         index: index,
@@ -179,18 +155,8 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       await Future<void>.delayed(const Duration(milliseconds: 48));
       if (!mounted || !_itemScrollController.isAttached) return false;
 
-      shlokaSeekLogItemPositions(
-        _seekScope,
-        _itemPositionsListener.itemPositions.value,
-        highlightIndex: index,
-      );
-
       final refined = _alignmentForItemCenter(index, requireVisible: true);
       if (refined == null) {
-        shlokaSeekLog(
-          _seekScope,
-          'attempt $attempt: index $index not in position listener — retry',
-        );
         continue;
       }
 
@@ -203,19 +169,11 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         }
       }
       if (item == null) {
-        shlokaSeekLog(_seekScope, 'attempt $attempt: item position missing');
         continue;
       }
 
       final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
-      final delta = (center - _kFocusLine).abs();
-      shlokaSeekLog(
-        _seekScope,
-        'attempt $attempt: center=${center.toStringAsFixed(3)} '
-        'focus=$_kFocusLine delta=${delta.toStringAsFixed(3)}',
-      );
-      if (delta <= 0.03) {
-        shlokaSeekLog(_seekScope, 'seek success at index $index');
+      if ((center - _kFocusLine).abs() <= 0.03) {
         return true;
       }
 
@@ -233,13 +191,11 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         if (p.index == index) {
           final c = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
           if ((c - _kFocusLine).abs() <= 0.04) {
-            shlokaSeekLog(_seekScope, 'seek success after refine');
             return true;
           }
         }
       }
     }
-    shlokaSeekLog(_seekScope, 'seek failed for index $index');
     return false;
   }
 

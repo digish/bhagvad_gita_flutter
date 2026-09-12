@@ -196,9 +196,6 @@ final GoRouter router = GoRouter(
               }
               showHelp = showHelp || extra['help'] == true;
             }
-            debugPrint(
-              '[SHLOKA_SEEK][Router] shloka-list query=$query initialShloka=$initialShloka extraType=${extra.runtimeType}',
-            );
             return CustomTransitionPage(
               key: ValueKey(
                 'shloka-list-$query-help-$showHelp-${initialShloka ?? ''}',
