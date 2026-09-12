@@ -181,13 +181,23 @@ final GoRouter router = GoRouter(
             var showHelp = state.uri.queryParameters['help'] == '1';
             if (extra is int) {
               initialShloka = extra;
+            } else if (extra is num) {
+              initialShloka = extra.toInt();
+            } else if (extra is String) {
+              initialShloka = int.tryParse(extra);
             } else if (extra is Map) {
               final mapped = extra['initialShloka'];
-              if (mapped is int) initialShloka = mapped;
+              if (mapped is int) {
+                initialShloka = mapped;
+              } else if (mapped is num) {
+                initialShloka = mapped.toInt();
+              } else if (mapped is String) {
+                initialShloka = int.tryParse(mapped);
+              }
               showHelp = showHelp || extra['help'] == true;
             }
             debugPrint(
-              'AppRouter shlokaList: query=$query, initialShloka=$initialShloka',
+              '[SHLOKA_SEEK][Router] shloka-list query=$query initialShloka=$initialShloka extraType=${extra.runtimeType}',
             );
             return CustomTransitionPage(
               key: ValueKey(

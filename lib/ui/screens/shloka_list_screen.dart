@@ -17,6 +17,7 @@ import 'package:bhagvadgeeta/ui/widgets/simple_gradient_background.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../navigation/app_router.dart';
 import '../../providers/settings_provider.dart';
@@ -25,6 +26,7 @@ import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/font_size_control.dart';
 import '../../data/static_data.dart';
+import '../../models/shloka_result.dart';
 import '../../data/database_helper_interface.dart';
 
 import '../widgets/responsive_wrapper.dart';
@@ -32,6 +34,7 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_bubble.dart';
 import '../widgets/reminder_pitch.dart';
 import 'book_reading_screen.dart';
+import '../../utils/shloka_seek_log.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -58,12 +61,21 @@ class ShlokaListScreen extends StatefulWidget {
 
 class _ShlokaListScreenState extends State<ShlokaListScreen> {
   final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _chapterItemScrollController =
+      ItemScrollController();
+  final ItemPositionsListener _chapterItemPositionsListener =
+      ItemPositionsListener.create();
   List<GlobalKey> _itemKeys = [];
+
+  /// Header row in [ScrollablePositionedList] before verse 0.
+  static const int _kChapterHeaderListItems = 1;
+  static const double _kChapterFocusLine = 0.40;
 
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
   String? _currentShlokId;
   bool _hasInitialScrolled = false; // Flag to prevent multiple scrolls
+  bool _initialSeekInFlight = false;
 
   // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
@@ -193,28 +205,118 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           (s) => '${s.chapterNo}.${s.shlokNo}' == _currentShlokId,
         );
         if (index != -1) {
-          _scrollToIndex(index);
+          if (_isChapterQuery() && !_isBookMode) {
+            _scrollToChapterVerseIndex(index);
+          } else {
+            _scrollToIndex(index);
+          }
         }
       }
     }
   }
 
-  // A more robust scrolling method.
-  Future<void> _scrollToIndex(int index, {bool awaitVisible = false}) async {
-    if (index < 0 || index >= _itemKeys.length) return;
+  bool _isChapterQuery() =>
+      int.tryParse(widget.searchQuery.split(',').first.trim()) != null;
 
-    // Small delay to allow initial list render
+  int _chapterListIndexForVerse(int verseIndex) =>
+      verseIndex + _kChapterHeaderListItems;
+
+  static const _seekScope = 'ChapterList';
+
+  int _indexForShlokaNo(List<ShlokaResult> shlokas, int shlokaNo) {
+    return shlokas.indexWhere(
+      (s) => int.tryParse(s.shlokNo) == shlokaNo,
+    );
+  }
+
+  Future<void> _seekInitialShloka(List<ShlokaResult> shlokas) async {
+    final targetNo = widget.initialShlokaNo;
+    if (targetNo == null ||
+        _hasInitialScrolled ||
+        _initialSeekInFlight ||
+        shlokas.isEmpty) {
+      return;
+    }
+    _initialSeekInFlight = true;
+
+    shlokaSeekLog(
+      _seekScope,
+      'initial seek shloka=$targetNo bookMode=$_isBookMode '
+      'verses=${shlokas.length} query="${widget.searchQuery}"',
+    );
+
+    if (_isBookMode) {
+      shlokaSeekLog(
+        _seekScope,
+        'book mode active — delegating scroll to BookReadingScreen',
+      );
+      _hasInitialScrolled = true;
+      _initialSeekInFlight = false;
+      return;
+    }
+
+    final targetIndex = _indexForShlokaNo(shlokas, targetNo);
+    if (targetIndex == -1) {
+      final sample = shlokas
+          .take(5)
+          .map((s) => s.shlokNo)
+          .join(', ');
+      shlokaSeekLog(
+        _seekScope,
+        'no index for shloka $targetNo (sample shlokNo: $sample…)',
+      );
+      _initialSeekInFlight = false;
+      return;
+    }
+
+    final usePositionedList = _isChapterQuery();
+    for (var attempt = 0; attempt < 10; attempt++) {
+      shlokaSeekLog(
+        _seekScope,
+        'attempt $attempt → index=$targetIndex (shloka ${shlokas[targetIndex].shlokNo}) '
+        'positionedList=$usePositionedList keys=${_itemKeys.length} '
+        'hasClients=${_scrollController.hasClients}',
+      );
+      final ok = usePositionedList
+          ? await _scrollToChapterVerseIndex(targetIndex)
+          : await _scrollToIndex(targetIndex, awaitVisible: true);
+      if (ok) {
+        _hasInitialScrolled = true;
+        _initialSeekInFlight = false;
+        shlokaSeekLog(_seekScope, 'initial seek succeeded on attempt $attempt');
+        return;
+      }
+      await Future<void>.delayed(Duration(milliseconds: 80 * (attempt + 1)));
+    }
+    shlokaSeekLog(_seekScope, 'initial seek failed after retries');
+    _initialSeekInFlight = false;
+  }
+
+  /// Scrolls the verse list so [index] is framed; returns whether scroll ran.
+  Future<bool> _scrollToIndex(int index, {bool awaitVisible = false}) async {
+    if (index < 0 || index >= _itemKeys.length) {
+      shlokaSeekLog(
+        _seekScope,
+        'abort invalid index=$index (keys=${_itemKeys.length})',
+      );
+      return false;
+    }
+
     await Future.delayed(const Duration(milliseconds: 100));
-    if (!mounted || !_scrollController.hasClients) return;
+    if (!mounted) return false;
+    if (!_scrollController.hasClients) {
+      shlokaSeekLog(_seekScope, 'abort index=$index: ScrollController has no clients');
+      return false;
+    }
 
     final key = _itemKeys[index];
 
-    // If the Context is null, the item is not yet rendered by the SliverList.
-    // Iteratively jump down the list to force it to render.
     if (key.currentContext == null) {
-      double targetOffset = (index * 400.0).clamp(
-        0.0,
-        _scrollController.position.maxScrollExtent,
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      double targetOffset = (index * 400.0).clamp(0.0, maxExtent);
+      shlokaSeekLog(
+        _seekScope,
+        'index=$index context null — jumpTo offset=$targetOffset max=$maxExtent',
       );
       _scrollController.jumpTo(targetOffset);
       await Future.delayed(const Duration(milliseconds: 100));
@@ -226,63 +328,237 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           mounted &&
           _scrollController.hasClients) {
         _scrollController.jumpTo(
-          (_scrollController.offset + 800).clamp(
-            0.0,
-            _scrollController.position.maxScrollExtent,
-          ),
+          (_scrollController.offset + 800).clamp(0.0, maxExtent),
         );
         await Future.delayed(const Duration(milliseconds: 50));
         attempt++;
       }
+      shlokaSeekLog(
+        _seekScope,
+        'index=$index context after jumps: ${key.currentContext != null} (attempts=$attempt)',
+      );
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
-    Future<void> ensureVisibleNow() async {
+    Future<bool> ensureVisibleNow() async {
       if (key.currentContext == null) {
-        debugPrint("Cannot scroll to index $index: context is still null.");
-        return;
+        shlokaSeekLog(_seekScope, 'index=$index ensureVisible skipped — context null');
+        return false;
       }
 
       final RenderBox renderBox =
           key.currentContext!.findRenderObject() as RenderBox;
       final position = renderBox.localToGlobal(Offset.zero);
       final screenSize = MediaQuery.of(context).size;
-      final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 80;
+      final topPadding =
+          MediaQuery.of(context).padding.top + kToolbarHeight + 80;
 
-      // Prefer aligning near the top under the sticky chapter header.
       final fullyFramed =
           position.dy >= topPadding &&
           position.dy + math.min(renderBox.size.height, 320) <=
               screenSize.height - 24;
 
       if (!fullyFramed || awaitVisible) {
-        debugPrint(
-          "[SCROLL] Item at index $index — ensureVisible (await=$awaitVisible).",
+        shlokaSeekLog(
+          _seekScope,
+          'index=$index ensureVisible dy=${position.dy.toStringAsFixed(1)} '
+          'h=${renderBox.size.height.toStringAsFixed(1)} await=$awaitVisible',
         );
         await Scrollable.ensureVisible(
           key.currentContext!,
           duration: Duration(milliseconds: awaitVisible ? 500 : 600),
           curve: Curves.easeInOutCubic,
-          alignment: 0.08,
+          alignment: 0.40,
         );
-      } else {
-        debugPrint(
-          "[SCROLL] Item at index $index is already visible. No scroll needed.",
-        );
+        return true;
       }
+      shlokaSeekLog(_seekScope, 'index=$index already framed — no scroll');
+      return true;
     }
 
     if (awaitVisible) {
       await Future<void>.delayed(Duration.zero);
-      if (!mounted) return;
-      await ensureVisibleNow();
+      if (!mounted) return false;
+      final ok = await ensureVisibleNow();
       await Future<void>.delayed(const Duration(milliseconds: 80));
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ensureVisibleNow();
-      });
+      return ok;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ensureVisibleNow();
+    });
+    return true;
+  }
+
+  double? _alignmentForChapterVerse(
+    int verseIndex, {
+    bool requireVisible = false,
+  }) {
+    final listIndex = _chapterListIndexForVerse(verseIndex);
+    final positions = _chapterItemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if (p.index == listIndex) {
+        final halfHeight =
+            (p.itemTrailingEdge - p.itemLeadingEdge).abs() / 2;
+        return (_kChapterFocusLine - halfHeight).clamp(0.0, 1.0);
+      }
+    }
+    if (requireVisible) return null;
+    return (_kChapterFocusLine - 0.09).clamp(0.0, 1.0);
+  }
+
+  Future<bool> _scrollToChapterVerseIndex(int verseIndex) async {
+    final listIndex = _chapterListIndexForVerse(verseIndex);
+    shlokaSeekLog(
+      _seekScope,
+      'positioned scroll verseIndex=$verseIndex listIndex=$listIndex '
+      'attached=${_chapterItemScrollController.isAttached}',
+    );
+    for (var attempt = 0; attempt < 40; attempt++) {
+      if (!mounted) return false;
+      if (!_chapterItemScrollController.isAttached) {
+        shlokaSeekLog(_seekScope, 'positioned attempt $attempt: not attached');
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+        continue;
+      }
+
+      final alignment = _alignmentForChapterVerse(verseIndex) ??
+          (_kChapterFocusLine - 0.09).clamp(0.0, 1.0);
+      await _chapterItemScrollController.scrollTo(
+        index: listIndex,
+        duration: Duration(milliseconds: attempt == 0 ? 500 : 220),
+        curve: Curves.easeInOutCubic,
+        alignment: alignment,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 48));
+      if (!mounted || !_chapterItemScrollController.isAttached) return false;
+
+      shlokaSeekLogItemPositions(
+        _seekScope,
+        _chapterItemPositionsListener.itemPositions.value,
+        highlightIndex: listIndex,
+      );
+
+      final refined =
+          _alignmentForChapterVerse(verseIndex, requireVisible: true);
+      if (refined == null) {
+        shlokaSeekLog(
+          _seekScope,
+          'positioned attempt $attempt: listIndex $listIndex not visible yet',
+        );
+        continue;
+      }
+
+      final positions = _chapterItemPositionsListener.itemPositions.value;
+      ItemPosition? item;
+      for (final p in positions) {
+        if (p.index == listIndex) {
+          item = p;
+          break;
+        }
+      }
+      if (item == null) continue;
+
+      final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
+      if ((center - _kChapterFocusLine).abs() <= 0.03) {
+        shlokaSeekLog(_seekScope, 'positioned seek success');
+        return true;
+      }
+
+      await _chapterItemScrollController.scrollTo(
+        index: listIndex,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        alignment: refined,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 32));
+    }
+    shlokaSeekLog(_seekScope, 'positioned seek failed verseIndex=$verseIndex');
+    return false;
+  }
+
+  Widget _buildVerseCard({
+    required BuildContext context,
+    required List<ShlokaResult> shlokas,
+    required int index,
+    required SettingsProvider settingsProvider,
+    required int? chapterNumber,
+  }) {
+    final isChapter = chapterNumber != null;
+    final meaningsOpen = !isChapter || _expandedVerseIndex == index;
+    final card = ResponsiveWrapper(
+      child: FullShlokaCard(
+        shloka: shlokas[index],
+        config: _cardConfig.copyWith(
+          baseFontSize: settingsProvider.fontSize,
+          isLightTheme: Theme.of(context).brightness == Brightness.light,
+          showEmblem: !isChapter,
+          showSeparator: isChapter ? meaningsOpen : true,
+          showAnvay: meaningsOpen,
+          showBhavarth: meaningsOpen,
+          showActions: meaningsOpen,
+          spacingCompact: isChapter,
+          showMeaningsHint: isChapter && !meaningsOpen,
+        ),
+        currentlyPlayingId: _currentShlokId,
+        onTap: isChapter
+            ? () {
+                setState(() {
+                  _expandedVerseIndex =
+                      _expandedVerseIndex == index ? null : index;
+                });
+              }
+            : null,
+        onPlayPause: () {
+          Provider.of<AudioProvider>(context, listen: false).playChapter(
+            shlokas: shlokas,
+            initialIndex: index,
+          );
+        },
+      ),
+    );
+    if (index == 0 &&
+        isChapter &&
+        !settingsProvider.hasUsedChapterTapHint) {
+      return KeyedSubtree(key: _verseHintKey, child: card);
+    }
+    return card;
+  }
+
+  Widget _buildChapterPositionedList({
+    required BuildContext context,
+    required List<ShlokaResult> shlokas,
+    required int chapterNumber,
+    required SettingsProvider settingsProvider,
+  }) {
+    return ScrollablePositionedList.builder(
+      itemScrollController: _chapterItemScrollController,
+      itemPositionsListener: _chapterItemPositionsListener,
+      padding: const EdgeInsets.only(bottom: 88),
+      itemCount: shlokas.length + _kChapterHeaderListItems,
+      itemBuilder: (context, listIndex) {
+        if (listIndex < _kChapterHeaderListItems) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: MediaQuery.of(context).padding.top + 64),
+              Center(
+                child: _ChapterEmblemHeader(chapterNumber: chapterNumber),
+              ),
+            ],
+          );
+        }
+        final index = listIndex - _kChapterHeaderListItems;
+        return _buildVerseCard(
+          context: context,
+          shlokas: shlokas,
+          index: index,
+          settingsProvider: settingsProvider,
+          chapterNumber: chapterNumber,
+        );
+      },
+    );
   }
 
   // --- NEW: Helper methods for the playback mode cycle button ---
@@ -462,7 +738,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         debugPrint(
                           "Scrolling to initial index: ${provider.initialScrollIndex!}",
                         );
-                        _scrollToIndex(provider.initialScrollIndex!);
+                        final scrollIndex = provider.initialScrollIndex!;
+                        if (chapterNumber != null) {
+                          _scrollToChapterVerseIndex(scrollIndex);
+                        } else {
+                          _scrollToIndex(scrollIndex, awaitVisible: true);
+                        }
                         // Clear the index in the provider to prevent re-scrolling on rebuilds.
                         provider.clearScrollIndex();
                       }
@@ -478,14 +759,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         if (widget.initialShlokaNo != null &&
                             !_hasInitialScrolled &&
                             shlokas.isNotEmpty) {
-                          final targetIndex = shlokas.indexWhere(
-                            (s) =>
-                                s.shlokNo == widget.initialShlokaNo.toString(),
-                          );
-                          if (targetIndex != -1) {
-                            _scrollToIndex(targetIndex);
-                            _hasInitialScrolled = true;
-                          }
+                          _seekInitialShloka(shlokas);
                         }
 
                         // 2. Handle Audio Playback Scroll
@@ -497,7 +771,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                                 _currentShlokId,
                           );
                           if (playingIndex != -1) {
-                            _scrollToIndex(playingIndex);
+                            if (chapterNumber != null) {
+                              _scrollToChapterVerseIndex(playingIndex);
+                            } else {
+                              _scrollToIndex(playingIndex);
+                            }
                             provider.setLastScrolledId(
                               _currentShlokId,
                             ); // Prevent re-scrolling
@@ -514,95 +792,38 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                         );
                       }
 
+                      if (chapterNumber != null) {
+                        return _buildChapterPositionedList(
+                          context: context,
+                          shlokas: shlokas,
+                          chapterNumber: chapterNumber,
+                          settingsProvider: settingsProvider,
+                        );
+                      }
+
                       return CustomScrollView(
                         controller: _scrollController,
                         slivers: [
-                          if (chapterNumber == null)
-                            SliverToBoxAdapter(
-                              child: SizedBox(
-                                height:
-                                    MediaQuery.of(context).padding.top +
-                                    kToolbarHeight +
-                                    20,
-                              ),
+                          SliverToBoxAdapter(
+                            child: SizedBox(
+                              height:
+                                  MediaQuery.of(context).padding.top +
+                                  kToolbarHeight +
+                                  20,
                             ),
-                          if (chapterNumber != null) ...[
-                            SliverToBoxAdapter(
-                              child: SizedBox(
-                                height:
-                                    MediaQuery.of(context).padding.top + 64,
-                              ),
-                            ),
-                            SliverToBoxAdapter(
-                              child: Center(
-                                child: _ChapterEmblemHeader(
-                                  chapterNumber: chapterNumber,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                           SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                final isChapter = chapterNumber != null;
-                                final meaningsOpen =
-                                    !isChapter ||
-                                    _expandedVerseIndex == index;
-                                final card = ResponsiveWrapper(
-                                  child: FullShlokaCard(
-                                    shloka: shlokas[index],
-                                    config: _cardConfig.copyWith(
-                                      baseFontSize:
-                                          settingsProvider.fontSize,
-                                      isLightTheme:
-                                          Theme.of(context).brightness ==
-                                          Brightness.light,
-                                      showEmblem: !isChapter,
-                                      showSeparator: isChapter
-                                          ? meaningsOpen
-                                          : true,
-                                      showAnvay: meaningsOpen,
-                                      showBhavarth: meaningsOpen,
-                                      showActions: meaningsOpen,
-                                      spacingCompact: isChapter,
-                                      showMeaningsHint:
-                                          isChapter && !meaningsOpen,
-                                    ),
-                                    currentlyPlayingId: _currentShlokId,
-                                    onTap: isChapter
-                                        ? () {
-                                            setState(() {
-                                              _expandedVerseIndex =
-                                                  _expandedVerseIndex ==
-                                                      index
-                                                  ? null
-                                                  : index;
-                                            });
-                                          }
-                                        : null,
-                                    onPlayPause: () {
-                                      Provider.of<AudioProvider>(
-                                        context,
-                                        listen: false,
-                                      ).playChapter(
-                                        shlokas: shlokas,
-                                        initialIndex: index,
-                                      );
-                                    },
-                                  ),
-                                );
-                                final wrapped = index == 0 &&
-                                        isChapter &&
-                                        !settingsProvider
-                                            .hasUsedChapterTapHint
-                                    ? KeyedSubtree(
-                                        key: _verseHintKey,
-                                        child: card,
-                                      )
-                                    : card;
                                 return Container(
                                   key: _itemKeys[index],
-                                  child: wrapped,
+                                  child: _buildVerseCard(
+                                    context: context,
+                                    shlokas: shlokas,
+                                    index: index,
+                                    settingsProvider: settingsProvider,
+                                    chapterNumber: null,
+                                  ),
                                 );
                               },
                               childCount: shlokas.length,
@@ -641,7 +862,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   AnchoredOnboardingBubble(
                     targetKey: _bookModeKey,
                     placement: OnboardingBubblePlacement.belowTarget,
-                    repositionListenable: _scrollController,
+                    repositionListenable:
+                        _chapterItemPositionsListener.itemPositions,
                     text: 'Book mode — continuous commentary',
                     icon: Icons.menu_book_outlined,
                     onTap: () =>
@@ -654,7 +876,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   AnchoredOnboardingBubble(
                     targetKey: _verseHintKey,
                     placement: OnboardingBubblePlacement.belowTarget,
-                    repositionListenable: _scrollController,
+                    repositionListenable:
+                        _chapterItemPositionsListener.itemPositions,
                     text: 'Tap a verse for meaning & actions',
                     icon: Icons.touch_app_outlined,
                     onTap: () => settingsProvider.markChapterTapHintUsed(),
@@ -688,7 +911,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                   AnchoredOnboardingBubble(
                     targetKey: _fontDockKey,
                     placement: OnboardingBubblePlacement.leftOfTarget,
-                    repositionListenable: _scrollController,
+                    repositionListenable:
+                        _chapterItemPositionsListener.itemPositions,
                     text: '− / + text size',
                     icon: Icons.format_size,
                     onTap: () =>

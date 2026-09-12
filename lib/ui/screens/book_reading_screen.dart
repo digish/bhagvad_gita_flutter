@@ -14,6 +14,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
 import '../../utils/commentary_language.dart';
+import '../../utils/shloka_seek_log.dart';
 import '../widgets/font_size_control.dart';
 import '../widgets/commentary_language_switcher.dart';
 
@@ -48,6 +49,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   // Typography Constants
   static const double _kPadding = 24.0;
   static const double _kRefFontSize = 20.0;
+  /// Target line for scroll-to-shloka (verse center lands here).
+  static const double _kFocusLine = 0.40;
+  static const _seekScope = 'BookReading';
 
   double _scaledFont(double size, double base) => size * (base / _kRefFontSize);
 
@@ -99,12 +103,29 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
 
         // Handle initial scroll
         if (widget.initialShlokaNo != null) {
+          final targetNo = widget.initialShlokaNo!;
           final targetIndex = _shlokas.indexWhere(
-            (s) => int.tryParse(s.shlokNo) == widget.initialShlokaNo,
+            (s) => int.tryParse(s.shlokNo) == targetNo,
           );
-          if (targetIndex != -1) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToShloka(targetIndex);
+          shlokaSeekLog(
+            _seekScope,
+            'loaded ch=${widget.chapterNumber} initialShloka=$targetNo '
+            'targetIndex=$targetIndex verseCount=${_shlokas.length} embedded=${widget.embedded}',
+          );
+          if (targetIndex == -1) {
+            final sample = _shlokas.take(5).map((s) => s.shlokNo).join(', ');
+            shlokaSeekLog(
+              _seekScope,
+              'no match for shloka $targetNo (sample: $sample…)',
+            );
+          } else {
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              final ok = await _scrollToShloka(targetIndex);
+              if (!ok && mounted) {
+                shlokaSeekLog(_seekScope, 'first seek failed — second pass');
+                await Future<void>.delayed(const Duration(milliseconds: 200));
+                if (mounted) await _scrollToShloka(targetIndex);
+              }
             });
           }
         }
@@ -115,12 +136,111 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
     }
   }
 
-  void _scrollToShloka(int index) {
-    _itemScrollController.scrollTo(
-      index: index,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOutCubic,
+  double? _alignmentForItemCenter(int index, {bool requireVisible = false}) {
+    final positions = _itemPositionsListener.itemPositions.value;
+    for (final p in positions) {
+      if (p.index == index) {
+        final halfHeight =
+            (p.itemTrailingEdge - p.itemLeadingEdge).abs() / 2;
+        return (_kFocusLine - halfHeight).clamp(0.0, 1.0);
+      }
+    }
+    if (requireVisible) return null;
+    return (_kFocusLine - 0.09).clamp(0.0, 1.0);
+  }
+
+  Future<bool> _scrollToShloka(int index) async {
+    shlokaSeekLog(
+      _seekScope,
+      'scrollTo index=$index attached=${_itemScrollController.isAttached}',
     );
+    for (var attempt = 0; attempt < 40; attempt++) {
+      if (!mounted) return false;
+      if (!_itemScrollController.isAttached) {
+        shlokaSeekLog(_seekScope, 'attempt $attempt: list not attached yet');
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+        continue;
+      }
+
+      final alignment = _alignmentForItemCenter(index) ??
+          (_kFocusLine - 0.09).clamp(0.0, 1.0);
+      shlokaSeekLog(
+        _seekScope,
+        'attempt $attempt: scrollTo alignment=${alignment.toStringAsFixed(3)}',
+      );
+
+      await _itemScrollController.scrollTo(
+        index: index,
+        duration: Duration(milliseconds: attempt == 0 ? 500 : 220),
+        curve: Curves.easeInOutCubic,
+        alignment: alignment,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 48));
+      if (!mounted || !_itemScrollController.isAttached) return false;
+
+      shlokaSeekLogItemPositions(
+        _seekScope,
+        _itemPositionsListener.itemPositions.value,
+        highlightIndex: index,
+      );
+
+      final refined = _alignmentForItemCenter(index, requireVisible: true);
+      if (refined == null) {
+        shlokaSeekLog(
+          _seekScope,
+          'attempt $attempt: index $index not in position listener — retry',
+        );
+        continue;
+      }
+
+      final positions = _itemPositionsListener.itemPositions.value;
+      ItemPosition? item;
+      for (final p in positions) {
+        if (p.index == index) {
+          item = p;
+          break;
+        }
+      }
+      if (item == null) {
+        shlokaSeekLog(_seekScope, 'attempt $attempt: item position missing');
+        continue;
+      }
+
+      final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
+      final delta = (center - _kFocusLine).abs();
+      shlokaSeekLog(
+        _seekScope,
+        'attempt $attempt: center=${center.toStringAsFixed(3)} '
+        'focus=$_kFocusLine delta=${delta.toStringAsFixed(3)}',
+      );
+      if (delta <= 0.03) {
+        shlokaSeekLog(_seekScope, 'seek success at index $index');
+        return true;
+      }
+
+      await _itemScrollController.scrollTo(
+        index: index,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        alignment: refined,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 32));
+      if (!mounted) return false;
+
+      final positionsAfter = _itemPositionsListener.itemPositions.value;
+      for (final p in positionsAfter) {
+        if (p.index == index) {
+          final c = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
+          if ((c - _kFocusLine).abs() <= 0.04) {
+            shlokaSeekLog(_seekScope, 'seek success after refine');
+            return true;
+          }
+        }
+      }
+    }
+    shlokaSeekLog(_seekScope, 'seek failed for index $index');
+    return false;
   }
 
   /// Topmost visible verse — used to hold scroll steady when commentary reflows.
