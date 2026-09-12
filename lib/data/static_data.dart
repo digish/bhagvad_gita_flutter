@@ -182,6 +182,17 @@ class StaticData {
 
   // Terms Localization
   static const Map<String, Map<String, String>> _localizedTerms = {
+    'shloka': {
+      'en': 'Shloka',
+      'gu': 'શ્લોક',
+      'dev': 'श्लोक',
+      'hi': 'श्लोक',
+      'mr': 'श्लोक',
+      'bn': 'শ্লোক',
+      'te': 'శ్లోక',
+      'ta': 'ஸ்லோகம்',
+      'kn': 'ಶ್ಲೋಕ',
+    },
     'anvay': {
       'en': 'Anvay',
       'gu': 'અન્વય',

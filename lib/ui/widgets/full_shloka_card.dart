@@ -1183,8 +1183,9 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
         );
       }
       sections.add(
-        _bodyFor(
-          bodies[i],
+        _sectionWithOptionalLabel(
+          context,
+          body: bodies[i],
           verseMaxWidth: verseMaxWidth,
           leftInset: leftInset,
           rightInset: rightInset,
@@ -1239,6 +1240,64 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
           ),
         ),
         verseBody,
+      ],
+    );
+  }
+
+  Widget _sectionWithOptionalLabel(
+    BuildContext context, {
+    required ContinuousListBody body,
+    required double verseMaxWidth,
+    required double leftInset,
+    required double rightInset,
+    required double base,
+    required double lineHeight,
+    required double letterSpacing,
+    required double indent,
+  }) {
+    final content = _bodyFor(
+      body,
+      verseMaxWidth: verseMaxWidth,
+      leftInset: leftInset,
+      rightInset: rightInset,
+      base: base,
+      lineHeight: lineHeight,
+      letterSpacing: letterSpacing,
+      indent: indent,
+    );
+    if (!config.preserveCardChrome) return content;
+
+    final script = Provider.of<SettingsProvider>(context).script;
+    final termKey = switch (body) {
+      ContinuousListBody.shloka => 'shloka',
+      ContinuousListBody.anvay => 'anvay',
+      ContinuousListBody.translation => 'tika',
+    };
+    final accentColor = config.isLightTheme
+        ? const Color(0xFFD84315)
+        : const Color(0xFFFFD700);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: leftInset, right: rightInset),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              StaticData.localizeTerm(termKey, script),
+              style: TextStyle(
+                color: accentColor,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+                fontSize: (base * 0.85).clamp(14.0, 18.0),
+                fontFamily: 'NotoSerif',
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        content,
       ],
     );
   }
