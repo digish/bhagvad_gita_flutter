@@ -89,8 +89,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   bool _collapseHomeForSearch = false;
   late AnimationController _revealController;
   late AnimationController _pulseController;
+  late AnimationController _minimalHomeController;
   late AnimationController
   _lotusController; // 🌸 Continuous rotation controller
+  bool? _trackedMinimalHomeLayout;
   final ScrollController _homeScrollController = ScrollController();
   /// How far the top lotuses have been pushed up with home scroll.
   /// Clamped to >= 0 so they never settle below their resting position.
@@ -157,6 +159,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
+    _minimalHomeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    )..addStatusListener(_onMinimalHomeAnimationStatus);
+
     // 🌸 Initialize continuous lotus rotation (10s per revolution)
     _lotusController = AnimationController(
       vsync: this,
@@ -192,6 +199,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     GoRouter.of(context).go('/');
   }
 
+  void _onMinimalHomeAnimationStatus(AnimationStatus status) {
+    // Leaving minimal: search moves from overlay into scroll — re-attach focus.
+    if (status != AnimationStatus.dismissed) return;
+    if (!_isSearchFocused) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_searchFocusNode.hasFocus) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
   void _onSearchFocusChanged() {
     if (!mounted) return;
     final hasFocus = _searchFocusNode.hasFocus;
@@ -223,6 +242,27 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     bool shouldShowResults,
   ) {
     return settings.homeUiMode == HomeUiMode.minimal && !shouldShowResults;
+  }
+
+  bool _showsSimpleModeNavButtons(SettingsProvider settings, double width) {
+    return width <= 600 &&
+        (settings.homeUiMode == HomeUiMode.minimal ||
+            !settings.showBackground);
+  }
+
+  void _syncMinimalHomeLayoutAnimation(bool isMinimalHome) {
+    if (_trackedMinimalHomeLayout == null) {
+      _trackedMinimalHomeLayout = isMinimalHome;
+      _minimalHomeController.value = isMinimalHome ? 1.0 : 0.0;
+      return;
+    }
+    if (_trackedMinimalHomeLayout == isMinimalHome) return;
+    _trackedMinimalHomeLayout = isMinimalHome;
+    if (isMinimalHome) {
+      _minimalHomeController.forward();
+    } else {
+      _minimalHomeController.reverse();
+    }
   }
 
   Widget _buildHomeUiModeToggleFab(SettingsProvider settings) {
@@ -381,6 +421,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     _lotusLift.dispose();
     _revealController.dispose();
     _pulseController.dispose();
+    _minimalHomeController.removeStatusListener(_onMinimalHomeAnimationStatus);
+    _minimalHomeController.dispose();
     _lotusController.dispose();
     _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchController.dispose();
@@ -492,6 +534,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         MediaQuery.of(context).orientation == Orientation.landscape;
     final showOnboarding = _showHomeOnboardingHints(settings) && !shouldShowResults;
     final isMinimalHome = _isMinimalHomeLayout(settings, shouldShowResults);
+    _syncMinimalHomeLayoutAnimation(isMinimalHome);
     final showRailThemeCoach =
         width > 600 &&
         MediaQuery.of(context).viewInsets.bottom == 0 &&
@@ -757,121 +800,226 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            if (isMinimalHome)
-                                              Expanded(
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    if (width <= 600)
-                                                      _buildSimpleModeNavButtons(
-                                                        settings,
-                                                      ),
-                                                    _buildSearchBar(provider),
-                                                  ],
-                                                ),
-                                              )
-                                            else ...[
                                             Expanded(
-                                              child: Scrollbar(
-                                                controller:
-                                                    _homeScrollController,
-                                                child: SingleChildScrollView(
-                                                  controller:
-                                                      _homeScrollController,
-                                                  clipBehavior: Clip.none,
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      AnimatedSize(
-                                                        duration:
-                                                            const Duration(
-                                                          milliseconds: 400,
-                                                        ),
-                                                        curve:
-                                                            Curves.easeInOut,
-                                                        alignment:
-                                                            Alignment.topCenter,
-                                                        clipBehavior:
-                                                            Clip.none,
-                                                        child: shouldShowResults
-                                                            ? const SizedBox(
-                                                                height: 16,
-                                                                width: double
-                                                                    .infinity,
-                                                              )
-                                                            : Column(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .stretch,
-                                                                children: [
-                                                                  SizedBox(
-                                                                    height: settings
-                                                                            .showBackground
-                                                                        ? (isTablet
-                                                                              ? 300.0
-                                                                              : 190.0)
-                                                                        : 4,
-                                                                  ),
-                                                                  if (!settings
-                                                                          .showBackground &&
-                                                                      width <=
-                                                                          600)
-                                                                    _buildSimpleModeNavButtons(
-                                                                      settings,
-                                                                    ),
-                                                                  if (settings
+                                              child: AnimatedBuilder(
+                                                animation: _minimalHomeController,
+                                                builder: (context, _) {
+                                                  final minimalT =
+                                                      Curves.easeInOutCubic
+                                                          .transform(
+                                                    _minimalHomeController
+                                                        .value,
+                                                  );
+                                                  final showSimpleNav =
+                                                      _showsSimpleModeNavButtons(
+                                                    settings,
+                                                    width,
+                                                  ) &&
+                                                      !shouldShowResults;
+                                                  const searchBarHeight = 52.0;
+                                                  const navBlockHeight = 54.0;
+
+                                                  return LayoutBuilder(
+                                                    builder: (context,
+                                                        constraints) {
+                                                      final maxHeight =
+                                                          constraints.maxHeight;
+                                                      final headerSpacer =
+                                                          shouldShowResults
+                                                              ? 16.0
+                                                              : (settings
+                                                                      .showBackground
+                                                                  ? (isTablet
+                                                                        ? 300.0
+                                                                        : 190.0)
+                                                                  : 4.0);
+                                                      final soulBlockHeight =
+                                                          (!shouldShowResults &&
+                                                                  settings
                                                                       .streakSystemEnabled)
-                                                                    _buildSoulStatusChip(
-                                                                      settings,
-                                                                    ),
-                                                                  if (showOnboarding &&
-                                                                      !settings
-                                                                          .hasUsedSearchBarHint)
-                                                                    Padding(
-                                                                      padding:
-                                                                          const EdgeInsets
-                                                                              .only(
-                                                                        bottom:
-                                                                            8,
-                                                                        left: 12,
-                                                                        right:
-                                                                            12,
-                                                                      ),
-                                                                      child: Align(
-                                                                        alignment:
-                                                                            Alignment.topCenter,
-                                                                        child:
-                                                                            OnboardingBubble(
-                                                                          text:
-                                                                              'Search by word, chapter, or verse',
-                                                                          icon:
-                                                                              Icons.search,
-                                                                          pointingDown:
-                                                                              true,
-                                                                          tailAlign:
-                                                                              CrossAxisAlignment.center,
-                                                                          onTap: () =>
-                                                                              settings.markSearchBarHintUsed(),
-                                                                          onDismiss: () =>
-                                                                              settings.markSearchBarHintUsed(),
+                                                              ? _soulStatusChipBlockHeight(
+                                                                  isTablet,
+                                                                )
+                                                              : 0.0;
+                                                      final searchHintHeight =
+                                                          (showOnboarding &&
+                                                                  !settings
+                                                                      .hasUsedSearchBarHint &&
+                                                                  !shouldShowResults)
+                                                              ? 72.0
+                                                              : 0.0;
+                                                      final topContentEnd =
+                                                          headerSpacer +
+                                                              soulBlockHeight +
+                                                              searchHintHeight;
+                                                      final topSearchY =
+                                                          topContentEnd +
+                                                              (showSimpleNav
+                                                                  ? navBlockHeight
+                                                                  : 0.0);
+                                                      final groupHeight =
+                                                          (showSimpleNav
+                                                                  ? navBlockHeight
+                                                                  : 0.0) +
+                                                              searchBarHeight;
+                                                      final minimalNavY =
+                                                          (maxHeight -
+                                                                  groupHeight) /
+                                                              2;
+                                                      final minimalSearchY =
+                                                          minimalNavY +
+                                                              (showSimpleNav
+                                                                  ? navBlockHeight
+                                                                  : 0.0);
+                                                      final navY = showSimpleNav
+                                                          ? lerpDouble(
+                                                              topContentEnd,
+                                                              minimalNavY,
+                                                              minimalT,
+                                                            )!
+                                                          : 0.0;
+                                                      final searchY = lerpDouble(
+                                                        topSearchY,
+                                                        minimalSearchY,
+                                                        minimalT,
+                                                      )!;
+                                                      final homeFade =
+                                                          (1 - minimalT).clamp(
+                                                        0.0,
+                                                        1.0,
+                                                      );
+                                                      // Keep the floating search bar for the
+                                                      // whole transition so the TextField is
+                                                      // not rebuilt mid-animation (focus loss).
+                                                      final useScrollChrome =
+                                                          minimalT < 0.001 &&
+                                                          !_minimalHomeController
+                                                              .isAnimating;
+
+                                                      return Stack(
+                                                        clipBehavior: Clip.none,
+                                                        children: [
+                                                          Opacity(
+                                                            opacity: homeFade,
+                                                            child:
+                                                                IgnorePointer(
+                                                              ignoring:
+                                                                  minimalT >
+                                                                      0.5,
+                                                              child: Scrollbar(
+                                                                controller:
+                                                                    _homeScrollController,
+                                                                child:
+                                                                    SingleChildScrollView(
+                                                                  controller:
+                                                                      _homeScrollController,
+                                                                  clipBehavior:
+                                                                      Clip.none,
+                                                                  physics:
+                                                                      minimalT >=
+                                                                              1.0
+                                                                          ? const NeverScrollableScrollPhysics()
+                                                                          : null,
+                                                                  child: Column(
+                                                                    crossAxisAlignment:
+                                                                        CrossAxisAlignment
+                                                                            .stretch,
+                                                                    mainAxisSize:
+                                                                        MainAxisSize
+                                                                            .min,
+                                                                    children: [
+                                                                      AnimatedSize(
+                                                                        duration:
+                                                                            const Duration(
+                                                                          milliseconds:
+                                                                              400,
                                                                         ),
+                                                                        curve: Curves
+                                                                            .easeInOut,
+                                                                        alignment:
+                                                                            Alignment
+                                                                                .topCenter,
+                                                                        clipBehavior:
+                                                                            Clip
+                                                                                .none,
+                                                                        child: shouldShowResults
+                                                                            ? const SizedBox(
+                                                                                height:
+                                                                                    16,
+                                                                                width:
+                                                                                    double.infinity,
+                                                                              )
+                                                                            : Column(
+                                                                                mainAxisSize:
+                                                                                    MainAxisSize.min,
+                                                                                crossAxisAlignment:
+                                                                                    CrossAxisAlignment.stretch,
+                                                                                children: [
+                                                                                  SizedBox(
+                                                                                    height:
+                                                                                        headerSpacer,
+                                                                                  ),
+                                                                                  if (settings
+                                                                                      .streakSystemEnabled)
+                                                                                    _buildSoulStatusChip(
+                                                                                      settings,
+                                                                                    ),
+                                                                                  if (showOnboarding &&
+                                                                                      !settings
+                                                                                          .hasUsedSearchBarHint)
+                                                                                    Padding(
+                                                                                      padding:
+                                                                                          const EdgeInsets.only(
+                                                                                        bottom:
+                                                                                            8,
+                                                                                        left:
+                                                                                            12,
+                                                                                        right:
+                                                                                            12,
+                                                                                      ),
+                                                                                      child:
+                                                                                          Align(
+                                                                                        alignment:
+                                                                                            Alignment.topCenter,
+                                                                                        child:
+                                                                                            OnboardingBubble(
+                                                                                          text:
+                                                                                              'Search by word, chapter, or verse',
+                                                                                          icon:
+                                                                                              Icons.search,
+                                                                                          pointingDown:
+                                                                                              true,
+                                                                                          tailAlign:
+                                                                                              CrossAxisAlignment.center,
+                                                                                          onTap: () =>
+                                                                                              settings.markSearchBarHintUsed(),
+                                                                                          onDismiss: () =>
+                                                                                              settings.markSearchBarHintUsed(),
+                                                                                        ),
+                                                                                      ),
+                                                                                    ),
+                                                                                ],
+                                                                              ),
                                                                       ),
-                                                                    ),
-                                                                ],
-                                                              ),
-                                                      ),
-                                                      _buildSearchBar(provider),
+                                                                      if (useScrollChrome) ...[
+                                                                        if (showSimpleNav)
+                                                                          _buildAnimatedSimpleModeNavButtons(
+                                                                            show:
+                                                                                showSimpleNav,
+                                                                            settings:
+                                                                                settings,
+                                                                          ),
+                                                                        _buildSearchBar(
+                                                                          provider,
+                                                                        ),
+                                                                      ] else
+                                                                        SizedBox(
+                                                                          height:
+                                                                              (showSimpleNav
+                                                                                      ? navBlockHeight
+                                                                                      : 0.0) +
+                                                                                  searchBarHeight,
+                                                                        ),
                                                       if (showOnboarding &&
                                                           !settings
                                                               .hasUsedAskAi &&
@@ -1023,10 +1171,41 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                       ),
                                                     ],
                                                   ),
-                                                ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (showSimpleNav &&
+                                                              !useScrollChrome)
+                                                            Positioned(
+                                                              top: navY,
+                                                              left: 0,
+                                                              right: 0,
+                                                              child:
+                                                                  _buildAnimatedSimpleModeNavButtons(
+                                                                show:
+                                                                    showSimpleNav,
+                                                                settings:
+                                                                    settings,
+                                                              ),
+                                                            ),
+                                                          if (!useScrollChrome)
+                                                            Positioned(
+                                                              top: searchY,
+                                                              left: 0,
+                                                              right: 0,
+                                                              child:
+                                                                  _buildSearchBar(
+                                                                provider,
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  );
+                                                },
                                               ),
                                             ),
-                                            ],
                                           ],
                                         ),
                                       ),
@@ -1368,6 +1547,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     }
 
     return ClipRRect(
+      key: const ValueKey('home_search_bar'),
       borderRadius: BorderRadius.circular(50.0),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
@@ -1622,6 +1802,45 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     );
   }
 
+  Widget _buildAnimatedSimpleModeNavButtons({
+    required bool show,
+    required SettingsProvider settings,
+  }) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        final slide = Tween<Offset>(
+          begin: const Offset(0, -0.14),
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      child: show
+          ? KeyedSubtree(
+              key: const ValueKey('simple_mode_nav'),
+              child: _buildSimpleModeNavButtons(settings),
+            )
+          : const SizedBox.shrink(key: ValueKey('simple_mode_nav_hidden')),
+    );
+  }
+
   Widget _buildSimpleModeNavButtons(SettingsProvider settings) {
     final isSimpleLight =
         !settings.showBackground &&
@@ -1679,6 +1898,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         ],
       ),
     );
+  }
+
+  /// Vertical space for [_buildSoulStatusChip] (icon, label, padding).
+  double _soulStatusChipBlockHeight(bool isTablet) {
+    final innerSize = isTablet ? 120.0 : 80.0;
+    const gapAndLabel = 6.0 + 11.0;
+    final bottomPad = isTablet ? 28.0 : 18.0;
+    return innerSize + gapAndLabel + bottomPad;
   }
 
   Widget _buildSoulStatusChip(SettingsProvider settings) {
