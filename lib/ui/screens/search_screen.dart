@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../navigation/app_router.dart';
+import '../../navigation/shloka_navigation.dart';
 import '../../providers/search_provider.dart';
 import '../widgets/darkened_animated_background.dart';
 import '../widgets/shloka_result_card.dart';
@@ -2749,13 +2750,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               child: InkWell(
                 borderRadius: BorderRadius.circular(20.0),
                 onTap: () {
-                  final shlokaNo = int.tryParse(_randomShloka!.shlokNo);
-                  context.push(
-                    AppRoutes.shlokaList.replaceFirst(
-                      ':query',
-                      _randomShloka!.chapterNo,
-                    ),
-                    extra: shlokaNo,
+                  pushShlokaInChapter(
+                    context,
+                    chapterNo: _randomShloka!.chapterNo,
+                    shlokNo: _randomShloka!.shlokNo,
                   );
                 },
                 child: AnimatedContainer(

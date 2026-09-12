@@ -3,6 +3,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../navigation/app_router.dart';
+import '../navigation/shloka_navigation.dart';
 import 'deep_link_parser.dart';
 import 'analytics_service.dart';
 
@@ -50,13 +51,12 @@ class DeepLinkService {
     if (_handling) return;
     _handling = true;
     try {
-      final target = AppRoutes.shlokaDetailPath(shlokaId);
       final current = router.routerDelegate.currentConfiguration.uri.toString();
-      if (current.contains('shloka-detail') && current.contains(shlokaId)) {
+      if (isAlreadyOnShlokaInChapter(current, shlokaId)) {
         return;
       }
-      debugPrint('DeepLinkService: opening shloka $shlokaId');
-      router.go(target);
+      debugPrint('DeepLinkService: opening shloka $shlokaId in chapter');
+      goShlokaInChapter(router, shlokaId);
     } catch (e) {
       debugPrint('DeepLinkService: navigation failed: $e');
     } finally {

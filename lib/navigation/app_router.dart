@@ -19,8 +19,8 @@ import '../ui/screens/chapters_screen.dart';
 import '../ui/screens/parayan_screen.dart';
 import '../providers/parayan_provider.dart';
 import '../ui/screens/search_screen.dart';
-import '../ui/screens/shloka_detail_screen.dart';
 import '../ui/screens/shloka_list_screen.dart';
+import 'shloka_navigation.dart';
 import '../ui/screens/audio_management_screen.dart';
 import '../ui/screens/credits_screen.dart';
 import '../ui/screens/settings_screen.dart';
@@ -47,7 +47,9 @@ class AppRoutes {
   static const String askGita = '/ask-gita';
   static const String imageCreator = '/image-creator';
 
+  /// Legacy deep links; prefer [shlokaListLocationForVerseId].
   static String shlokaDetailPath(String id) =>
+      shlokaListLocationForVerseId(id) ??
       shlokaDetail.replaceFirst(':id', id);
 }
 
@@ -61,6 +63,14 @@ int? _initialShlokaFromRouteExtra(Object? extra) {
     if (mapped is num) return mapped.toInt();
     if (mapped is String) return int.tryParse(mapped);
   }
+  return null;
+}
+
+int? _initialShlokaFromState(GoRouterState state) {
+  final fromExtra = _initialShlokaFromRouteExtra(state.extra);
+  if (fromExtra != null) return fromExtra;
+  final q = state.uri.queryParameters['shloka'];
+  if (q != null) return int.tryParse(q);
   return null;
 }
 
@@ -83,7 +93,7 @@ final GoRouter router = GoRouter(
       payload: uri.toString(),
     );
     if (id != null) {
-      return AppRoutes.shlokaDetailPath(id);
+      return shlokaListLocationForVerseId(id) ?? AppRoutes.search;
     }
     return AppRoutes.search;
   },
@@ -95,7 +105,7 @@ final GoRouter router = GoRouter(
     );
     if (id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        router.go(AppRoutes.shlokaDetailPath(id));
+        goShlokaInChapter(router, id);
       });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -194,7 +204,7 @@ final GoRouter router = GoRouter(
           pageBuilder: (context, state) {
             final query = state.pathParameters['query']!;
             final extra = state.extra;
-            final initialShloka = _initialShlokaFromRouteExtra(extra);
+            final initialShloka = _initialShlokaFromState(state);
             var showHelp = state.uri.queryParameters['help'] == '1';
             if (extra is Map) {
               showHelp = showHelp || extra['help'] == true;
@@ -220,9 +230,10 @@ final GoRouter router = GoRouter(
         ),
         GoRoute(
           path: AppRoutes.shlokaDetail,
-          builder: (context, state) {
-            final shlokaId = state.pathParameters['id']!;
-            return ShlokaDetailScreen(shlokaId: shlokaId);
+          redirect: (context, state) {
+            final id = state.pathParameters['id'];
+            if (id == null) return AppRoutes.search;
+            return shlokaListLocationForVerseId(id) ?? AppRoutes.search;
           },
         ),
         GoRoute(

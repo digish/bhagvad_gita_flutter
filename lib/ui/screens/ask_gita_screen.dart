@@ -16,6 +16,7 @@ import '../../services/ask_gita_service.dart';
 import '../widgets/ai_suggestion_chips.dart'; // ✨ Add AI Suggestions
 import '../widgets/font_size_control.dart';
 import '../../navigation/app_router.dart';
+import '../../navigation/shloka_navigation.dart';
 import '../../models/shloka_result.dart';
 
 class AskGitaScreen extends StatefulWidget {
@@ -902,8 +903,10 @@ class _ChatShlokaCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            context.push(
-              AppRoutes.shlokaDetail.replaceFirst(':id', shloka.id.toString()),
+            pushShlokaInChapter(
+              context,
+              chapterNo: shloka.chapterNo,
+              shlokNo: shloka.shlokNo,
             );
           },
           child: Stack(
