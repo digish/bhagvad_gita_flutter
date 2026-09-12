@@ -25,6 +25,7 @@ import '../../providers/audio_provider.dart';
 import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/font_size_control.dart';
+import '../widgets/reading_mode_font_dock.dart';
 import '../../data/static_data.dart';
 import '../../models/shloka_result.dart';
 import '../../data/database_helper_interface.dart';
@@ -89,6 +90,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   bool _isBookMode = false;
   /// Chapter list: which verse has Anvay/Bhavarth expanded (null = all collapsed).
   int? _expandedVerseIndex;
+
+  /// Default verse-card content (same controls as Parayan).
+  ContinuousListBody _listBodyMode = ContinuousListBody.shloka;
+  ParayanLayoutCount _layoutCount = ParayanLayoutCount.one;
+  ContinuousListPair _listPairMode = ContinuousListPair.shlokaAnvay;
 
   final GlobalKey _bookModeKey = GlobalKey(debugLabel: 'chapterBookMode');
   final GlobalKey _fontDockKey = GlobalKey(debugLabel: 'chapterFontDock');
@@ -361,6 +367,95 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     return (_kChapterFocusLine - 0.09).clamp(0.0, 1.0);
   }
 
+  int _chapterVerseNearestFocusLine(int verseCount) {
+    final positions = _chapterItemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return 0;
+    final verseStart = _kChapterHeaderListItems;
+    ItemPosition? focusItem;
+    for (final p in positions) {
+      if (p.index < verseStart || p.index >= verseStart + verseCount) {
+        continue;
+      }
+      if (focusItem == null) {
+        focusItem = p;
+        continue;
+      }
+      final aCenter =
+          (focusItem.itemLeadingEdge + focusItem.itemTrailingEdge) / 2;
+      final bCenter = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
+      if ((bCenter - _kChapterFocusLine).abs() <
+          (aCenter - _kChapterFocusLine).abs()) {
+        focusItem = p;
+      }
+    }
+    if (focusItem == null) return 0;
+    return (focusItem.index - verseStart).clamp(0, verseCount - 1);
+  }
+
+  Future<void> _repinChapterVerseAfterLayoutChange(int verseIndex) async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    if (!_chapterItemScrollController.isAttached) return;
+    final listIndex = _chapterListIndexForVerse(verseIndex);
+    final alignment = _alignmentForChapterVerse(verseIndex, requireVisible: true) ??
+        (_kChapterFocusLine - 0.09).clamp(0.0, 1.0);
+    _chapterItemScrollController.jumpTo(
+      index: listIndex,
+      alignment: alignment,
+    );
+  }
+
+  Future<void> _onChapterFontSizeChanged(double newSize) async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    await settings.setFontSize(newSize);
+    if (!mounted) return;
+    final count = _shlokaProvider.shlokas.length;
+    if (count == 0) return;
+    final keepIndex = _chapterVerseNearestFocusLine(count);
+    await _repinChapterVerseAfterLayoutChange(keepIndex);
+  }
+
+  Future<void> _onChapterToggleLayoutCount() async {
+    final count = _shlokaProvider.shlokas.length;
+    final keepIndex =
+        count == 0 ? 0 : _chapterVerseNearestFocusLine(count);
+    setState(() {
+      _layoutCount = switch (_layoutCount) {
+        ParayanLayoutCount.one => ParayanLayoutCount.two,
+        ParayanLayoutCount.two => ParayanLayoutCount.three,
+        ParayanLayoutCount.three => ParayanLayoutCount.one,
+      };
+    });
+    await _repinChapterVerseAfterLayoutChange(keepIndex);
+  }
+
+  Future<void> _onChapterToggleListContent() async {
+    if (_layoutCount == ParayanLayoutCount.three) return;
+    final count = _shlokaProvider.shlokas.length;
+    final keepIndex =
+        count == 0 ? 0 : _chapterVerseNearestFocusLine(count);
+    setState(() {
+      if (_layoutCount == ParayanLayoutCount.one) {
+        _listBodyMode = switch (_listBodyMode) {
+          ContinuousListBody.shloka => ContinuousListBody.anvay,
+          ContinuousListBody.anvay => ContinuousListBody.translation,
+          ContinuousListBody.translation => ContinuousListBody.shloka,
+        };
+      } else {
+        _listPairMode = switch (_listPairMode) {
+          ContinuousListPair.shlokaAnvay => ContinuousListPair.shlokaTranslation,
+          ContinuousListPair.shlokaTranslation =>
+            ContinuousListPair.anvayTranslation,
+          ContinuousListPair.anvayTranslation =>
+            ContinuousListPair.shlokaAnvay,
+        };
+      }
+    });
+    await _repinChapterVerseAfterLayoutChange(keepIndex);
+  }
+
   Future<bool> _scrollToChapterVerseIndex(int verseIndex) async {
     final listIndex = _chapterListIndexForVerse(verseIndex);
     for (var attempt = 0; attempt < 40; attempt++) {
@@ -428,19 +523,32 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   }) {
     final isChapter = chapterNumber != null;
     final meaningsOpen = !isChapter || _expandedVerseIndex == index;
+    final showTapHint = isChapter &&
+        !meaningsOpen &&
+        _layoutCount == ParayanLayoutCount.one &&
+        _listBodyMode == ContinuousListBody.shloka;
     final card = ResponsiveWrapper(
       child: FullShlokaCard(
         shloka: shlokas[index],
+        isFocused: false,
         config: _cardConfig.copyWith(
           baseFontSize: settingsProvider.fontSize,
           isLightTheme: Theme.of(context).brightness == Brightness.light,
           showEmblem: !isChapter,
           showSeparator: isChapter ? meaningsOpen : true,
-          showAnvay: meaningsOpen,
-          showBhavarth: meaningsOpen,
-          showActions: meaningsOpen,
+          // Chapter: dock when collapsed; tap reveals all three + actions.
+          showAnvay: !isChapter || meaningsOpen,
+          showBhavarth: !isChapter || meaningsOpen,
+          showActions: !isChapter || meaningsOpen,
           spacingCompact: isChapter,
-          showMeaningsHint: isChapter && !meaningsOpen,
+          showMeaningsHint: showTapHint,
+          continuousReading: isChapter,
+          preserveCardChrome: isChapter,
+          showColoredCard: _cardConfig.showColoredCard,
+          showSpeaker: _cardConfig.showSpeaker,
+          listBodyMode: _listBodyMode,
+          layoutCount: _layoutCount,
+          listPairMode: _listPairMode,
         ),
         currentlyPlayingId: _currentShlokId,
         onTap: isChapter
@@ -851,10 +959,19 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                             : 12 + bottomSafe,
                         child: KeyedSubtree(
                           key: _fontDockKey,
-                        child: FontSizeDock(
-                          currentSize: settingsProvider.fontSize,
-                          onSizeChanged: settingsProvider.setFontSize,
-                        ),
+                          child: ReadingModeFontDock(
+                            currentSize: settingsProvider.fontSize,
+                            onSizeChanged: _onChapterFontSizeChanged,
+                            listBodyMode: _listBodyMode,
+                            layoutCount: _layoutCount,
+                            listPairMode: _listPairMode,
+                            onToggleListContent: () {
+                              _onChapterToggleListContent();
+                            },
+                            onToggleLayoutCount: () {
+                              _onChapterToggleLayoutCount();
+                            },
+                          ),
                         ),
                       );
                     },
@@ -865,7 +982,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                     placement: OnboardingBubblePlacement.leftOfTarget,
                     repositionListenable:
                         _chapterItemPositionsListener.itemPositions,
-                    text: '− / + text size',
+                    text: 'Text size & what each verse shows',
                     icon: Icons.format_size,
                     onTap: () =>
                         settingsProvider.markChapterFontHintUsed(),

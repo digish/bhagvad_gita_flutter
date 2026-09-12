@@ -434,9 +434,10 @@ class FullShlokaCard extends StatelessWidget {
         ? const Color(0xFFD84315)
         : const Color(0xFFFFD700);
     final bool continuous = config.continuousReading;
+    final bool chapterChrome = config.preserveCardChrome;
     // Continuous: layout stays identical when focused — only the border paints.
-    final bool showAsCard = !continuous || isFocused;
-    final Color cardBackgroundColor = continuous
+    final bool showAsCard = chapterChrome || !continuous || isFocused;
+    final Color cardBackgroundColor = continuous && !chapterChrome
         ? (isLightTheme
               ? Colors.white.withOpacity(0.45)
               : Colors.white.withOpacity(0.10))
@@ -450,7 +451,7 @@ class FullShlokaCard extends StatelessWidget {
         ? Colors.black.withOpacity(0.1)
         : Colors.white.withOpacity(0.2);
     // Continuous Parayan: bright gold selection (matches app highlight gold).
-    final focusAccent = continuous
+    final focusAccent = continuous && !chapterChrome
         ? const Color(0xFFFFD700)
         : (Theme.of(context).extension<AppColors>()?.gitaBlue ??
               const Color(0xFF047BC0));
@@ -458,8 +459,8 @@ class FullShlokaCard extends StatelessWidget {
     final cardBody = Padding(
       padding: EdgeInsets.symmetric(
         // Fixed insets in continuous mode so focus never reflows the verse.
-        horizontal: continuous ? 16.0 : 5.0,
-        vertical: continuous ? 4.0 : 5.0,
+        horizontal: continuous && !chapterChrome ? 16.0 : 5.0,
+        vertical: continuous && !chapterChrome ? 4.0 : 5.0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -467,7 +468,7 @@ class FullShlokaCard extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       return Container(
-                        padding: continuous
+                        padding: continuous && !chapterChrome
                             ? EdgeInsets.zero
                             : (config.spacingCompact
                                   ? const EdgeInsets.all(1)
@@ -487,9 +488,11 @@ class FullShlokaCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (!continuous || config.showSpeaker)
+                            if (!continuous ||
+                                config.showSpeaker ||
+                                chapterChrome)
                               Row(
-                                mainAxisAlignment: continuous
+                                mainAxisAlignment: continuous && !chapterChrome
                                     ? MainAxisAlignment.center
                                     : MainAxisAlignment.spaceBetween,
                                 children: [
@@ -512,9 +515,11 @@ class FullShlokaCard extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                  if (!continuous) const SizedBox(width: 8),
+                                  if (!continuous || chapterChrome)
+                                    const SizedBox(width: 8),
                                   // 2. Chapter & Shloka Index (non-continuous cards)
-                                  if (!continuous && config.showShlokIndex)
+                                  if ((!continuous || chapterChrome) &&
+                                      config.showShlokIndex)
                                     Builder(
                                       builder: (context) {
                                         final script =
@@ -597,9 +602,12 @@ class FullShlokaCard extends StatelessWidget {
                             if ((!continuous &&
                                     (config.showSpeaker ||
                                         config.showShlokIndex)) ||
-                                (continuous && config.showSpeaker))
+                                (continuous &&
+                                    (config.showSpeaker ||
+                                        (chapterChrome &&
+                                            config.showShlokIndex))))
                               SizedBox(
-                                height: continuous
+                                height: continuous && !chapterChrome
                                     ? 4
                                     : (config.spacingCompact ? 8 : 16),
                               ),
@@ -912,17 +920,19 @@ class FullShlokaCard extends StatelessWidget {
       curve: Curves.easeOut,
       margin: EdgeInsets.symmetric(
         // Continuous: fixed margin — focus must not change wrap width.
-        horizontal: continuous
+        horizontal: continuous && !chapterChrome
             ? 12
             : (isFocused ? 4 : 8),
-        vertical: continuous
+        vertical: continuous && !chapterChrome
             ? 0
             : (isFocused ? 6 : 4),
       ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(continuous ? 16.0 : 22.0),
+        borderRadius: BorderRadius.circular(
+          continuous && !chapterChrome ? 16.0 : 22.0,
+        ),
         // Continuous Parayan: border-only selection — no fill/glow over the gradient.
-        boxShadow: showAsCard && isFocused && !continuous
+        boxShadow: showAsCard && isFocused && (!continuous || chapterChrome)
             ? [
                 BoxShadow(
                   color: focusAccent.withOpacity(0.45),
@@ -938,7 +948,7 @@ class FullShlokaCard extends StatelessWidget {
               ]
             : null,
       ),
-      child: continuous
+      child: continuous && !chapterChrome
           // Always the same box metrics; transparent border when idle so
           // selecting never reflows the verse lines.
           ? Container(
@@ -1210,7 +1220,7 @@ class _ContinuousVerseWithNumber extends StatelessWidget {
       children: sections,
     );
 
-    if (!config.showShlokIndex) return verseBody;
+    if (!config.showShlokIndex || config.preserveCardChrome) return verseBody;
 
     // Align with the circular glass column (rail overlays the right 72px).
     // Content is inset from the screen edge, so a small/negative [right]
@@ -1449,6 +1459,8 @@ class FullShlokaCardConfig {
   final bool showMeaningsHint;
   /// Parayan continuous reading: no card chrome unless focused.
   final bool continuousReading;
+  /// Chapter list: keep filled card + border even in continuous body layout.
+  final bool preserveCardChrome;
   /// Collapsed Parayan list primary body (one-item layout).
   final ContinuousListBody listBodyMode;
   /// How many bodies each Parayan verse shows.
@@ -1472,6 +1484,7 @@ class FullShlokaCardConfig {
     this.showActions = true,
     this.showMeaningsHint = false,
     this.continuousReading = false,
+    this.preserveCardChrome = false,
     this.listBodyMode = ContinuousListBody.shloka,
     this.layoutCount = ParayanLayoutCount.one,
     this.listPairMode = ContinuousListPair.shlokaAnvay,
@@ -1544,6 +1557,7 @@ class FullShlokaCardConfig {
     bool? showActions,
     bool? showMeaningsHint,
     bool? continuousReading,
+    bool? preserveCardChrome,
     ContinuousListBody? listBodyMode,
     ParayanLayoutCount? layoutCount,
     ContinuousListPair? listPairMode,
@@ -1563,6 +1577,7 @@ class FullShlokaCardConfig {
       showActions: showActions ?? this.showActions,
       showMeaningsHint: showMeaningsHint ?? this.showMeaningsHint,
       continuousReading: continuousReading ?? this.continuousReading,
+      preserveCardChrome: preserveCardChrome ?? this.preserveCardChrome,
       listBodyMode: listBodyMode ?? this.listBodyMode,
       layoutCount: layoutCount ?? this.layoutCount,
       listPairMode: listPairMode ?? this.listPairMode,
