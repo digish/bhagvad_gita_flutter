@@ -2004,9 +2004,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final isSimpleLight =
         !settings.showBackground &&
         Theme.of(context).brightness == Brightness.light;
-    final shadowTint = isSimpleLight
-        ? Colors.brown.withOpacity(0.48)
-        : Colors.black.withOpacity(0.62);
     final warmGlow = isSimpleLight
         ? const Color(0xFFE8B923)
         : const Color(0xFFFFE082);
@@ -2028,18 +2025,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              Transform.translate(
-                offset: const Offset(2, 5),
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                  child: Image.asset(
-                    assetPath,
-                    fit: BoxFit.contain,
-                    color: shadowTint,
-                    colorBlendMode: BlendMode.srcIn,
-                  ),
-                ),
-              ),
               bookmarkImage(),
               ShaderMask(
                 blendMode: BlendMode.srcIn,

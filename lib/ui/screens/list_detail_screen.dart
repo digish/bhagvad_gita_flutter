@@ -10,6 +10,8 @@ import '../../data/database_helper_interface.dart';
 import '../../models/shloka_result.dart';
 import '../../models/shloka_list.dart';
 import '../widgets/full_shloka_card.dart';
+import '../widgets/reading_mode_font_dock.dart';
+import '../widgets/responsive_wrapper.dart';
 import '../widgets/simple_gradient_background.dart';
 import '../widgets/share_options_sheet.dart';
 import '../../data/static_data.dart';
@@ -29,6 +31,18 @@ class ListDetailScreen extends StatefulWidget {
 }
 
 class _ListDetailScreenState extends State<ListDetailScreen> {
+  static const FullShlokaCardConfig _cardConfig = FullShlokaCardConfig(
+    showSpeaker: true,
+    showAnvay: true,
+    showBhavarth: true,
+    showSeparator: true,
+    showColoredCard: true,
+    showEmblem: true,
+    showShlokIndex: true,
+    spacingCompact: false,
+    isLightTheme: true,
+  );
+
   late Future<List<ShlokaResult>> _shlokasFuture;
   final ScrollController _scrollController = ScrollController();
   List<GlobalKey> _itemKeys = [];
@@ -36,6 +50,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   String? _currentShlokId;
   String? _lastScrolledId;
   AudioProvider? _audioProvider;
+
+  int? _expandedVerseIndex;
+  ContinuousListBody _listBodyMode = ContinuousListBody.shloka;
+  ParayanLayoutCount _layoutCount = ParayanLayoutCount.one;
+  ContinuousListPair _listPairMode = ContinuousListPair.shlokaAnvay;
 
   @override
   void initState() {
@@ -237,6 +256,86 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     }
   }
 
+  void _onToggleLayoutCount() {
+    setState(() {
+      _layoutCount = switch (_layoutCount) {
+        ParayanLayoutCount.one => ParayanLayoutCount.two,
+        ParayanLayoutCount.two => ParayanLayoutCount.three,
+        ParayanLayoutCount.three => ParayanLayoutCount.one,
+      };
+    });
+  }
+
+  void _onToggleListContent() {
+    if (_layoutCount == ParayanLayoutCount.three) return;
+    setState(() {
+      if (_layoutCount == ParayanLayoutCount.one) {
+        _listBodyMode = switch (_listBodyMode) {
+          ContinuousListBody.shloka => ContinuousListBody.anvay,
+          ContinuousListBody.anvay => ContinuousListBody.translation,
+          ContinuousListBody.translation => ContinuousListBody.shloka,
+        };
+      } else {
+        _listPairMode = switch (_listPairMode) {
+          ContinuousListPair.shlokaAnvay => ContinuousListPair.shlokaTranslation,
+          ContinuousListPair.shlokaTranslation =>
+            ContinuousListPair.anvayTranslation,
+          ContinuousListPair.anvayTranslation =>
+            ContinuousListPair.shlokaAnvay,
+        };
+      }
+    });
+  }
+
+  Widget _buildVerseCard({
+    required BuildContext context,
+    required List<ShlokaResult> shlokas,
+    required int index,
+    required SettingsProvider settingsProvider,
+    required AudioProvider audioProvider,
+  }) {
+    final meaningsOpen = _expandedVerseIndex == index;
+    final showTapHint = !meaningsOpen &&
+        _layoutCount == ParayanLayoutCount.one &&
+        _listBodyMode == ContinuousListBody.shloka;
+
+    return ResponsiveWrapper(
+      child: FullShlokaCard(
+        shloka: shlokas[index],
+        isFocused: false,
+        config: _cardConfig.copyWith(
+          baseFontSize: settingsProvider.fontSize,
+          isLightTheme: Theme.of(context).brightness == Brightness.light,
+          showEmblem: false,
+          showSeparator: meaningsOpen,
+          showAnvay: meaningsOpen,
+          showBhavarth: meaningsOpen,
+          showActions: meaningsOpen,
+          spacingCompact: true,
+          showMeaningsHint: showTapHint,
+          continuousReading: true,
+          preserveCardChrome: true,
+          listBodyMode: _listBodyMode,
+          layoutCount: _layoutCount,
+          listPairMode: _listPairMode,
+        ),
+        currentlyPlayingId: _currentShlokId,
+        onTap: () {
+          setState(() {
+            _expandedVerseIndex =
+                _expandedVerseIndex == index ? null : index;
+          });
+        },
+        onPlayPause: () {
+          audioProvider.playChapter(
+            shlokas: shlokas,
+            initialIndex: index,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,45 +419,61 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
               return Consumer2<AudioProvider, SettingsProvider>(
                 builder: (context, audioProvider, settingsProvider, child) {
+                  final bottomSafe = MediaQuery.of(context).padding.bottom;
+                  final miniPlayerVisible =
+                      audioProvider.playbackState != PlaybackState.stopped &&
+                      audioProvider.currentPlayingShlokaId != null;
+                  final listBottomPadding =
+                      (miniPlayerVisible ? 100.0 : 72.0) + bottomSafe;
+
                   return ListView.builder(
                     controller: _scrollController,
                     padding: EdgeInsets.fromLTRB(
                       MediaQuery.of(context).padding.left + 16,
                       kToolbarHeight + MediaQuery.of(context).padding.top + 16,
                       MediaQuery.of(context).padding.right + 16,
-                      16,
+                      listBottomPadding,
                     ),
                     itemCount: shlokas.length,
                     itemBuilder: (context, index) {
-                      final shloka = shlokas[index];
-                      return Padding(
+                      return KeyedSubtree(
                         key: _itemKeys[index],
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: FullShlokaCard(
-                          shloka: shloka,
-                          currentlyPlayingId: _currentShlokId,
-                          onPlayPause: () {
-                            audioProvider.playChapter(
-                              shlokas: shlokas,
-                              initialIndex: index,
-                            );
-                          },
-                          config: FullShlokaCardConfig(
-                            baseFontSize: settingsProvider.fontSize,
-                            showAnvay: true,
-                            showBhavarth: true,
-                            showSeparator: true,
-                            showSpeaker: true,
-                            showShlokIndex: true,
-                            showColoredCard: true,
-                            showEmblem: false,
-                            isLightTheme:
-                                Theme.of(context).brightness ==
-                                Brightness.light,
-                          ),
+                        child: _buildVerseCard(
+                          context: context,
+                          shlokas: shlokas,
+                          index: index,
+                          settingsProvider: settingsProvider,
+                          audioProvider: audioProvider,
                         ),
                       );
                     },
+                  );
+                },
+              );
+            },
+          ),
+          Consumer<AudioProvider>(
+            builder: (context, audio, _) {
+              final miniPlayerVisible =
+                  audio.playbackState != PlaybackState.stopped &&
+                  audio.currentPlayingShlokaId != null;
+              final bottomSafe = MediaQuery.of(context).padding.bottom;
+              return Consumer<SettingsProvider>(
+                builder: (context, settings, _) {
+                  return Positioned(
+                    left: MediaQuery.of(context).padding.left,
+                    bottom: miniPlayerVisible
+                        ? 96 + bottomSafe
+                        : 12 + bottomSafe,
+                    child: ReadingModeFontDock(
+                      currentSize: settings.fontSize,
+                      onSizeChanged: (newSize) => settings.setFontSize(newSize),
+                      listBodyMode: _listBodyMode,
+                      layoutCount: _layoutCount,
+                      listPairMode: _listPairMode,
+                      onToggleListContent: _onToggleListContent,
+                      onToggleLayoutCount: _onToggleLayoutCount,
+                    ),
                   );
                 },
               );

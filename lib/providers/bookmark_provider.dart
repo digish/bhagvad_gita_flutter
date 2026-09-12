@@ -13,6 +13,7 @@ class BookmarkProvider extends ChangeNotifier {
   // Cache to quickly check if a shloka is in ANY list (for the icon state)
   // Key: "chapter:shloka", Value: List of List IDs
   final Map<String, Set<int>> _shlokaStateCache = {};
+  final Map<int, int> _listItemCounts = {};
 
   List<ShlokaList> get lists => _lists;
   List<ShlokaList> get predefinedLists => PredefinedListsData.lists;
@@ -39,6 +40,7 @@ class BookmarkProvider extends ChangeNotifier {
   Future<void> _loadAllListItems() async {
     final items = await UserDatabaseHelper.instance.getAllListItems();
     _shlokaStateCache.clear();
+    _listItemCounts.clear();
     for (var item in items) {
       final key = '${item['chapter_no']}:${item['shlok_no']}';
       final listId = item['list_id'] as int;
@@ -47,7 +49,15 @@ class BookmarkProvider extends ChangeNotifier {
       } else {
         _shlokaStateCache[key] = {listId};
       }
+      _listItemCounts[listId] = (_listItemCounts[listId] ?? 0) + 1;
     }
+  }
+
+  int shlokaCountForList(int listId) {
+    if (listId < 0) {
+      return PredefinedListsData.getShlokasForList(listId).length;
+    }
+    return _listItemCounts[listId] ?? 0;
   }
 
   // Returns true if the shloka is in ANY list (Synchronous check)
@@ -96,9 +106,13 @@ class BookmarkProvider extends ChangeNotifier {
     // Update cache
     final key = '$chapter:$shlok';
     if (_shlokaStateCache.containsKey(key)) {
-      _shlokaStateCache[key]!.add(listId);
+      final added = _shlokaStateCache[key]!.add(listId);
+      if (added) {
+        _listItemCounts[listId] = (_listItemCounts[listId] ?? 0) + 1;
+      }
     } else {
       _shlokaStateCache[key] = {listId};
+      _listItemCounts[listId] = (_listItemCounts[listId] ?? 0) + 1;
     }
     notifyListeners();
     AnalyticsService.instance.logBookmark(
@@ -121,7 +135,15 @@ class BookmarkProvider extends ChangeNotifier {
     // Update cache
     final key = '$chapter:$shlok';
     if (_shlokaStateCache.containsKey(key)) {
-      _shlokaStateCache[key]!.remove(listId);
+      final removed = _shlokaStateCache[key]!.remove(listId);
+      if (removed) {
+        final count = _listItemCounts[listId];
+        if (count != null && count > 1) {
+          _listItemCounts[listId] = count - 1;
+        } else {
+          _listItemCounts.remove(listId);
+        }
+      }
     }
     notifyListeners();
     AnalyticsService.instance.logBookmark(
