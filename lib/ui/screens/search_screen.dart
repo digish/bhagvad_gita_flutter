@@ -2001,20 +2001,9 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     SettingsProvider settings,
     double innerSize,
   ) {
-    final isSimpleLight =
-        !settings.showBackground &&
-        Theme.of(context).brightness == Brightness.light;
-    final warmGlow = isSimpleLight
-        ? const Color(0xFFE8B923)
-        : const Color(0xFFFFE082);
-
     const assetPath = 'assets/images/bookmark.png';
-
-    Widget bookmarkImage() => Image.asset(
-      assetPath,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
-    );
+    const brightnessScale = 1.1;
+    const brightnessOffset = 14.0;
 
     return RepaintBoundary(
       child: SizedBox(
@@ -2022,23 +2011,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         height: innerSize,
         child: Transform.rotate(
           angle: 10 * math.pi / 180,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              bookmarkImage(),
-              ShaderMask(
-                blendMode: BlendMode.srcIn,
-                shaderCallback: (bounds) => RadialGradient(
-                  center: const Alignment(0, -0.15),
-                  radius: 0.7,
-                  colors: [
-                    warmGlow.withOpacity(isSimpleLight ? 0.38 : 0.45),
-                    Colors.transparent,
-                  ],
-                ).createShader(bounds),
-                child: bookmarkImage(),
-              ),
-            ],
+          child: ColorFiltered(
+            colorFilter: ColorFilter.matrix([
+              brightnessScale, 0, 0, 0, brightnessOffset,
+              0, brightnessScale, 0, 0, brightnessOffset,
+              0, 0, brightnessScale, 0, brightnessOffset,
+              0, 0, 0, 1, 0,
+            ]),
+            child: Image.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
         ),
       ),
