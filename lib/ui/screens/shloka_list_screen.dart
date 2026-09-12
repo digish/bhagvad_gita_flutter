@@ -34,6 +34,7 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_bubble.dart';
 import '../widgets/reminder_pitch.dart';
 import 'book_reading_screen.dart';
+import '../../utils/scroll_focus_runway.dart';
 
 class ShlokaListScreen extends StatefulWidget {
   final String searchQuery;
@@ -68,7 +69,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
 
   /// Header row in [ScrollablePositionedList] before verse 0.
   static const int _kChapterHeaderListItems = 1;
-  static const double _kChapterFocusLine = 0.40;
+  /// Trailing spacer so the last verse can reach the focus line.
+  static const int _kChapterTrailingRunwayItems = 1;
+  static const double _kChapterFocusLine = kDefaultFocusLine;
 
   // REMOVED: Local PlaybackMode state. Now using AudioProvider directly.
 
@@ -396,7 +399,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       if (item == null) continue;
 
       final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
-      if ((center - _kChapterFocusLine).abs() <= 0.03) {
+      final delta = (center - _kChapterFocusLine).abs();
+      if (delta <= 0.03) {
+        return true;
+      }
+      // End of list: runway limits how high the center can go — stop retrying.
+      if (center <= _kChapterFocusLine + 0.06 && item.itemTrailingEdge <= 1.02) {
         return true;
       }
 
@@ -469,7 +477,9 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       itemScrollController: _chapterItemScrollController,
       itemPositionsListener: _chapterItemPositionsListener,
       padding: const EdgeInsets.only(bottom: 88),
-      itemCount: shlokas.length + _kChapterHeaderListItems,
+      itemCount: shlokas.length +
+          _kChapterHeaderListItems +
+          _kChapterTrailingRunwayItems,
       itemBuilder: (context, listIndex) {
         if (listIndex < _kChapterHeaderListItems) {
           return Column(
@@ -482,7 +492,16 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
             ],
           );
         }
-        final index = listIndex - _kChapterHeaderListItems;
+        final verseListStart = _kChapterHeaderListItems;
+        if (listIndex >= verseListStart + shlokas.length) {
+          return SizedBox(
+            height: trailingRunwayHeightForFocusLine(
+              context,
+              focusLine: _kChapterFocusLine,
+            ),
+          );
+        }
+        final index = listIndex - verseListStart;
         return _buildVerseCard(
           context: context,
           shlokas: shlokas,

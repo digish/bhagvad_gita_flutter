@@ -14,6 +14,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../data/static_data.dart';
 import '../../utils/commentary_language.dart';
+import '../../utils/scroll_focus_runway.dart';
 import '../widgets/font_size_control.dart';
 import '../widgets/commentary_language_switcher.dart';
 
@@ -49,7 +50,8 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
   static const double _kPadding = 24.0;
   static const double _kRefFontSize = 20.0;
   /// Target line for scroll-to-shloka (verse center lands here).
-  static const double _kFocusLine = 0.40;
+  static const double _kFocusLine = kDefaultFocusLine;
+  static const int _kTrailingRunwayItems = 1;
   double _scaledFont(double size, double base) => size * (base / _kRefFontSize);
 
   // Local theme override
@@ -173,7 +175,13 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
       }
 
       final center = (item.itemLeadingEdge + item.itemTrailingEdge) / 2;
-      if ((center - _kFocusLine).abs() <= 0.03) {
+      final delta = (center - _kFocusLine).abs();
+      if (delta <= 0.03) {
+        return true;
+      }
+      if (delta <= 0.06 &&
+          center <= _kFocusLine + 0.06 &&
+          item.itemTrailingEdge <= 1.02) {
         return true;
       }
 
@@ -191,6 +199,9 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
         if (p.index == index) {
           final c = (p.itemLeadingEdge + p.itemTrailingEdge) / 2;
           if ((c - _kFocusLine).abs() <= 0.04) {
+            return true;
+          }
+          if (c <= _kFocusLine + 0.06 && p.itemTrailingEdge <= 1.02) {
             return true;
           }
         }
@@ -549,15 +560,28 @@ class _BookReadingScreenState extends State<BookReadingScreen> {
                     0,
                     _kPadding + 72 + MediaQuery.paddingOf(context).bottom,
                   ),
-                  itemCount: _shlokas.length,
-                  separatorBuilder: (context, index) => Divider(
-                    color: separatorColor,
-                    height: 48,
-                    thickness: 1,
-                    indent: _kPadding,
-                    endIndent: _kPadding,
-                  ),
+                  itemCount: _shlokas.length + _kTrailingRunwayItems,
+                  separatorBuilder: (context, index) {
+                    if (index >= _shlokas.length - 1) {
+                      return const SizedBox.shrink();
+                    }
+                    return Divider(
+                      color: separatorColor,
+                      height: 48,
+                      thickness: 1,
+                      indent: _kPadding,
+                      endIndent: _kPadding,
+                    );
+                  },
                   itemBuilder: (context, index) {
+                    if (index >= _shlokas.length) {
+                      return SizedBox(
+                        height: trailingRunwayHeightForFocusLine(
+                          context,
+                          focusLine: _kFocusLine,
+                        ),
+                      );
+                    }
                     final shloka = _shlokas[index];
                     final commentary = _commentaryForShloka(shloka);
                     final usingFallback = commentary != null &&
