@@ -884,11 +884,19 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                         minimalSearchY,
                                                         minimalT,
                                                       )!;
+                                                      final showAiSuggestions =
+                                                          _isSearchFocused &&
+                                                          _isAiMode &&
+                                                          provider
+                                                              .searchQuery
+                                                              .isEmpty;
                                                       final homeFade =
                                                           settings.homeUiMode ==
                                                                   HomeUiMode
                                                                       .minimal
-                                                              ? 0.0
+                                                              ? (showAiSuggestions
+                                                                  ? 1.0
+                                                                  : 0.0)
                                                               : (1 - minimalT)
                                                                   .clamp(
                                                                   0.0,
@@ -915,14 +923,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                 IgnorePointer(
                                                               ignoring:
                                                                   minimalT >
-                                                                      0.5,
-                                                              child: Scrollbar(
+                                                                          0.5 &&
+                                                                      !showAiSuggestions,
+                                                              child:
+                                                                  SingleChildScrollView(
                                                                 controller:
                                                                     _homeScrollController,
-                                                                child:
-                                                                    SingleChildScrollView(
-                                                                  controller:
-                                                                      _homeScrollController,
                                                                   clipBehavior:
                                                                       Clip.none,
                                                                   physics:
@@ -1076,11 +1082,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                             ],
                                                           ),
                                                         ),
-                                                      if (_isSearchFocused &&
-                                                          _isAiMode &&
-                                                          provider
-                                                              .searchQuery
-                                                              .isEmpty)
+                                                      if (showAiSuggestions)
                                                         AiSuggestionChips(
                                                           isVisible: true,
                                                           direction:
@@ -1174,7 +1176,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                 ),
                                                               ),
                                                             ),
-                                                          ),
                                                           if (showSimpleNav)
                                                             Positioned(
                                                               top: navY -
