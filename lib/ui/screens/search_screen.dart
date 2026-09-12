@@ -99,6 +99,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   final ValueNotifier<double> _lotusLift = ValueNotifier(0.0);
   Offset _revealCenter = Offset.zero;
   final GlobalKey _themeToggleKey = GlobalKey();
+  /// Keeps the home search field mounted when its parent moves (minimal layout).
+  final GlobalKey _homeSearchBarKey = GlobalKey();
   bool? _isBackgroundRequested;
   Set<int>? _lastKnownSources; // Cache for change detection
   int? _debugStreakOverride; // 🧪 Persist debug streak across screen
@@ -162,7 +164,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     _minimalHomeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
-    )..addStatusListener(_onMinimalHomeAnimationStatus);
+    );
 
     // 🌸 Initialize continuous lotus rotation (10s per revolution)
     _lotusController = AnimationController(
@@ -197,18 +199,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     await settings.resetSearchOnboardingHints();
     if (!mounted) return;
     GoRouter.of(context).go('/');
-  }
-
-  void _onMinimalHomeAnimationStatus(AnimationStatus status) {
-    // Leaving minimal: search moves from overlay into scroll — re-attach focus.
-    if (status != AnimationStatus.dismissed) return;
-    if (!_isSearchFocused) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_searchFocusNode.hasFocus) {
-        _searchFocusNode.requestFocus();
-      }
-    });
   }
 
   void _onSearchFocusChanged() {
@@ -248,6 +238,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     return width <= 600 &&
         (settings.homeUiMode == HomeUiMode.minimal ||
             !settings.showBackground);
+  }
+
+  /// Hide lotus/cards until the centered minimal layout has fully settled.
+  bool _suppressHomeChromeDuringMinimalLayout(SettingsProvider settings) {
+    return settings.homeUiMode == HomeUiMode.minimal &&
+        (_minimalHomeController.isAnimating ||
+            _minimalHomeController.value < 1.0);
   }
 
   void _syncMinimalHomeLayoutAnimation(bool isMinimalHome) {
@@ -421,7 +418,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     _lotusLift.dispose();
     _revealController.dispose();
     _pulseController.dispose();
-    _minimalHomeController.removeStatusListener(_onMinimalHomeAnimationStatus);
     _minimalHomeController.dispose();
     _lotusController.dispose();
     _searchFocusNode.removeListener(_onSearchFocusChanged);
@@ -633,7 +629,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
               }
 
               return AnimatedBuilder(
-                animation: _revealController,
+                animation: Listenable.merge([
+                  _revealController,
+                  _minimalHomeController,
+                ]),
                 builder: (context, _) {
                   // 🌸 Sequence Logic:
                   // On Phones (!isTablet), we run a local LiquidReveal.
@@ -641,6 +640,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   // In both cases, we use Intervals to time the lotus growth.
 
                   final bool isAnimating = _revealController.isAnimating;
+                  final effectiveShouldShowResults = shouldShowResults ||
+                      _suppressHomeChromeDuringMinimalLayout(settings);
 
                   // Background Reveal Animation (0% -> 60% for tiered growth)
                   final revealProgress = isAnimating
@@ -663,14 +664,14 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   Widget baseBackground = _buildBackgroundOnly(
                     showBackground: !_isBackgroundRequested!,
                     isKeyboardOpen: isKeyboardOpen,
-                    shouldShowResults: shouldShowResults,
+                    shouldShowResults: effectiveShouldShowResults,
                     excludeDecoration: true,
                   );
 
                   Widget newBackground = _buildBackgroundOnly(
                     showBackground: _isBackgroundRequested!,
                     isKeyboardOpen: isKeyboardOpen,
-                    shouldShowResults: shouldShowResults,
+                    shouldShowResults: effectiveShouldShowResults,
                     excludeDecoration: true,
                   );
 
@@ -884,19 +885,28 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                         minimalT,
                                                       )!;
                                                       final homeFade =
-                                                          (1 - minimalT).clamp(
-                                                        0.0,
-                                                        1.0,
-                                                      );
-                                                      // Keep the floating search bar for the
-                                                      // whole transition so the TextField is
-                                                      // not rebuilt mid-animation (focus loss).
-                                                      final useScrollChrome =
-                                                          minimalT < 0.001 &&
-                                                          !_minimalHomeController
-                                                              .isAnimating;
+                                                          settings.homeUiMode ==
+                                                                  HomeUiMode
+                                                                      .minimal
+                                                              ? 0.0
+                                                              : (1 - minimalT)
+                                                                  .clamp(
+                                                                  0.0,
+                                                                  1.0,
+                                                                );
 
-                                                      return Stack(
+                                                      return ValueListenableBuilder<
+                                                          double>(
+                                                        valueListenable:
+                                                            _lotusLift,
+                                                        builder: (context,
+                                                            scrollLift, _) {
+                                                          final scrollComp =
+                                                              scrollLift *
+                                                                  (1.0 -
+                                                                      minimalT);
+
+                                                          return Stack(
                                                         clipBehavior: Clip.none,
                                                         children: [
                                                           Opacity(
@@ -1001,25 +1011,15 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                                 ],
                                                                               ),
                                                                       ),
-                                                                      if (useScrollChrome) ...[
-                                                                        if (showSimpleNav)
-                                                                          _buildAnimatedSimpleModeNavButtons(
-                                                                            show:
-                                                                                showSimpleNav,
-                                                                            settings:
-                                                                                settings,
-                                                                          ),
-                                                                        _buildSearchBar(
-                                                                          provider,
-                                                                        ),
-                                                                      ] else
-                                                                        SizedBox(
+                                                                      if (showSimpleNav)
+                                                                        const SizedBox(
                                                                           height:
-                                                                              (showSimpleNav
-                                                                                      ? navBlockHeight
-                                                                                      : 0.0) +
-                                                                                  searchBarHeight,
+                                                                              navBlockHeight,
                                                                         ),
+                                                                      const SizedBox(
+                                                                        height:
+                                                                            searchBarHeight,
+                                                                      ),
                                                       if (showOnboarding &&
                                                           !settings
                                                               .hasUsedAskAi &&
@@ -1175,10 +1175,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                               ),
                                                             ),
                                                           ),
-                                                          if (showSimpleNav &&
-                                                              !useScrollChrome)
+                                                          if (showSimpleNav)
                                                             Positioned(
-                                                              top: navY,
+                                                              top: navY -
+                                                                  scrollComp,
                                                               left: 0,
                                                               right: 0,
                                                               child:
@@ -1189,17 +1189,23 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                     settings,
                                                               ),
                                                             ),
-                                                          if (!useScrollChrome)
-                                                            Positioned(
-                                                              top: searchY,
-                                                              left: 0,
-                                                              right: 0,
+                                                          Positioned(
+                                                            top: searchY -
+                                                                scrollComp,
+                                                            left: 0,
+                                                            right: 0,
+                                                            child: KeyedSubtree(
+                                                              key:
+                                                                  _homeSearchBarKey,
                                                               child:
                                                                   _buildSearchBar(
                                                                 provider,
                                                               ),
                                                             ),
+                                                          ),
                                                         ],
+                                                      );
+                                                        },
                                                       );
                                                     },
                                                   );
@@ -1366,7 +1372,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                               _buildDecorationOnly(
                                 showBackground: !_isBackgroundRequested!,
                                 isKeyboardOpen: isKeyboardOpen,
-                                shouldShowResults: shouldShowResults,
+                                shouldShowResults: effectiveShouldShowResults,
                                 scaleAnimation: CurvedAnimation(
                                   parent: ReverseAnimation(_revealController),
                                   curve: _isBackgroundRequested!
@@ -1390,7 +1396,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                               _buildDecorationOnly(
                                 showBackground: _isBackgroundRequested!,
                                 isKeyboardOpen: isKeyboardOpen,
-                                shouldShowResults: shouldShowResults,
+                                shouldShowResults: effectiveShouldShowResults,
                                 scaleAnimation:
                                     null, // No scale on tablet (Snapshot handles it)
                               )
@@ -1401,7 +1407,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                 child: _buildDecorationOnly(
                                   showBackground: _isBackgroundRequested!,
                                   isKeyboardOpen: isKeyboardOpen,
-                                  shouldShowResults: shouldShowResults,
+                                  shouldShowResults: effectiveShouldShowResults,
                                   scaleAnimation: _revealController.isAnimating
                                       ? CurvedAnimation(
                                           parent: _revealController,
