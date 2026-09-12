@@ -691,8 +691,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                     // Clear the lotus cluster; tablet needs more
                                                     // room for the larger flowers + streak chip.
                                                     ? (isTablet ? 300.0 : 190.0)
-                                                    : 60),
+                                                    : 4),
                                         ),
+                                        if (!shouldShowResults &&
+                                            !settings.showBackground &&
+                                            width <= 600)
+                                          _buildSimpleModeNavButtons(settings),
                                         if (!shouldShowResults &&
                                             settings.streakSystemEnabled)
                                           _buildSoulStatusChip(settings),
@@ -1460,6 +1464,65 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleModeNavButtons(SettingsProvider settings) {
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+    final Color labelColor = isSimpleLight
+        ? Colors.brown.shade800
+        : Colors.white.withValues(alpha: 0.95);
+    final Color borderColor = isSimpleLight
+        ? Colors.brown.shade300.withValues(alpha: 0.65)
+        : Colors.white.withValues(alpha: 0.35);
+    final script = settings.script;
+
+    Widget navButton(String termKey, VoidCallback onTap) {
+      return Expanded(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Ink(
+              decoration: BoxDecoration(
+                border: Border.all(color: borderColor),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+                child: Text(
+                  StaticData.localizeTerm(termKey, script),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          navButton('parayan', () => context.push(AppRoutes.parayan)),
+          const SizedBox(width: 8),
+          navButton('adhyay', () => context.push(AppRoutes.chapters)),
+          const SizedBox(width: 8),
+          navButton('krutagyata', () => context.push(AppRoutes.credits)),
+        ],
       ),
     );
   }
