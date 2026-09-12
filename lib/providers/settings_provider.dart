@@ -19,17 +19,45 @@ import '../services/notification_service.dart';
 import '../services/daily_message_service.dart';
 import '../services/analytics_service.dart';
 
+/// Home search screen layout: full art, simple gradient + cards, or minimal center.
+enum HomeUiMode { full, simple, minimal }
+
+extension HomeUiModeX on HomeUiMode {
+  bool get showsDecorativeBackground => this == HomeUiMode.full;
+
+  /// Layout toggle: rich home → cards → compact center.
+  IconData get layoutToggleIcon {
+    switch (this) {
+      case HomeUiMode.full:
+        return Icons.view_quilt;
+      case HomeUiMode.simple:
+        return Icons.view_agenda_outlined;
+      case HomeUiMode.minimal:
+        return Icons.view_compact_outlined;
+    }
+  }
+}
+
 class SettingsProvider extends ChangeNotifier {
   static const String _fontSizeKey = 'fontSize';
   static const String _showBackgroundKey = 'showBackground';
+  static const String _homeUiModeKey = 'homeUiMode';
   static const double _defaultFontSize = 20.0;
   static const bool _defaultShowBackground = true;
 
   double _fontSize = _defaultFontSize;
   double get fontSize => _fontSize;
 
-  bool _showBackground = _defaultShowBackground;
-  bool get showBackground => _showBackground;
+  HomeUiMode _homeUiMode = HomeUiMode.full;
+  HomeUiMode get homeUiMode => _homeUiMode;
+
+  /// True when the lotus / mandala background is shown (full mode only).
+  bool get showBackground => _homeUiMode.showsDecorativeBackground;
+
+  bool get isMinimalHomeLayout => _homeUiMode == HomeUiMode.minimal;
+
+  HomeUiMode get nextHomeUiMode =>
+      HomeUiMode.values[(_homeUiMode.index + 1) % HomeUiMode.values.length];
 
   String? _customAiApiKey;
   String? get customAiApiKey => _customAiApiKey;
@@ -151,16 +179,32 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> setShowBackground(bool newValue) async {
-    _showBackground = newValue;
+  Future<void> setHomeUiMode(HomeUiMode mode) async {
+    if (_homeUiMode == mode) return;
+    _homeUiMode = mode;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    // Save the new background visibility to persistent storage.
-    await prefs.setBool(_showBackgroundKey, newValue);
+    await prefs.setInt(_homeUiModeKey, mode.index);
+    await prefs.setBool(_showBackgroundKey, mode.showsDecorativeBackground);
     AnalyticsService.instance.logConfigChange(
-      setting: 'show_background',
-      value: newValue.toString(),
+      setting: 'home_ui_mode',
+      value: mode.name,
     );
+  }
+
+  Future<void> cycleHomeUiMode() async {
+    await setHomeUiMode(nextHomeUiMode);
+  }
+
+  /// Settings switch: full vs simple gradient (not minimal).
+  Future<void> setShowBackground(bool newValue) async {
+    if (newValue) {
+      await setHomeUiMode(HomeUiMode.full);
+    } else if (_homeUiMode == HomeUiMode.full) {
+      await setHomeUiMode(HomeUiMode.simple);
+    } else if (_homeUiMode == HomeUiMode.minimal) {
+      await setHomeUiMode(HomeUiMode.simple);
+    }
   }
 
   Future<void> setCustomAiApiKey(String key) async {
@@ -445,8 +489,17 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _fontSize = prefs.getDouble(_fontSizeKey) ?? _defaultFontSize;
-    _showBackground =
-        prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
+    final storedModeIndex = prefs.getInt(_homeUiModeKey);
+    if (storedModeIndex != null &&
+        storedModeIndex >= 0 &&
+        storedModeIndex < HomeUiMode.values.length) {
+      _homeUiMode = HomeUiMode.values[storedModeIndex];
+    } else {
+      final legacyBackground =
+          prefs.getBool(_showBackgroundKey) ?? _defaultShowBackground;
+      _homeUiMode =
+          legacyBackground ? HomeUiMode.full : HomeUiMode.simple;
+    }
     _showClassicalCommentaries =
         prefs.getBool('show_classical_commentaries') ?? false;
 

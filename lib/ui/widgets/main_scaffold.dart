@@ -112,11 +112,20 @@ class _MainScaffoldState extends State<MainScaffold>
     // 0. Provide haptic feedback
     HapticFeedback.lightImpact();
 
+    if (!mounted) return;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final current = settings.homeUiMode;
+    final next = settings.nextHomeUiMode;
+
+    if (current.showsDecorativeBackground == next.showsDecorativeBackground) {
+      await settings.setHomeUiMode(next);
+      return;
+    }
+
     // 1. Capture Snapshot of current state (OLD)
     await _captureSnapshot();
     if (_snapshotImage == null) {
-      final settings = Provider.of<SettingsProvider>(context, listen: false);
-      settings.setShowBackground(!settings.showBackground);
+      await settings.setHomeUiMode(next);
       return;
     }
 
@@ -125,10 +134,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
     // 4. Update Global Settings (NEW State)
     if (!mounted) return;
-    final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final bool newBackgroundState = !settings.showBackground;
-
-    settings.setShowBackground(newBackgroundState);
+    await settings.setHomeUiMode(next);
 
     // 5. Start Animation (Reveal NEW over OLD)
     _revealController.forward(from: 0).then((_) {
@@ -256,9 +262,8 @@ class _MainScaffoldState extends State<MainScaffold>
                     child: Consumer<SettingsProvider>(
                       builder: (context, settings, _) {
                         return Icon(
-                          settings.showBackground
-                              ? Icons.format_paint_outlined
-                              : Icons.format_paint,
+                          settings.homeUiMode.layoutToggleIcon,
+                          size: 22,
                         );
                       },
                     ),

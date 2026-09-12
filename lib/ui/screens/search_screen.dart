@@ -212,9 +212,65 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   bool _showHomeOnboardingHints(SettingsProvider settings) {
     return settings.hasSeenLanguagePrompt &&
+        settings.homeUiMode != HomeUiMode.minimal &&
         !_isSearchFocused &&
         MediaQuery.of(context).viewInsets.bottom == 0 &&
         _searchController.text.isEmpty;
+  }
+
+  bool _isMinimalHomeLayout(
+    SettingsProvider settings,
+    bool shouldShowResults,
+  ) {
+    return settings.homeUiMode == HomeUiMode.minimal && !shouldShowResults;
+  }
+
+  Widget _buildHomeUiModeToggleFab(SettingsProvider settings) {
+    final appColors = Theme.of(context).extension<AppColors>();
+    return FloatingActionButton(
+      key: _themeToggleKey,
+      heroTag: 'simple_theme_toggle',
+      shape: const CircleBorder(),
+      backgroundColor:
+          appColors?.speedDialBg ?? Theme.of(context).colorScheme.primary,
+      foregroundColor:
+          appColors?.speedDialFg ?? Theme.of(context).colorScheme.onPrimary,
+      elevation: 6,
+      highlightElevation: 12,
+      onPressed: () => _cycleHomeUiModeFromToggle(settings),
+      child: Icon(
+        settings.homeUiMode.layoutToggleIcon,
+        size: 24,
+      ),
+    );
+  }
+
+  Future<void> _cycleHomeUiModeFromToggle(SettingsProvider settings) async {
+    if (_revealController.isAnimating) {
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    _captureThemeTogglePosition();
+    _resetLotusScrollLift();
+
+    final current = settings.homeUiMode;
+    final next = settings.nextHomeUiMode;
+    final backgroundChanges =
+        current.showsDecorativeBackground != next.showsDecorativeBackground;
+
+    if (backgroundChanges) {
+      setState(() {
+        _isBackgroundRequested = next.showsDecorativeBackground;
+      });
+      await _revealController.forward(from: 0);
+      if (!mounted) return;
+      await settings.setHomeUiMode(next);
+      _ensureLotusLiftSynced();
+    } else {
+      await settings.setHomeUiMode(next);
+      if (mounted) setState(() {});
+    }
   }
 
   void _onHomeScroll() {
@@ -435,6 +491,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final showOnboarding = _showHomeOnboardingHints(settings) && !shouldShowResults;
+    final isMinimalHome = _isMinimalHomeLayout(settings, shouldShowResults);
     final showRailThemeCoach =
         width > 600 &&
         MediaQuery.of(context).viewInsets.bottom == 0 &&
@@ -700,233 +757,276 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            AnimatedSize(
-                                              duration: const Duration(
-                                                milliseconds: 400,
-                                              ),
-                                              curve: Curves.easeInOut,
-                                              alignment: Alignment.topCenter,
-                                              clipBehavior: Clip.none,
-                                              child: shouldShowResults
-                                                  ? const SizedBox(
-                                                      height: 16,
-                                                      width: double.infinity,
-                                                    )
-                                                  : Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .stretch,
-                                                      children: [
-                                                        SizedBox(
-                                                          height: settings
-                                                                  .showBackground
-                                                              ? (isTablet
-                                                                    ? 300.0
-                                                                    : 190.0)
-                                                              : 4,
-                                                        ),
-                                                        if (!settings
-                                                                .showBackground &&
-                                                            width <= 600)
-                                                          _buildSimpleModeNavButtons(
-                                                            settings,
-                                                          ),
-                                                        if (settings
-                                                            .streakSystemEnabled)
-                                                          _buildSoulStatusChip(
-                                                            settings,
-                                                          ),
-                                                        if (showOnboarding &&
-                                                            !settings
-                                                                .hasUsedSearchBarHint)
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                              bottom: 8,
-                                                              left: 12,
-                                                              right: 12,
-                                                            ),
-                                                            child: Align(
-                                                              alignment: Alignment
-                                                                  .topCenter,
-                                                              child:
-                                                                  OnboardingBubble(
-                                                                text:
-                                                                    'Search by word, chapter, or verse',
-                                                                icon: Icons
-                                                                    .search,
-                                                                pointingDown:
-                                                                    true,
-                                                                tailAlign:
-                                                                    CrossAxisAlignment
-                                                                        .center,
-                                                                onTap: () =>
-                                                                    settings
-                                                                        .markSearchBarHintUsed(),
-                                                                onDismiss: () =>
-                                                                    settings
-                                                                        .markSearchBarHintUsed(),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      ],
-                                                    ),
-                                            ),
-                                            _buildSearchBar(provider),
-                                            if (showOnboarding &&
-                                                !settings.hasUsedAskAi &&
-                                                !_isAiMode)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 6,
-                                                  left: 12,
-                                                  right: 12,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    const Spacer(),
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .only(
-                                                        right: 8,
-                                                        top: 2,
-                                                      ),
-                                                      child: OnboardingBubble(
-                                                        onTap: () {
-                                                          settings
-                                                              .markAskAiUsed();
-                                                          setState(() {
-                                                            _isAiMode = true;
-                                                          });
-                                                          final creditProvider =
-                                                              Provider.of<
-                                                                CreditProvider
-                                                              >(
-                                                                context,
-                                                                listen: false,
-                                                              );
-                                                          if (!creditProvider
-                                                                  .isLoading &&
-                                                              creditProvider
-                                                                      .balance <=
-                                                                  0) {
-                                                            // Ad loading handled by CreditProvider.
-                                                          }
-                                                        },
-                                                        onDismiss: () {
-                                                          settings
-                                                              .markAskAiUsed();
-                                                        },
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            if (_isSearchFocused &&
-                                                _isAiMode &&
-                                                provider.searchQuery.isEmpty)
-                                              AiSuggestionChips(
-                                                isVisible: true,
-                                                direction: Axis.vertical,
-                                                onSuggestionSelected:
-                                                    (suggestion) {
-                                                  _searchController.text =
-                                                      suggestion;
-                                                  provider.onSearchQueryChanged(
-                                                    suggestion,
-                                                  );
-                                                  _searchFocusNode.unfocus();
-                                                  context.push(
-                                                    AppRoutes.askGita,
-                                                    extra: suggestion,
-                                                  );
-                                                },
-                                              ),
-                                            Expanded(
-                                              child: SingleChildScrollView(
-                                                controller:
-                                                    _homeScrollController,
-                                                clipBehavior: Clip.none,
+                                            if (isMinimalHome)
+                                              Expanded(
                                                 child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment
                                                           .stretch,
                                                   children: [
-                                                    if (!shouldShowResults) ...[
-                                                      if (settings
-                                                          .showRandomShloka) ...[
-                                                        if (!settings
-                                                                .hasUsedDailyShlokaHint &&
-                                                            showOnboarding)
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                              top: 16,
-                                                              left: 28,
-                                                            ),
-                                                            child: Align(
-                                                              alignment: Alignment
-                                                                  .centerLeft,
-                                                              child:
-                                                                  OnboardingBubble(
-                                                                text:
-                                                                    "Today's verse",
-                                                                icon: Icons
-                                                                    .wb_sunny_outlined,
-                                                                pointingDown:
-                                                                    true,
-                                                                tailAlign:
+                                                    if (width <= 600)
+                                                      _buildSimpleModeNavButtons(
+                                                        settings,
+                                                      ),
+                                                    _buildSearchBar(provider),
+                                                  ],
+                                                ),
+                                              )
+                                            else ...[
+                                            Expanded(
+                                              child: Scrollbar(
+                                                controller:
+                                                    _homeScrollController,
+                                                child: SingleChildScrollView(
+                                                  controller:
+                                                      _homeScrollController,
+                                                  clipBehavior: Clip.none,
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      AnimatedSize(
+                                                        duration:
+                                                            const Duration(
+                                                          milliseconds: 400,
+                                                        ),
+                                                        curve:
+                                                            Curves.easeInOut,
+                                                        alignment:
+                                                            Alignment.topCenter,
+                                                        clipBehavior:
+                                                            Clip.none,
+                                                        child: shouldShowResults
+                                                            ? const SizedBox(
+                                                                height: 16,
+                                                                width: double
+                                                                    .infinity,
+                                                              )
+                                                            : Column(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                crossAxisAlignment:
                                                                     CrossAxisAlignment
-                                                                        .start,
-                                                                onTap: () =>
+                                                                        .stretch,
+                                                                children: [
+                                                                  SizedBox(
+                                                                    height: settings
+                                                                            .showBackground
+                                                                        ? (isTablet
+                                                                              ? 300.0
+                                                                              : 190.0)
+                                                                        : 4,
+                                                                  ),
+                                                                  if (!settings
+                                                                          .showBackground &&
+                                                                      width <=
+                                                                          600)
+                                                                    _buildSimpleModeNavButtons(
+                                                                      settings,
+                                                                    ),
+                                                                  if (settings
+                                                                      .streakSystemEnabled)
+                                                                    _buildSoulStatusChip(
+                                                                      settings,
+                                                                    ),
+                                                                  if (showOnboarding &&
+                                                                      !settings
+                                                                          .hasUsedSearchBarHint)
+                                                                    Padding(
+                                                                      padding:
+                                                                          const EdgeInsets
+                                                                              .only(
+                                                                        bottom:
+                                                                            8,
+                                                                        left: 12,
+                                                                        right:
+                                                                            12,
+                                                                      ),
+                                                                      child: Align(
+                                                                        alignment:
+                                                                            Alignment.topCenter,
+                                                                        child:
+                                                                            OnboardingBubble(
+                                                                          text:
+                                                                              'Search by word, chapter, or verse',
+                                                                          icon:
+                                                                              Icons.search,
+                                                                          pointingDown:
+                                                                              true,
+                                                                          tailAlign:
+                                                                              CrossAxisAlignment.center,
+                                                                          onTap: () =>
+                                                                              settings.markSearchBarHintUsed(),
+                                                                          onDismiss: () =>
+                                                                              settings.markSearchBarHintUsed(),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                ],
+                                                              ),
+                                                      ),
+                                                      _buildSearchBar(provider),
+                                                      if (showOnboarding &&
+                                                          !settings
+                                                              .hasUsedAskAi &&
+                                                          !_isAiMode)
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                            top: 6,
+                                                            left: 12,
+                                                            right: 12,
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              const Spacer(),
+                                                              Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .only(
+                                                                  right: 8,
+                                                                  top: 2,
+                                                                ),
+                                                                child:
+                                                                    OnboardingBubble(
+                                                                  onTap: () {
                                                                     settings
-                                                                        .markDailyShlokaHintUsed(),
-                                                                onDismiss: () =>
+                                                                        .markAskAiUsed();
+                                                                    setState(() {
+                                                                      _isAiMode =
+                                                                          true;
+                                                                    });
+                                                                    final creditProvider =
+                                                                        Provider.of<
+                                                                          CreditProvider
+                                                                        >(
+                                                                          context,
+                                                                          listen:
+                                                                              false,
+                                                                        );
+                                                                    if (!creditProvider
+                                                                            .isLoading &&
+                                                                        creditProvider
+                                                                                .balance <=
+                                                                            0) {
+                                                                      // Ad loading handled by CreditProvider.
+                                                                    }
+                                                                  },
+                                                                  onDismiss: () {
                                                                     settings
-                                                                        .markDailyShlokaHintUsed(),
+                                                                        .markAskAiUsed();
+                                                                  },
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      if (_isSearchFocused &&
+                                                          _isAiMode &&
+                                                          provider
+                                                              .searchQuery
+                                                              .isEmpty)
+                                                        AiSuggestionChips(
+                                                          isVisible: true,
+                                                          direction:
+                                                              Axis.vertical,
+                                                          onSuggestionSelected:
+                                                              (suggestion) {
+                                                            _searchController
+                                                                    .text =
+                                                                suggestion;
+                                                            provider
+                                                                .onSearchQueryChanged(
+                                                              suggestion,
+                                                            );
+                                                            _searchFocusNode
+                                                                .unfocus();
+                                                            context.push(
+                                                              AppRoutes.askGita,
+                                                              extra: suggestion,
+                                                            );
+                                                          },
+                                                        ),
+                                                      if (!shouldShowResults) ...[
+                                                        if (settings
+                                                            .showRandomShloka) ...[
+                                                          if (!settings
+                                                                  .hasUsedDailyShlokaHint &&
+                                                              showOnboarding)
+                                                            Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .only(
+                                                                top: 16,
+                                                                left: 28,
+                                                              ),
+                                                              child: Align(
+                                                                alignment:
+                                                                    Alignment
+                                                                        .centerLeft,
+                                                                child:
+                                                                    OnboardingBubble(
+                                                                  text:
+                                                                      "Today's verse",
+                                                                  icon: Icons
+                                                                      .wb_sunny_outlined,
+                                                                  pointingDown:
+                                                                      true,
+                                                                  tailAlign:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  onTap: () =>
+                                                                      settings
+                                                                          .markDailyShlokaHintUsed(),
+                                                                  onDismiss: () =>
+                                                                      settings
+                                                                          .markDailyShlokaHintUsed(),
+                                                                ),
                                                               ),
                                                             ),
+                                                          _buildRandomShlokaCard(),
+                                                        ],
+                                                        if (settings
+                                                            .showSacredSutraQuote)
+                                                          SacredSutraPromoCard(
+                                                            isSimpleLight:
+                                                                !settings
+                                                                        .showBackground &&
+                                                                    Theme.of(
+                                                                          context,
+                                                                        )
+                                                                            .brightness ==
+                                                                        Brightness
+                                                                            .light,
+                                                            languageCode:
+                                                                settings
+                                                                    .language,
                                                           ),
-                                                        _buildRandomShlokaCard(),
+                                                        if (settings
+                                                            .showTodaysAction)
+                                                          _buildTodaysActionCard(),
+                                                        if (settings
+                                                            .showTodaysAiQuestion)
+                                                          _buildTodaysQuestionCard(
+                                                            settings,
+                                                          ),
                                                       ],
-                                                      if (settings
-                                                          .showSacredSutraQuote)
-                                                        SacredSutraPromoCard(
-                                                          isSimpleLight:
-                                                              !settings
-                                                                      .showBackground &&
-                                                                  Theme.of(
-                                                                        context,
-                                                                      )
-                                                                          .brightness ==
-                                                                      Brightness
-                                                                          .light,
-                                                          languageCode: settings
-                                                              .language,
-                                                        ),
-                                                      if (settings
-                                                          .showTodaysAction)
-                                                        _buildTodaysActionCard(),
-                                                      if (settings
-                                                          .showTodaysAiQuestion)
-                                                        _buildTodaysQuestionCard(
-                                                          settings,
-                                                        ),
+                                                      const SizedBox(
+                                                        height: 100,
+                                                      ),
                                                     ],
-                                                    const SizedBox(
-                                                      height: 100,
-                                                    ),
-                                                  ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
+                                            ],
                                           ],
                                         ),
                                       ),
@@ -1061,49 +1161,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               settings.markThemeHintUsed(),
                                         ),
                                       ),
-                                    FloatingActionButton(
-                                      key: _themeToggleKey,
-                                      heroTag: 'simple_theme_toggle',
-                                      mini: true,
-                                      backgroundColor:
-                                          Theme.of(context)
-                                              .extension<AppColors>()
-                                              ?.simpleThemeToggle ??
-                                          Theme.of(context).primaryColor,
-                                      foregroundColor:
-                                          Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary
-                                          : Colors.white,
-                                      onPressed: () {
-                                        if (_revealController.isAnimating) {
-                                          return;
-                                        }
-
-                                        HapticFeedback.lightImpact();
-                                        _captureThemeTogglePosition();
-                                        _resetLotusScrollLift();
-                                        setState(() {
-                                          _isBackgroundRequested =
-                                              !settings.showBackground;
-                                        });
-                                        _revealController.forward(from: 0).then((
-                                          _,
-                                        ) {
-                                          settings.setShowBackground(
-                                            _isBackgroundRequested!,
-                                          );
-                                          _ensureLotusLiftSynced();
-                                        });
-                                      },
-                                      child: Icon(
-                                        settings.showBackground
-                                            ? Icons.format_paint_outlined
-                                            : Icons.format_paint,
-                                      ),
-                                    ),
+                                    _buildHomeUiModeToggleFab(settings),
                                   ],
                                 ),
                               ),
@@ -1197,6 +1255,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     return SpeedDial(
       icon: Icons.menu_book_outlined,
       activeIcon: Icons.close,
+      shape: const CircleBorder(),
       backgroundColor:
           appColors?.speedDialBg ?? Theme.of(context).colorScheme.primary,
       foregroundColor:
