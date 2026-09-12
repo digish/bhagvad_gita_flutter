@@ -93,9 +93,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   late AnimationController _revealController;
   late AnimationController _pulseController;
   late AnimationController _minimalHomeController;
+  late AnimationController _searchCollapseController;
   late AnimationController
   _lotusController; // 🌸 Continuous rotation controller
   bool? _trackedMinimalHomeLayout;
+  bool? _trackedSearchCollapsed;
   final ScrollController _homeScrollController = ScrollController();
   /// How far the top lotuses have been pushed up with home scroll.
   /// Clamped to >= 0 so they never settle below their resting position.
@@ -165,6 +167,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     )..repeat(reverse: true);
 
     _minimalHomeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _searchCollapseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
@@ -262,6 +268,21 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       _minimalHomeController.forward();
     } else {
       _minimalHomeController.reverse();
+    }
+  }
+
+  void _syncSearchCollapseAnimation(bool collapsed) {
+    if (_trackedSearchCollapsed == null) {
+      _trackedSearchCollapsed = collapsed;
+      _searchCollapseController.value = collapsed ? 1.0 : 0.0;
+      return;
+    }
+    if (_trackedSearchCollapsed == collapsed) return;
+    _trackedSearchCollapsed = collapsed;
+    if (collapsed) {
+      _searchCollapseController.forward();
+    } else {
+      _searchCollapseController.reverse();
     }
   }
 
@@ -422,6 +443,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     _revealController.dispose();
     _pulseController.dispose();
     _minimalHomeController.dispose();
+    _searchCollapseController.dispose();
     _lotusController.dispose();
     _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchController.dispose();
@@ -551,6 +573,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     final showOnboarding = _showHomeOnboardingHints(settings) && !shouldShowResults;
     final isMinimalHome = _isMinimalHomeLayout(settings, shouldShowResults);
     _syncMinimalHomeLayoutAnimation(isMinimalHome);
+    _syncSearchCollapseAnimation(shouldShowResults);
     final showRailThemeCoach =
         width > 600 &&
         MediaQuery.of(context).viewInsets.bottom == 0 &&
@@ -823,7 +846,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           children: [
                                             Expanded(
                                               child: AnimatedBuilder(
-                                                animation: _minimalHomeController,
+                                                animation: Listenable.merge([
+                                                  _minimalHomeController,
+                                                  _searchCollapseController,
+                                                ]),
                                                 builder: (context, _) {
                                                   final minimalT =
                                                       Curves.easeInOutCubic
@@ -831,12 +857,18 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                     _minimalHomeController
                                                         .value,
                                                   );
+                                                  final collapseT =
+                                                      Curves.easeInOutCubic
+                                                          .transform(
+                                                    _searchCollapseController
+                                                        .value,
+                                                  );
                                                   final showSimpleNav =
                                                       _showsSimpleModeNavButtons(
                                                     settings,
                                                     width,
                                                   ) &&
-                                                      !shouldShowResults;
+                                                      collapseT < 1.0;
                                                   const searchBarHeight = 52.0;
                                                   const navBlockHeight = 54.0;
 
@@ -845,28 +877,46 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                         constraints) {
                                                       final maxHeight =
                                                           constraints.maxHeight;
+                                                      final homeHeaderSpacer =
+                                                          settings
+                                                                  .showBackground
+                                                              ? (isTablet
+                                                                    ? 300.0
+                                                                    : 190.0)
+                                                              : 4.0;
+                                                      const searchHeaderSpacer =
+                                                          16.0;
                                                       final headerSpacer =
-                                                          shouldShowResults
-                                                              ? 16.0
-                                                              : (settings
-                                                                      .showBackground
-                                                                  ? (isTablet
-                                                                        ? 300.0
-                                                                        : 190.0)
-                                                                  : 4.0);
+                                                          lerpDouble(
+                                                                homeHeaderSpacer,
+                                                                searchHeaderSpacer,
+                                                                collapseT,
+                                                              ) ??
+                                                              searchHeaderSpacer;
+                                                      final homeSoulBlockHeight =
+                                                          _homeHeaderActionsRowHeight(
+                                                        isTablet,
+                                                      );
                                                       final soulBlockHeight =
-                                                          !shouldShowResults
-                                                              ? _homeHeaderActionsRowHeight(
-                                                                  isTablet,
-                                                                )
-                                                              : 0.0;
-                                                      final searchHintHeight =
+                                                          lerpDouble(
+                                                                homeSoulBlockHeight,
+                                                                0.0,
+                                                                collapseT,
+                                                              ) ??
+                                                              0.0;
+                                                      final homeSearchHintHeight =
                                                           (showOnboarding &&
                                                                   !settings
-                                                                      .hasUsedSearchBarHint &&
-                                                                  !shouldShowResults)
+                                                                      .hasUsedSearchBarHint)
                                                               ? 72.0
                                                               : 0.0;
+                                                      final searchHintHeight =
+                                                          lerpDouble(
+                                                                homeSearchHintHeight,
+                                                                0.0,
+                                                                collapseT,
+                                                              ) ??
+                                                              0.0;
                                                       final topContentEnd =
                                                           headerSpacer +
                                                               soulBlockHeight +
@@ -927,14 +977,17 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                   .minimal &&
                                                           !shouldShowResults &&
                                                           !showAiSuggestions;
-                                                      final homeFade =
-                                                          settings.homeUiMode ==
+                                                      final homeFade = showAiSuggestions
+                                                          ? 1.0
+                                                          : settings
+                                                                      .homeUiMode ==
                                                                   HomeUiMode
                                                                       .minimal
-                                                              ? (showAiSuggestions
-                                                                  ? 1.0
-                                                                  : 0.0)
-                                                              : (1 - minimalT)
+                                                              ? 0.0
+                                                              : ((1 -
+                                                                          minimalT) *
+                                                                      (1 -
+                                                                          collapseT))
                                                                   .clamp(
                                                                   0.0,
                                                                   1.0,
