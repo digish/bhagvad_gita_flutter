@@ -84,6 +84,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   late final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode(); // ✨ Track focus
   bool _isAiMode = false; // ✨ Toggle for AI Mode
+  /// Keeps AI suggestion taps from triggering [TextField.onTapOutside].
+  static final Object _homeSearchTapRegionGroup = Object();
   static bool _hasCheckedLanguagePrompt = false; // Flag to prevent multiple dialogs
   bool _isSearchFocused = false;
   /// Home chrome collapsed for search (same as focus, but safe to drive layout).
@@ -449,6 +451,23 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     // Ensure UI updates to reflect search mode change
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  void _toggleAiMode() {
+    final keepSearchExpanded =
+        _searchFocusNode.hasFocus ||
+        _collapseHomeForSearch ||
+        MediaQuery.of(context).viewInsets.bottom > 0;
+    setState(() {
+      _isAiMode = !_isAiMode;
+      if (keepSearchExpanded) {
+        _isSearchFocused = true;
+        _collapseHomeForSearch = true;
+      }
+    });
+    if (keepSearchExpanded && !_searchFocusNode.hasFocus) {
+      _searchFocusNode.requestFocus();
     }
   }
 
@@ -1101,26 +1120,33 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                           ),
                                                         ),
                                                       if (showAiSuggestions)
-                                                        AiSuggestionChips(
-                                                          isVisible: true,
-                                                          direction:
-                                                              Axis.vertical,
-                                                          onSuggestionSelected:
-                                                              (suggestion) {
-                                                            _searchController
-                                                                    .text =
-                                                                suggestion;
-                                                            provider
-                                                                .onSearchQueryChanged(
-                                                              suggestion,
-                                                            );
-                                                            _searchFocusNode
-                                                                .unfocus();
-                                                            context.push(
-                                                              AppRoutes.askGita,
-                                                              extra: suggestion,
-                                                            );
-                                                          },
+                                                        TextFieldTapRegion(
+                                                          groupId:
+                                                              _homeSearchTapRegionGroup,
+                                                          child:
+                                                              AiSuggestionChips(
+                                                            isVisible: true,
+                                                            direction:
+                                                                Axis.vertical,
+                                                            onSuggestionSelected:
+                                                                (suggestion) {
+                                                              _searchController
+                                                                      .text =
+                                                                  suggestion;
+                                                              provider
+                                                                  .onSearchQueryChanged(
+                                                                suggestion,
+                                                              );
+                                                              _searchFocusNode
+                                                                  .unfocus();
+                                                              context.push(
+                                                                AppRoutes
+                                                                    .askGita,
+                                                                extra:
+                                                                    suggestion,
+                                                              );
+                                                            },
+                                                          ),
                                                         ),
                                                       if (!shouldShowResults) ...[
                                                         if (settings
@@ -1618,6 +1644,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           ),
           child: TextField(
             key: const ValueKey('home_search_field'),
+            groupId: _homeSearchTapRegionGroup,
             controller: _searchController, // ✨ Bind controller
             focusNode: _searchFocusNode, // ✨ Attach FocusNode
             textInputAction: _isAiMode
@@ -1678,18 +1705,23 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                   ? 'Ask Gita anything...'
                   : 'Search the Gita...',
               hintStyle: TextStyle(color: hintColor),
-              prefixIcon: IconButton(
-                icon: Icon(
-                  _isSearchFocused ? Icons.arrow_back : Icons.search,
-                  color: _isSearchFocused ? textColor : hintColor,
+              prefixIcon: TextFieldTapRegion(
+                groupId: _homeSearchTapRegionGroup,
+                child: IconButton(
+                  icon: Icon(
+                    _isSearchFocused ? Icons.arrow_back : Icons.search,
+                    color: _isSearchFocused ? textColor : hintColor,
+                  ),
+                  onPressed: _isSearchFocused
+                      ? _handleBackAction
+                      : () => _searchFocusNode.requestFocus(),
                 ),
-                onPressed: _isSearchFocused
-                    ? _handleBackAction
-                    : () => _searchFocusNode.requestFocus(),
               ),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              suffixIcon: TextFieldTapRegion(
+                groupId: _homeSearchTapRegionGroup,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   // ✨ Clear Button
                   if (_searchController.text.isNotEmpty)
                     Padding(
@@ -1743,11 +1775,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                           ? 'Switch to Normal Search'
                           : 'Switch to AI Mode (Ask Gita)',
                       child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isAiMode = !_isAiMode;
-                          });
-                        },
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _toggleAiMode,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
                           width: 64, // Fixed width for toggle pill
@@ -1842,6 +1871,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                     ),
                   ),
                 ],
+                ),
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
