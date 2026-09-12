@@ -137,10 +137,6 @@ class AppInitializer extends StatelessWidget {
   }
 }
 
-// Define global RouteObserver
-final RouteObserver<ModalRoute<void>> routeObserver =
-    RouteObserver<ModalRoute<void>>();
-
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 

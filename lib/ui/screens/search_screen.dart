@@ -27,9 +27,10 @@ import '../widgets/main_scaffold.dart';
 import '../../models/shloka_list.dart';
 import '../../models/shloka_result.dart';
 import '../../providers/bookmark_provider.dart';
-// import '../../main.dart'; // For routeObserver - Removed
+import '../../navigation/route_observer.dart';
 import '../../data/static_data.dart';
 import '../theme/app_colors.dart';
+import '../config/home_bookmark_layout.dart';
 import '../../services/home_widget_service.dart';
 import '../../services/ask_gita_service.dart';
 import '../../models/soul_status.dart';
@@ -113,6 +114,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   String? _todaysQuestion;
   ValueNotifier<Widget?>? _coachOverlayRef;
   bool _railThemeCoachVisible = false;
+  ModalRoute<void>? _routeSubscription;
 
   void _syncRailThemeCoachOverlay({
     required bool show,
@@ -215,6 +217,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     if (!mounted) return;
     final hasFocus = _searchFocusNode.hasFocus;
     if (hasFocus) {
+      if (_homeScrollController.hasClients &&
+          _homeScrollController.offset > 0) {
+        _homeScrollController.jumpTo(0);
+      }
+      _lotusLift.value = 0;
       if (_isSearchFocused && _collapseHomeForSearch) return;
       setState(() {
         _isSearchFocused = true;
@@ -227,6 +234,38 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         _collapseHomeForSearch = false;
       });
     }
+  }
+
+  /// Resets scroll/lift and search-collapse so the home search bar stays visible
+  /// after returning from a pushed route (e.g. Ask Gita).
+  void _restoreHomeSearchChrome() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+    if (_homeScrollController.hasClients && _homeScrollController.offset > 0) {
+      _homeScrollController.jumpTo(0);
+    }
+    _lotusLift.value = 0;
+    if (!_isSearchFocused && !_collapseHomeForSearch) return;
+    if (!mounted) return;
+    setState(() {
+      _isSearchFocused = false;
+      _collapseHomeForSearch = false;
+    });
+  }
+
+  void _navigateToAskGita([String? query]) {
+    _restoreHomeSearchChrome();
+    if (query != null && query.trim().isNotEmpty) {
+      context.push(AppRoutes.askGita, extra: query.trim());
+    } else {
+      context.push(AppRoutes.askGita);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    _restoreHomeSearchChrome();
   }
 
   bool _showHomeOnboardingHints(SettingsProvider settings) {
@@ -406,6 +445,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<void> && route != _routeSubscription) {
+      routeObserver.unsubscribe(this);
+      _routeSubscription = route;
+      routeObserver.subscribe(this, route);
+    }
     _coachOverlayRef = HelpRailAnchors.maybeOf(context)?.coachOverlay;
     final settings = Provider.of<SettingsProvider>(context);
     final newSources = settings.randomShlokaSources;
@@ -437,6 +482,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _coachOverlayRef?.value = null;
     _homeScrollController.removeListener(_onHomeScroll);
     _homeScrollController.dispose();
@@ -471,10 +517,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       _searchController.clear();
       provider.onSearchQueryChanged('');
     }
-    // Ensure UI updates to reflect search mode change
-    if (mounted) {
-      setState(() {});
-    }
+    _restoreHomeSearchChrome();
   }
 
   void _toggleAiMode() {
@@ -1191,13 +1234,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                   .onSearchQueryChanged(
                                                                 suggestion,
                                                               );
-                                                              _searchFocusNode
-                                                                  .unfocus();
-                                                              context.push(
-                                                                AppRoutes
-                                                                    .askGita,
-                                                                extra:
-                                                                    suggestion,
+                                                              _navigateToAskGita(
+                                                                suggestion,
                                                               );
                                                             },
                                                           ),
@@ -1288,14 +1326,13 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                   padding:
                                                                       EdgeInsets
                                                                           .only(
-                                                                    left: 4,
                                                                     bottom:
                                                                         isTablet
                                                                             ? 28
                                                                             : 18,
                                                                   ),
                                                                   child:
-                                                                      _buildHomeBookmarkChip(
+                                                                      _buildHomeBookmarkChipForHeader(
                                                                     settings,
                                                                     isTablet,
                                                                   ),
@@ -1317,8 +1354,12 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                               ),
                                                             ),
                                                           Positioned(
-                                                            top: searchY -
-                                                                scrollComp,
+                                                            top: (searchY -
+                                                                    scrollComp)
+                                                                .clamp(
+                                                              0.0,
+                                                              maxHeight,
+                                                            ),
                                                             left: 0,
                                                             right: 0,
                                                             child: KeyedSubtree(
@@ -1581,7 +1622,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
           label: 'Ask Gita AI',
           backgroundColor: Theme.of(context).colorScheme.surface,
           foregroundColor: Theme.of(context).colorScheme.onSurface,
-          onTap: () => context.push(AppRoutes.askGita),
+          onTap: () => _navigateToAskGita(),
         ),
         SpeedDialChild(
           child: const Icon(Icons.menu_book),
@@ -1745,7 +1786,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                     );
                     return;
                   }
-                  context.push(AppRoutes.askGita, extra: value);
+                  _navigateToAskGita(value);
                 } else {
                   context.pushNamed(
                     'shloka-list',
@@ -1815,10 +1856,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                             );
                             return;
                           }
-                          context.push(
-                            AppRoutes.askGita,
-                            extra: query,
-                          );
+                          _navigateToAskGita(query);
                         },
                       ),
                     ),
@@ -2039,15 +2077,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   double _homeHeaderOrnamentSize(bool isTablet) => isTablet ? 120.0 : 80.0;
 
-  /// Visible height of the bookmark band after [-90°] rotation (asset is 319×912).
-  static const double _bookmarkAssetWidth = 319;
-  static const double _bookmarkAssetHeight = 912;
-
-  double _homeBookmarkBandHeight(bool isTablet) => isTablet ? 52.0 : 44.0;
-
-  double _homeBookmarkBandWidth(double bandHeight) =>
-      bandHeight * (_bookmarkAssetHeight / _bookmarkAssetWidth);
-
   Color _homeHeaderLabelColor(SettingsProvider settings) {
     final isSimpleLight =
         !settings.showBackground &&
@@ -2058,13 +2087,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
   /// Vertical space for [_buildHomeHeaderActionsRow] (bookmark + optional streak).
   double _homeHeaderActionsRowHeight(bool isTablet) {
     final streakSize = _homeHeaderOrnamentSize(isTablet);
-    final bookmarkBandHeight = _homeBookmarkBandHeight(isTablet);
-    const labelGap = 6.0;
-    const labelHeight = 11.0;
-    final bookmarkColumnHeight =
-        bookmarkBandHeight + labelGap + labelHeight;
+    final bookmarkColumnHeight = HomeBookmarkLayout.columnHeight(isTablet);
     final bottomPad = isTablet ? 28.0 : 18.0;
-    final streakColumnHeight = streakSize + labelGap + labelHeight;
+    const streakLabelGap = 6.0;
+    const streakLabelHeight = 11.0;
+    final streakColumnHeight = streakSize + streakLabelGap + streakLabelHeight;
     return math.max(streakColumnHeight, bookmarkColumnHeight) + bottomPad;
   }
 
@@ -2079,11 +2106,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (showBookmark)
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: _buildHomeBookmarkChip(settings, isTablet),
-            ),
+          if (showBookmark) _buildHomeBookmarkChipForHeader(settings, isTablet),
           const Spacer(),
           if (settings.streakSystemEnabled)
             Padding(
@@ -2097,18 +2120,28 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   Widget _buildHomeBookmarkOrnament(
     SettingsProvider settings,
-    double innerSize,
+    double bandHeight,
   ) {
     const assetPath = 'assets/images/bookmark.png';
     const brightnessScale = 1.1;
     const brightnessOffset = 14.0;
+    final bandWidth = HomeBookmarkLayout.bandWidth(bandHeight);
 
-    return RepaintBoundary(
-      child: SizedBox(
-        width: innerSize,
-        height: innerSize,
-        child: Transform.rotate(
-          angle: -math.pi / 2,
+    final trimTop = HomeBookmarkLayout.iconLayoutTrimTop;
+    final trimBottom = HomeBookmarkLayout.iconLayoutTrimBottom;
+    final layoutHeight = (bandHeight - trimTop - trimBottom).clamp(
+      1.0,
+      bandHeight,
+    );
+
+    final ornament = SizedBox(
+      width: bandWidth,
+      height: bandHeight,
+      child: Transform.rotate(
+        angle: HomeBookmarkLayout.iconRotationRadians,
+        child: SizedBox(
+          width: bandHeight,
+          height: bandWidth,
           child: ColorFiltered(
             colorFilter: ColorFilter.matrix([
               brightnessScale, 0, 0, 0, brightnessOffset,
@@ -2125,12 +2158,42 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         ),
       ),
     );
+
+    if (trimTop == 0 && trimBottom == 0) {
+      return RepaintBoundary(child: ornament);
+    }
+
+    return RepaintBoundary(
+      child: SizedBox(
+        width: bandWidth,
+        height: layoutHeight,
+        child: ClipRect(
+          child: Transform.translate(
+            offset: Offset(0, -trimTop),
+            child: ornament,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeBookmarkChipForHeader(
+    SettingsProvider settings,
+    bool isTablet,
+  ) {
+    return Transform.translate(
+      offset: Offset(
+        HomeBookmarkLayout.totalChipOffsetX(),
+        HomeBookmarkLayout.chipOffsetY,
+      ),
+      child: _buildHomeBookmarkChip(settings, isTablet),
+    );
   }
 
   Widget _buildHomeBookmarkChip(SettingsProvider settings, bool isTablet) {
-    final double innerSize = _homeBookmarkOrnamentSize(isTablet);
+    final double bandHeight = HomeBookmarkLayout.bandHeight(isTablet);
     final textColor = _homeHeaderLabelColor(settings);
-    final labelSize = isTablet ? 15.0 : 14.0;
+    final labelSize = HomeBookmarkLayout.labelFontSize(isTablet);
 
     return Semantics(
       button: true,
@@ -2140,17 +2203,30 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildHomeBookmarkOrnament(settings, innerSize),
-            const SizedBox(height: 2),
-            Text(
-              'Collections',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontSize: labelSize,
-                fontWeight: FontWeight.w600,
-                height: 1.15,
+            Transform.translate(
+              offset: Offset(
+                HomeBookmarkLayout.iconOffsetX,
+                HomeBookmarkLayout.iconOffsetY,
+              ),
+              child: _buildHomeBookmarkOrnament(settings, bandHeight),
+            ),
+            Transform.translate(
+              offset: Offset(
+                HomeBookmarkLayout.labelOffsetX,
+                HomeBookmarkLayout.labelGap + HomeBookmarkLayout.labelOffsetY,
+              ),
+              child: Text(
+                'Collections',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: labelSize,
+                  fontWeight: HomeBookmarkLayout.labelFontWeight,
+                  height: HomeBookmarkLayout.labelLineHeight,
+                  leadingDistribution: TextLeadingDistribution.even,
+                ),
               ),
             ),
           ],
@@ -3226,11 +3302,10 @@ class _SearchScreenViewState extends State<_SearchScreenView>
             context,
             listen: false,
           ).onSearchQueryChanged(_todaysQuestion!);
-          _searchFocusNode.unfocus();
           setState(() {
             _isAiMode = true;
           });
-          context.push(AppRoutes.askGita, extra: _todaysQuestion);
+          _navigateToAskGita(_todaysQuestion);
         },
         child: Container(
           decoration: BoxDecoration(

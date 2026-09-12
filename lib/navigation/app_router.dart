@@ -14,7 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../main.dart'; // Check if this import is correct based on file structure
+import 'route_observer.dart';
 import '../ui/screens/chapters_screen.dart';
 import '../ui/screens/parayan_screen.dart';
 import '../providers/parayan_provider.dart';
