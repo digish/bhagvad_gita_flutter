@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -835,10 +836,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                         : 190.0)
                                                                   : 4.0);
                                                       final soulBlockHeight =
-                                                          (!shouldShowResults &&
-                                                                  settings
-                                                                      .streakSystemEnabled)
-                                                              ? _soulStatusChipBlockHeight(
+                                                          !shouldShowResults
+                                                              ? _homeHeaderActionsRowHeight(
                                                                   isTablet,
                                                                 )
                                                               : 0.0;
@@ -884,12 +883,31 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                         minimalSearchY,
                                                         minimalT,
                                                       )!;
+                                                      final topBookmarkY =
+                                                          headerSpacer;
+                                                      final minimalBookmarkY =
+                                                          showSimpleNav
+                                                              ? minimalNavY -
+                                                                  soulBlockHeight
+                                                              : minimalSearchY -
+                                                                  soulBlockHeight;
+                                                      final bookmarkY = lerpDouble(
+                                                        topBookmarkY,
+                                                        minimalBookmarkY,
+                                                        minimalT,
+                                                      )!;
                                                       final showAiSuggestions =
                                                           _isSearchFocused &&
                                                           _isAiMode &&
                                                           provider
                                                               .searchQuery
                                                               .isEmpty;
+                                                      final showBookmarkOverlayInMinimal =
+                                                          settings.homeUiMode ==
+                                                              HomeUiMode
+                                                                  .minimal &&
+                                                          !shouldShowResults &&
+                                                          !showAiSuggestions;
                                                       final homeFade =
                                                           settings.homeUiMode ==
                                                                   HomeUiMode
@@ -975,11 +993,11 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                                                     height:
                                                                                         headerSpacer,
                                                                                   ),
-                                                                                  if (settings
-                                                                                      .streakSystemEnabled)
-                                                                                    _buildSoulStatusChip(
-                                                                                      settings,
-                                                                                    ),
+                                                                                  _buildHomeHeaderActionsRow(
+                                                                                    settings,
+                                                                                    showBookmark:
+                                                                                        !showBookmarkOverlayInMinimal,
+                                                                                  ),
                                                                                   if (showOnboarding &&
                                                                                       !settings
                                                                                           .hasUsedSearchBarHint)
@@ -1173,6 +1191,34 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                                       ),
                                                     ],
                                                   ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          if (showBookmarkOverlayInMinimal)
+                                                            Positioned(
+                                                              top: bookmarkY -
+                                                                  scrollComp,
+                                                              left: 0,
+                                                              right: 0,
+                                                              child: Align(
+                                                                alignment:
+                                                                    Alignment
+                                                                        .centerLeft,
+                                                                child: Padding(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .only(
+                                                                    left: 4,
+                                                                    bottom:
+                                                                        isTablet
+                                                                            ? 28
+                                                                            : 18,
+                                                                  ),
+                                                                  child:
+                                                                      _buildHomeBookmarkChip(
+                                                                    settings,
+                                                                    isTablet,
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
@@ -1907,64 +1953,187 @@ class _SearchScreenViewState extends State<_SearchScreenView>
     );
   }
 
-  /// Vertical space for [_buildSoulStatusChip] (icon, label, padding).
-  double _soulStatusChipBlockHeight(bool isTablet) {
-    final innerSize = isTablet ? 120.0 : 80.0;
+  double _homeHeaderOrnamentSize(bool isTablet) => isTablet ? 120.0 : 80.0;
+
+  Color _homeHeaderLabelColor(SettingsProvider settings) {
+    final isSimpleLight =
+        !settings.showBackground &&
+        Theme.of(context).brightness == Brightness.light;
+    return isSimpleLight ? Colors.brown.shade900 : Colors.white;
+  }
+
+  /// Vertical space for [_buildHomeHeaderActionsRow] (bookmark + optional streak).
+  double _homeHeaderActionsRowHeight(bool isTablet) {
+    final innerSize = _homeHeaderOrnamentSize(isTablet);
     const gapAndLabel = 6.0 + 11.0;
     final bottomPad = isTablet ? 28.0 : 18.0;
     return innerSize + gapAndLabel + bottomPad;
   }
 
-  Widget _buildSoulStatusChip(SettingsProvider settings) {
-    final int displayStreak = (kDebugMode && _debugStreakOverride != null)
-        ? _debugStreakOverride!
-        : settings.dailyStreak;
-    final status = SoulStatus.getStatus(displayStreak);
+  Widget _buildHomeHeaderActionsRow(
+    SettingsProvider settings, {
+    bool showBookmark = true,
+  }) {
+    final bool isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isTablet ? 28 : 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showBookmark)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: _buildHomeBookmarkChip(settings, isTablet),
+            ),
+          const Spacer(),
+          if (settings.streakSystemEnabled)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: _buildSoulStreakChip(settings),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeBookmarkOrnament(
+    SettingsProvider settings,
+    double innerSize,
+  ) {
     final isSimpleLight =
         !settings.showBackground &&
         Theme.of(context).brightness == Brightness.light;
-    final textColor = isSimpleLight ? Colors.brown.shade900 : Colors.white;
-    final bool usesImage = status.imageAssetName != null;
-    // Slightly larger than the lotus markers (phone 100 / tablet 150).
-    final bool isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
-    final double innerSize = isTablet ? 120.0 : 80.0;
+    final shadowTint = isSimpleLight
+        ? Colors.brown.withOpacity(0.48)
+        : Colors.black.withOpacity(0.62);
+    final warmGlow = isSimpleLight
+        ? const Color(0xFFE8B923)
+        : const Color(0xFFFFE082);
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: isTablet ? 28 : 18, right: 4),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: GestureDetector(
-          onTap: () => _showEvolutionRoadmap(context, settings),
-          behavior: HitTestBehavior.opaque,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    const assetPath = 'assets/images/bookmark.png';
+
+    Widget bookmarkImage() => Image.asset(
+      assetPath,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+    );
+
+    return RepaintBoundary(
+      child: SizedBox(
+        width: innerSize,
+        height: innerSize,
+        child: Transform.rotate(
+          angle: 10 * math.pi / 180,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              usesImage
-                  ? Image.asset(
-                      'assets/soul_evolution/${status.imageAssetName}',
-                      width: innerSize,
-                      height: innerSize,
-                      fit: BoxFit.contain,
-                    )
-                  : Icon(
-                      status.icon,
-                      color: SoulStatus.sparkGold,
-                      size: innerSize,
-                    ),
-              const SizedBox(height: 6),
-              Text(
-                '${displayStreak}d - ${status.title}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 1.0,
+              Transform.translate(
+                offset: const Offset(2, 5),
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Image.asset(
+                    assetPath,
+                    fit: BoxFit.contain,
+                    color: shadowTint,
+                    colorBlendMode: BlendMode.srcIn,
+                  ),
                 ),
+              ),
+              bookmarkImage(),
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) => RadialGradient(
+                  center: const Alignment(0, -0.15),
+                  radius: 0.7,
+                  colors: [
+                    warmGlow.withOpacity(isSimpleLight ? 0.38 : 0.45),
+                    Colors.transparent,
+                  ],
+                ).createShader(bounds),
+                child: bookmarkImage(),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHomeBookmarkChip(SettingsProvider settings, bool isTablet) {
+    final double innerSize = _homeHeaderOrnamentSize(isTablet);
+    final textColor = _homeHeaderLabelColor(settings);
+
+    return Semantics(
+      button: true,
+      label: 'Collections',
+      child: GestureDetector(
+        onTap: () => context.push(AppRoutes.bookmarks),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHomeBookmarkOrnament(settings, innerSize),
+            const SizedBox(height: 6),
+            Text(
+              'Collections',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSoulStreakChip(SettingsProvider settings) {
+    final int displayStreak = (kDebugMode && _debugStreakOverride != null)
+        ? _debugStreakOverride!
+        : settings.dailyStreak;
+    final status = SoulStatus.getStatus(displayStreak);
+    final textColor = _homeHeaderLabelColor(settings);
+    final bool usesImage = status.imageAssetName != null;
+    // Slightly larger than the lotus markers (phone 100 / tablet 150).
+    final bool isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+    final double innerSize = _homeHeaderOrnamentSize(isTablet);
+
+    return GestureDetector(
+      onTap: () => _showEvolutionRoadmap(context, settings),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: innerSize,
+            height: innerSize,
+            child: usesImage
+                ? Image.asset(
+                    'assets/soul_evolution/${status.imageAssetName}',
+                    fit: BoxFit.contain,
+                  )
+                : Icon(
+                    status.icon,
+                    color: SoulStatus.sparkGold,
+                    size: innerSize,
+                  ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${displayStreak}d - ${status.title}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.0,
+            ),
+          ),
+        ],
       ),
     );
   }
