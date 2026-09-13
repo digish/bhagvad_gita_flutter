@@ -44,6 +44,8 @@ class FullShlokaCard extends StatelessWidget {
   final String? currentlyPlayingId; // The reliable ID from the parent screen
   final VoidCallback? onPlayPause; // Callback for when play/pause is pressed
   final VoidCallback? onTap;
+  /// When set (e.g. collection list), chapter index chip opens [ShlokaListScreen].
+  final VoidCallback? onOpenInChapter;
   final bool isFocused;
 
   const FullShlokaCard({
@@ -53,6 +55,7 @@ class FullShlokaCard extends StatelessWidget {
     this.currentlyPlayingId,
     this.onPlayPause,
     this.onTap,
+    this.onOpenInChapter,
     this.isFocused = false,
   });
 
@@ -540,40 +543,58 @@ class FullShlokaCard extends StatelessWidget {
                                             ? '$chapNum:$shlokNum'
                                             : '$chapLabel $chapNum, $vsLabel $shlokNum';
 
-                                        return Flexible(
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 4,
+                                        final chip = Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: accentColor.withOpacity(
+                                              0.1,
                                             ),
-                                            decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
                                               color: accentColor.withOpacity(
-                                                0.1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: accentColor.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text(
-                                                text,
-                                                style: theme
-                                                    .textTheme
-                                                    .labelMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: accentColor,
-                                                      letterSpacing: 0.6,
-                                                    ),
+                                                0.3,
                                               ),
                                             ),
                                           ),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              text,
+                                              style: theme
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                    color: accentColor,
+                                                    letterSpacing: 0.6,
+                                                  ),
+                                            ),
+                                          ),
+                                        );
+
+                                        return Flexible(
+                                          child: onOpenInChapter != null
+                                              ? Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    onTap: onOpenInChapter,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    child: Tooltip(
+                                                      message:
+                                                          'Open in chapter',
+                                                      child: chip,
+                                                    ),
+                                                  ),
+                                                )
+                                              : chip,
                                         );
                                       },
                                     ),
@@ -733,6 +754,13 @@ class FullShlokaCard extends StatelessWidget {
                                             },
                                           ),
                                           const SizedBox(width: 16),
+                                          if (onOpenInChapter != null) ...[
+                                            _ActionButton(
+                                              icon: Icons.auto_stories_outlined,
+                                              onPressed: onOpenInChapter!,
+                                            ),
+                                            const SizedBox(width: 16),
+                                          ],
                                           // Share
                                           Builder(
                                             builder: (btnContext) {

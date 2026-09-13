@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../navigation/shloka_navigation.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../providers/audio_provider.dart';
 import '../../services/analytics_service.dart';
@@ -337,6 +338,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
             shlokas: shlokas,
             initialIndex: index,
             playbackContext: 'bookmark_list',
+          );
+        },
+        onOpenInChapter: () {
+          AnalyticsService.instance.logFeatureUsed(
+            feature: 'bookmark_open_in_chapter',
+          );
+          pushShlokaInChapter(
+            context,
+            chapterNo: shlokas[index].chapterNo,
+            shlokNo: shlokas[index].shlokNo,
           );
         },
       ),
