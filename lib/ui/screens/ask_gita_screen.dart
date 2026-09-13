@@ -21,6 +21,15 @@ import '../../navigation/app_router.dart';
 import '../../navigation/shloka_navigation.dart';
 import '../../models/shloka_result.dart';
 
+double _askGitaNavigationRailGutter(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  final isLandscape = width > MediaQuery.sizeOf(context).height;
+  final showRail = width > 600;
+  final leftPadding = MediaQuery.paddingOf(context).left;
+  final railWidth = isLandscape ? 220.0 : 100.0;
+  return leftPadding > 0 ? leftPadding : (showRail ? railWidth : 0.0);
+}
+
 class AskGitaScreen extends StatefulWidget {
   final String? initialQuery;
   const AskGitaScreen({super.key, this.initialQuery});
@@ -315,15 +324,7 @@ class _AskGitaScreenState extends State<AskGitaScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AskGitaProvider>();
     final theme = Theme.of(context);
-    final width = MediaQuery.of(context).size.width;
-    final isLandscape = width > MediaQuery.of(context).size.height;
-    final showRail = width > 600;
-    final double leftPadding = MediaQuery.of(context).padding.left;
-    final double railWidth = isLandscape ? 220.0 : 100.0;
-
-    final effectiveLeftPadding = leftPadding > 0
-        ? leftPadding
-        : (showRail ? railWidth : 0.0);
+    final effectiveLeftPadding = _askGitaNavigationRailGutter(context);
 
     return PopScope(
       canPop: false,
@@ -808,18 +809,27 @@ class _AskGitaHistoryDetailPageState extends State<_AskGitaHistoryDetailPage> {
       isStreaming: false,
     );
 
+    final effectiveLeftPadding = _askGitaNavigationRailGutter(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved answer'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Row(
         children: [
-          _ChatBubble(message: userMessage),
-          const SizedBox(height: 8),
-          _ChatBubble(
-            message: aiMessage,
-            question: widget.entry.question,
+          if (effectiveLeftPadding > 0) SizedBox(width: effectiveLeftPadding),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _ChatBubble(message: userMessage),
+                const SizedBox(height: 8),
+                _ChatBubble(
+                  message: aiMessage,
+                  question: widget.entry.question,
+                ),
+              ],
+            ),
           ),
         ],
       ),
