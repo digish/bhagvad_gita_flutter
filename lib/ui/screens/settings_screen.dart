@@ -964,17 +964,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                _buildSettingCard(
-                                  context,
-                                  title: 'Simple Theme',
-                                  subtitle:
-                                      'Enable a cleaner look by removing background illustrations.',
-                                  value: !settings.showBackground,
-                                  onChanged: (value) {
-                                    settings.setShowBackground(!value);
-                                  },
-                                  icon: Icons.format_paint_outlined,
-                                ),
+                                _buildHomeAppearanceCard(context, settings),
 
                                 const SizedBox(height: 32),
 
@@ -1396,14 +1386,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSettingCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-    required IconData icon,
-  }) {
+  Widget _buildHomeAppearanceCard(
+    BuildContext context,
+    SettingsProvider settings,
+  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final subtitleColor = isDark ? Colors.white70 : Colors.grey[700];
@@ -1411,21 +1397,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Card(
       color: Theme.of(context).cardTheme.color,
       elevation: 4,
-      child: SwitchListTile.adaptive(
-        secondary: CircleAvatar(
-          backgroundColor: theme.primaryColor.withOpacity(isDark ? 0.25 : 0.1),
-          child: Icon(icon, color: theme.primaryColor),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(color: subtitleColor, fontSize: 14),
-        ),
-        value: value,
-        onChanged: onChanged,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: theme.primaryColor.withOpacity(isDark ? 0.25 : 0.1),
+              child: Icon(Icons.format_paint_outlined, color: theme.primaryColor),
+            ),
+            title: const Text(
+              'Home appearance',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(
+              'Classic, Simple, or Focus on the search screen',
+              style: TextStyle(color: subtitleColor, fontSize: 14),
+            ),
+          ),
+          const Divider(height: 1),
+          ...HomeUiMode.values.map((mode) {
+            return RadioListTile<HomeUiMode>(
+              value: mode,
+              groupValue: settings.homeUiMode,
+              onChanged: (HomeUiMode? value) {
+                if (value != null) {
+                  settings.setHomeUiMode(value);
+                }
+              },
+              title: Text(
+                mode.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                mode.shortDescription,
+                style: TextStyle(color: subtitleColor, fontSize: 13),
+              ),
+              secondary: Icon(mode.layoutToggleIcon, color: theme.primaryColor),
+            );
+          }),
+        ],
       ),
     );
   }

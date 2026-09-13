@@ -9,6 +9,7 @@ import '../../providers/settings_provider.dart';
 import 'glass_navigation_rail.dart';
 import 'liquid_reveal.dart';
 import 'global_mini_player.dart';
+import 'home_layout_picker_sheet.dart';
 
 /// Live rail widget keys (reserved for future coach marks).
 class HelpRailAnchors extends InheritedWidget {
@@ -106,37 +107,32 @@ class _MainScaffoldState extends State<MainScaffold>
     }
   }
 
-  void _handleThemeToggle() async {
+  Future<void> _applyHomeUiMode(HomeUiMode next) async {
     if (_revealController.isAnimating) return;
-
-    // 0. Provide haptic feedback
-    HapticFeedback.lightImpact();
 
     if (!mounted) return;
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     final current = settings.homeUiMode;
-    final next = settings.nextHomeUiMode;
+    if (current == next) return;
+
+    HapticFeedback.lightImpact();
 
     if (current.showsDecorativeBackground == next.showsDecorativeBackground) {
       await settings.setHomeUiMode(next);
       return;
     }
 
-    // 1. Capture Snapshot of current state (OLD)
     await _captureSnapshot();
     if (_snapshotImage == null) {
       await settings.setHomeUiMode(next);
       return;
     }
 
-    // 2. Capture button position
     _captureThemeTogglePosition();
 
-    // 4. Update Global Settings (NEW State)
     if (!mounted) return;
     await settings.setHomeUiMode(next);
 
-    // 5. Start Animation (Reveal NEW over OLD)
     _revealController.forward(from: 0).then((_) {
       if (mounted) {
         setState(() {
@@ -144,6 +140,23 @@ class _MainScaffoldState extends State<MainScaffold>
         });
       }
     });
+  }
+
+  void _handleThemeToggle() {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    _applyHomeUiMode(settings.nextHomeUiMode);
+  }
+
+  Future<void> _openHomeLayoutPicker() async {
+    if (_revealController.isAnimating) return;
+    HapticFeedback.mediumImpact();
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final picked = await showHomeLayoutPickerSheet(
+      context,
+      current: settings.homeUiMode,
+    );
+    if (!mounted || picked == null || picked == settings.homeUiMode) return;
+    await _applyHomeUiMode(picked);
   }
 
   @override
@@ -249,23 +262,26 @@ class _MainScaffoldState extends State<MainScaffold>
             onDestinationSelected: (int index) => _onItemTapped(index, context),
             trailing: (!isTablet && isLandscape)
                 ? null // ✨ Hide toggle in landscape on phones
-                : FloatingActionButton(
-                    key: _railThemeToggleKey,
-                    heroTag: 'rail_theme_toggle',
-                    mini: true,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).primaryColor.withOpacity(0.8),
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    elevation: 0,
-                    onPressed: _handleThemeToggle,
-                    child: Consumer<SettingsProvider>(
-                      builder: (context, settings, _) {
-                        return Icon(
-                          settings.homeUiMode.layoutToggleIcon,
-                          size: 22,
-                        );
-                      },
+                : GestureDetector(
+                    onLongPress: _openHomeLayoutPicker,
+                    child: FloatingActionButton(
+                      key: _railThemeToggleKey,
+                      heroTag: 'rail_theme_toggle',
+                      mini: true,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).primaryColor.withOpacity(0.8),
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      elevation: 0,
+                      onPressed: _handleThemeToggle,
+                      child: Consumer<SettingsProvider>(
+                        builder: (context, settings, _) {
+                          return Icon(
+                            settings.homeUiMode.layoutToggleIcon,
+                            size: 22,
+                          );
+                        },
+                      ),
                     ),
                   ),
             destinations: <NavigationRailDestination>[

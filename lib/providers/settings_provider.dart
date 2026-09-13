@@ -36,6 +36,29 @@ extension HomeUiModeX on HomeUiMode {
         return Icons.view_compact_outlined;
     }
   }
+
+  /// User-facing name (not "minimal" / "UI mode").
+  String get displayName {
+    switch (this) {
+      case HomeUiMode.full:
+        return 'Classic';
+      case HomeUiMode.simple:
+        return 'Simple';
+      case HomeUiMode.minimal:
+        return 'Focus';
+    }
+  }
+
+  String get shortDescription {
+    switch (this) {
+      case HomeUiMode.full:
+        return 'Lotus artwork on home';
+      case HomeUiMode.simple:
+        return 'Cleaner cards, soft background';
+      case HomeUiMode.minimal:
+        return 'Search centered, fewer decorations';
+    }
+  }
 }
 
 class SettingsProvider extends ChangeNotifier {

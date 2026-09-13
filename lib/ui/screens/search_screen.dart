@@ -22,6 +22,8 @@ import '../../providers/settings_provider.dart';
 import '../../data/database_helper_interface.dart';
 import '../widgets/responsive_wrapper.dart';
 import '../widgets/onboarding_bubble.dart';
+import '../widgets/home_layout_feedback.dart';
+import '../widgets/home_layout_picker_sheet.dart';
 import '../widgets/liquid_reveal.dart';
 import '../widgets/main_scaffold.dart';
 import '../../models/shloka_list.dart';
@@ -270,7 +272,6 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   bool _showHomeOnboardingHints(SettingsProvider settings) {
     return settings.hasSeenLanguagePrompt &&
-        settings.homeUiMode != HomeUiMode.minimal &&
         !_isSearchFocused &&
         MediaQuery.of(context).viewInsets.bottom == 0 &&
         _searchController.text.isEmpty;
@@ -328,7 +329,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
 
   Widget _buildHomeUiModeToggleFab(SettingsProvider settings) {
     final appColors = Theme.of(context).extension<AppColors>();
-    return FloatingActionButton(
+    final fab = FloatingActionButton(
       key: _themeToggleKey,
       heroTag: 'simple_theme_toggle',
       shape: const CircleBorder(),
@@ -344,19 +345,41 @@ class _SearchScreenViewState extends State<_SearchScreenView>
         size: 24,
       ),
     );
+    return GestureDetector(
+      onLongPress: () => _openHomeLayoutPicker(settings),
+      child: fab,
+    );
+  }
+
+  Future<void> _openHomeLayoutPicker(SettingsProvider settings) async {
+    if (_revealController.isAnimating) return;
+    HapticFeedback.mediumImpact();
+    final picked = await showHomeLayoutPickerSheet(
+      context,
+      current: settings.homeUiMode,
+    );
+    if (!mounted || picked == null || picked == settings.homeUiMode) return;
+    await _applyHomeUiMode(settings, picked);
   }
 
   Future<void> _cycleHomeUiModeFromToggle(SettingsProvider settings) async {
+    await _applyHomeUiMode(settings, settings.nextHomeUiMode);
+  }
+
+  Future<void> _applyHomeUiMode(
+    SettingsProvider settings,
+    HomeUiMode next,
+  ) async {
     if (_revealController.isAnimating) {
       return;
     }
+    if (settings.homeUiMode == next) return;
 
     HapticFeedback.lightImpact();
     _captureThemeTogglePosition();
-    _resetLotusScrollLift();
+    await _resetLotusScrollLift();
 
     final current = settings.homeUiMode;
-    final next = settings.nextHomeUiMode;
     final backgroundChanges =
         current.showsDecorativeBackground != next.showsDecorativeBackground;
 
@@ -1484,7 +1507,7 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                 ),
                               ),
 
-                            // Simple Theme Toggle Button (Bottom Left)
+                            // Home appearance cycle (Bottom Left)
                             // Should only be visible on phones in PORTRAIT mode.
                             if (MediaQuery.of(context).viewInsets.bottom == 0 &&
                                 width <= 600 &&
@@ -1504,7 +1527,8 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                           left: 4,
                                         ),
                                         child: OnboardingBubble(
-                                          text: 'Simple theme',
+                                          text:
+                                              'Tap to change home appearance — three styles',
                                           icon: Icons.format_paint_outlined,
                                           pointingDown: true,
                                           tailAlign: CrossAxisAlignment.start,
@@ -1514,7 +1538,23 @@ class _SearchScreenViewState extends State<_SearchScreenView>
                                               settings.markThemeHintUsed(),
                                         ),
                                       ),
-                                    _buildHomeUiModeToggleFab(settings),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 10,
+                                            bottom: 4,
+                                          ),
+                                          child: HomeLayoutModeDots(
+                                            mode: settings.homeUiMode,
+                                          ),
+                                        ),
+                                        _buildHomeUiModeToggleFab(settings),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -3481,7 +3521,8 @@ class _RailThemeHintOverlayState extends State<_RailThemeHintOverlay> {
       bottom: _bottom,
       child: OnboardingBubble(
         key: _bubbleKey,
-        text: 'Paint button on the left rail switches theme',
+        text:
+            'Paint button on the left rail changes home appearance (three styles)',
         icon: Icons.format_paint_outlined,
         pointingDown: true,
         tailAlign: CrossAxisAlignment.start,
