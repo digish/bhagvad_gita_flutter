@@ -72,6 +72,7 @@ class AudioProvider extends ChangeNotifier {
   // NEW: Global Playback Mode & Context
   PlaybackMode _playbackMode = PlaybackMode.continuous;
   List<ShlokaResult>? _currentContextShlokas;
+  String _playbackAnalyticsContext = 'shloka_card';
 
   final Map<String, AssetPackStatus> _packStatus = {};
   final Map<String, double> _downloadProgress = {};
@@ -199,7 +200,7 @@ class AudioProvider extends ChangeNotifier {
           shlokas: _currentContextShlokas!,
           initialIndex: currentIndex,
           initialPosition: position,
-          // Force existing mode to be used
+          playbackContext: _playbackAnalyticsContext,
         );
       }
     }
@@ -215,10 +216,10 @@ class AudioProvider extends ChangeNotifier {
   Future<void> playChapter({
     required List<ShlokaResult> shlokas,
     required int initialIndex,
-    // playbackMode is now internal, optional override for specific cases?
-    // Removing argument to enforce global state consistency.
     Duration? initialPosition,
+    String playbackContext = 'shloka_card',
   }) async {
+    _playbackAnalyticsContext = playbackContext;
     // Cache the context for mode switching
     _currentContextShlokas = shlokas;
     final shloka = shlokas[initialIndex];
@@ -250,6 +251,7 @@ class AudioProvider extends ChangeNotifier {
         AnalyticsService.instance.logAudioPlay(
           shlokaId: shlokaId,
           mode: _playbackMode.name,
+          playbackContext: _playbackAnalyticsContext,
         );
         return;
       }
@@ -258,6 +260,7 @@ class AudioProvider extends ChangeNotifier {
     AnalyticsService.instance.logAudioPlay(
       shlokaId: shlokaId,
       mode: _playbackMode.name,
+      playbackContext: _playbackAnalyticsContext,
     );
 
     // 2. Stop previous playback nicely
@@ -372,9 +375,15 @@ class AudioProvider extends ChangeNotifier {
   }
 
   // Deprecated wrapper for backward compatibility if needed, or just remove it.
-  Future<void> playOrPauseShloka(ShlokaResult shloka) async {
-    // This assumes single mode..
-    playChapter(shlokas: [shloka], initialIndex: 0);
+  Future<void> playOrPauseShloka(
+    ShlokaResult shloka, {
+    String playbackContext = 'shloka_card',
+  }) async {
+    playChapter(
+      shlokas: [shloka],
+      initialIndex: 0,
+      playbackContext: playbackContext,
+    );
   }
 
   Future<void> initiateChapterAudioDownload(int chapterNumber) async {

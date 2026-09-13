@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/bookmark_provider.dart';
+import '../../services/analytics_service.dart';
 
 class AddToListSheet extends StatefulWidget {
   final String chapterNo;
@@ -24,6 +25,7 @@ class _AddToListSheetState extends State<AddToListSheet> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logFeatureUsed(feature: 'bookmark_add_sheet');
     _loadData();
   }
 

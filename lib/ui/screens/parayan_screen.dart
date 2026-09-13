@@ -859,6 +859,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                               _audioProvider?.playChapter(
                                 shlokas: shlokas,
                                 initialIndex: index,
+                                playbackContext: 'parayan',
                               );
                             },
                             config: cardConfig.copyWith(
@@ -1099,6 +1100,7 @@ class _ParayanScreenState extends State<ParayanScreen> {
                               _audioProvider?.playChapter(
                                 shlokas: provider.shlokas,
                                 initialIndex: targetIndex,
+                                playbackContext: 'parayan',
                               );
                             },
                           ),

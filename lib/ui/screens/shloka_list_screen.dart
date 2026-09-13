@@ -22,6 +22,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../navigation/app_router.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/audio_provider.dart';
+import '../../services/analytics_service.dart';
 import '../../providers/shloka_list_provider.dart';
 import '../widgets/full_shloka_card.dart';
 import '../widgets/font_size_control.dart';
@@ -567,6 +568,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
           Provider.of<AudioProvider>(context, listen: false).playChapter(
             shlokas: shlokas,
             initialIndex: index,
+            playbackContext:
+                _isBookMode ? 'chapter_book' : 'chapter_list',
           );
         },
       ),
@@ -917,7 +920,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                     isBookMode: _isBookMode,
                     bookModeKey: _bookModeKey,
                     onToggleMode: () {
-                      setState(() => _isBookMode = !_isBookMode);
+                      final nextBookMode = !_isBookMode;
+                      setState(() => _isBookMode = nextBookMode);
+                      AnalyticsService.instance.logConfigChange(
+                        setting: 'book_reading_mode',
+                        value: nextBookMode.toString(),
+                      );
                     },
                   ),
                 ),

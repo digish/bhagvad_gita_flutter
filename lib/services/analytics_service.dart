@@ -89,6 +89,7 @@ class AnalyticsService {
     String? language,
     String? script,
     String? theme,
+    String? homeUiMode,
     bool? forceSanskritShloka,
     bool? showClassicalCommentaries,
     bool? reminderEnabled,
@@ -111,6 +112,12 @@ class AnalyticsService {
         await _analytics!.setUserProperty(
           name: 'theme_mode',
           value: _truncate(theme, 36),
+        );
+      }
+      if (homeUiMode != null) {
+        await _analytics!.setUserProperty(
+          name: 'home_ui_mode',
+          value: _truncate(homeUiMode, 36),
         );
       }
       if (forceSanskritShloka != null) {
@@ -172,10 +179,12 @@ class AnalyticsService {
   Future<void> logAudioPlay({
     required String shlokaId,
     required String mode,
+    String playbackContext = 'shloka_card',
   }) async {
     await _logEvent('audio_play', {
       'shloka_id': _truncate(shlokaId, 40),
       'playback_mode': _truncate(mode, 40),
+      'playback_context': _truncate(playbackContext, 40),
     });
   }
 

@@ -59,6 +59,12 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logFeatureUsed(
+      feature: 'bookmark_list_detail',
+      params: {
+        'list_type': widget.list.id < 0 ? 'predefined' : 'custom',
+      },
+    );
     _loadShlokas();
     _audioProvider = Provider.of<AudioProvider>(context, listen: false);
     _currentShlokId = _audioProvider?.currentPlayingShlokaId;
@@ -330,6 +336,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           audioProvider.playChapter(
             shlokas: shlokas,
             initialIndex: index,
+            playbackContext: 'bookmark_list',
           );
         },
       ),

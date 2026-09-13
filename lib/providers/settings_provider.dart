@@ -213,6 +213,7 @@ class SettingsProvider extends ChangeNotifier {
       setting: 'home_ui_mode',
       value: mode.name,
     );
+    AnalyticsService.instance.setUserConfig(homeUiMode: mode.name);
   }
 
   Future<void> cycleHomeUiMode() async {
@@ -659,6 +660,7 @@ class SettingsProvider extends ChangeNotifier {
       language: _language,
       script: _script,
       theme: _themeMode.name,
+      homeUiMode: _homeUiMode.name,
       forceSanskritShloka: _forceSanskritShloka,
       showClassicalCommentaries: _showClassicalCommentaries,
       reminderEnabled: _reminderEnabled,
