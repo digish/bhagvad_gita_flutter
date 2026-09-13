@@ -171,7 +171,7 @@ class ReadingModeFontDock extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+            padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
             child: Theme(
               data: Theme.of(context).copyWith(
                 iconButtonTheme: IconButtonThemeData(
@@ -192,21 +192,27 @@ class ReadingModeFontDock extends StatelessWidget {
                 ),
                 Container(
                   width: 1,
-                  height: 22,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 28,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
                   color: iconColor.withValues(alpha: 0.25),
                 ),
                 Tooltip(
                   message: layoutTip,
                   child: InkWell(
                     onTap: onToggleLayoutCount,
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
                       ),
-                      child: Column(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
@@ -231,20 +237,28 @@ class ReadingModeFontDock extends StatelessWidget {
                           ),
                         ],
                       ),
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 4),
                 Tooltip(
                   message: tooltip,
                   child: InkWell(
                     onTap: viewEnabled ? onToggleListContent : null,
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
                       ),
-                      child: Column(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
@@ -263,6 +277,7 @@ class ReadingModeFontDock extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                   ),

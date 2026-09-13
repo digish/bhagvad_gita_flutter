@@ -369,13 +369,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
           return Padding(
             padding: EdgeInsets.only(bottom: bottomPadding),
-            child: FloatingActionButton.extended(
+            child: FloatingActionButton(
               heroTag: 'share_list_fab',
               onPressed: () => _shareList(context),
-              icon: const Icon(Icons.share),
-              label: const Text('Share Collection'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              tooltip: 'Share Collection',
+              child: const Icon(Icons.share),
             ),
           );
         },

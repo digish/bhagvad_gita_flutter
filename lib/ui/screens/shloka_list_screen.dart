@@ -83,6 +83,8 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
   String? _currentShlokId;
   bool _hasInitialScrolled = false; // Flag to prevent multiple scrolls
   bool _initialSeekInFlight = false;
+  /// Verse to emphasize after opening from search, deep link, etc.
+  int? _navigatedShlokaHighlightIndex;
 
   // --- FIX: Initialize the provider in initState to make it available to listeners ---
   late final ShlokaListProvider _shlokaProvider;
@@ -154,6 +156,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     }
     if (widget.searchQuery != oldWidget.searchQuery) {
       _expandedVerseIndex = null;
+      _navigatedShlokaHighlightIndex = null;
+    }
+    if (widget.initialShlokaNo != oldWidget.initialShlokaNo) {
+      _hasInitialScrolled = false;
+      _navigatedShlokaHighlightIndex = null;
     }
   }
 
@@ -210,6 +217,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       debugPrint("[UI_SYNC] Shloka changed from $_currentShlokId to $newId");
       setState(() {
         _currentShlokId = newId;
+        _navigatedShlokaHighlightIndex = null;
       });
 
       if (_currentShlokId != null) {
@@ -240,6 +248,24 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     );
   }
 
+  Future<void> _scrollAndHighlightNavTarget(
+    int index, {
+    required bool useChapterPositionedList,
+  }) async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      final ok = useChapterPositionedList
+          ? await _scrollToChapterVerseIndex(index)
+          : await _scrollToIndex(index, awaitVisible: true);
+      if (ok) {
+        if (mounted) {
+          setState(() => _navigatedShlokaHighlightIndex = index);
+        }
+        return;
+      }
+      await Future<void>.delayed(Duration(milliseconds: 80 * (attempt + 1)));
+    }
+  }
+
   Future<void> _seekInitialShloka(List<ShlokaResult> shlokas) async {
     final targetNo = widget.initialShlokaNo;
     if (targetNo == null ||
@@ -262,18 +288,11 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
       return;
     }
 
-    final usePositionedList = _isChapterQuery();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      final ok = usePositionedList
-          ? await _scrollToChapterVerseIndex(targetIndex)
-          : await _scrollToIndex(targetIndex, awaitVisible: true);
-      if (ok) {
-        _hasInitialScrolled = true;
-        _initialSeekInFlight = false;
-        return;
-      }
-      await Future<void>.delayed(Duration(milliseconds: 80 * (attempt + 1)));
-    }
+    await _scrollAndHighlightNavTarget(
+      targetIndex,
+      useChapterPositionedList: _isChapterQuery(),
+    );
+    _hasInitialScrolled = true;
     _initialSeekInFlight = false;
   }
 
@@ -535,7 +554,7 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
     final card = ResponsiveWrapper(
       child: FullShlokaCard(
         shloka: shlokas[index],
-        isFocused: false,
+        isFocused: _navigatedShlokaHighlightIndex == index,
         config: _cardConfig.copyWith(
           baseFontSize: settingsProvider.fontSize,
           isLightTheme: Theme.of(context).brightness == Brightness.light,
@@ -561,9 +580,12 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                 setState(() {
                   _expandedVerseIndex =
                       _expandedVerseIndex == index ? null : index;
+                  _navigatedShlokaHighlightIndex = null;
                 });
               }
-            : null,
+            : () {
+                setState(() => _navigatedShlokaHighlightIndex = null);
+              },
         onPlayPause: () {
           Provider.of<AudioProvider>(context, listen: false).playChapter(
             shlokas: shlokas,
@@ -806,13 +828,13 @@ class _ShlokaListScreenState extends State<ShlokaListScreen> {
                           "Scrolling to initial index: ${provider.initialScrollIndex!}",
                         );
                         final scrollIndex = provider.initialScrollIndex!;
-                        if (chapterNumber != null) {
-                          _scrollToChapterVerseIndex(scrollIndex);
-                        } else {
-                          _scrollToIndex(scrollIndex, awaitVisible: true);
-                        }
-                        // Clear the index in the provider to prevent re-scrolling on rebuilds.
                         provider.clearScrollIndex();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _scrollAndHighlightNavTarget(
+                            scrollIndex,
+                            useChapterPositionedList: chapterNumber != null,
+                          );
+                        });
                       }
 
                       final shlokas = provider.shlokas;
